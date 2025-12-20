@@ -10,6 +10,7 @@ import { Utils } from '../common/Utils';
 @Component
 export struct Tasks {
   @State tasks: Task[] = [];
+  @State allTasks: Task[] = []; // 所有任务，用于统计
   @State filterStatus: string = 'all'; // all, pending, in_progress, completed
   @State showAddDialog: boolean = false;
   @State newTask: Task = new Task();
@@ -27,11 +28,29 @@ export struct Tasks {
    * 加载任务
    */
   async loadTasks(): Promise<void> {
+    // 先加载所有任务用于统计
+    this.allTasks = await this.taskService.getAllTasks();
+    
+    // 然后根据筛选状态加载任务列表
     if (this.filterStatus === 'all') {
-      this.tasks = await this.taskService.getAllTasks();
+      this.tasks = this.allTasks;
     } else {
       this.tasks = await this.taskService.getTasksByStatus(this.filterStatus);
     }
+  }
+
+  /**
+   * 获取已完成任务数量
+   */
+  getCompletedCount(): number {
+    return this.allTasks.filter(t => t.status === Constants.TASK_STATUS_COMPLETED).length;
+  }
+
+  /**
+   * 获取未完成任务数量
+   */
+  getPendingCount(): number {
+    return this.allTasks.filter(t => t.status !== Constants.TASK_STATUS_COMPLETED).length;
   }
 
   /**
@@ -120,6 +139,16 @@ export struct Tasks {
   build() {
     Stack() {
       Column() {
+        // 统计数据卡片
+        Row() {
+          this.buildStatCard('全部任务', this.allTasks.length.toString(), Constants.COLOR_PRIMARY)
+          this.buildStatCard('已完成', this.getCompletedCount().toString(), Constants.COLOR_SUCCESS)
+          this.buildStatCard('未完成', this.getPendingCount().toString(), Constants.COLOR_WARNING)
+        }
+        .width('100%')
+        .padding({ left: 16, right: 16, top: 16, bottom: 12 })
+        .justifyContent(FlexAlign.SpaceAround)
+
         // 筛选标签栏
         Row() {
           this.buildFilterButton('all', '全部')
@@ -128,7 +157,7 @@ export struct Tasks {
           this.buildFilterButton(Constants.TASK_STATUS_COMPLETED, '已完成')
         }
         .width('100%')
-        .padding({ left: 16, right: 16, top: 16, bottom: 8 })
+        .padding({ left: 16, right: 16, top: 8, bottom: 8 })
         .justifyContent(FlexAlign.SpaceAround)
 
         // 任务列表
@@ -262,6 +291,26 @@ export struct Tasks {
       .borderRadius(16)
       .padding({ left: 16, right: 16, top: 6, bottom: 6 })
       .onClick(() => this.onFilterChange(status))
+  }
+
+  @Builder
+  buildStatCard(title: string, value: string, color: string) {
+    Column() {
+      Text(value)
+        .fontSize(24)
+        .fontWeight(FontWeight.Bold)
+        .fontColor(color)
+        .margin({ bottom: 4 })
+      Text(title)
+        .fontSize(12)
+        .fontColor(Constants.COLOR_TEXT_SECONDARY)
+    }
+    .layoutWeight(1)
+    .padding(12)
+    .backgroundColor(Constants.COLOR_CARD_BACKGROUND)
+    .borderRadius(8)
+    .margin({ left: 4, right: 4 })
+    .justifyContent(FlexAlign.Center)
   }
 }
 

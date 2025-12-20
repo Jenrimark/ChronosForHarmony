@@ -1,6 +1,6 @@
 import { CalendarPage } from './Calendar';
 import { Tasks } from './Tasks';
-import { Statistics } from './Statistics';
+import { Chat } from './Chat';
 import { Settings } from './Settings';
 import { Accounting } from './Accounting';
 import { Constants } from '../common/Constants';
@@ -39,9 +39,9 @@ struct Main {
         component: Accounting
       },
       {
-        title: '统计',
-        icon: '📊',
-        component: Statistics
+        title: '对话',
+        icon: '💬',
+        component: Chat
       },
       {
         title: '设置',
@@ -69,7 +69,7 @@ struct Main {
         } else if (this.currentIndex === 2) {
           Accounting()
         } else if (this.currentIndex === 3) {
-          Statistics()
+          Chat()
         } else {
           Settings()
         }

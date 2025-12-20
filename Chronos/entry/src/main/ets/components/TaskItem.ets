@@ -20,20 +20,25 @@ export struct TaskItem {
 
   build() {
     Row() {
-      // 完成状态复选框
+      // 完成状态圆圈按钮
       if (this.task.status === Constants.TASK_STATUS_COMPLETED) {
-        Text('✓')
-          .width(24)
-          .height(24)
-          .fontSize(16)
-          .fontColor('#FFFFFF')
-          .textAlign(TextAlign.Center)
-          .borderRadius(12)
-          .backgroundColor(Constants.COLOR_SUCCESS)
-          .onClick(() => {
-            this.onCompleteAction = this.task.id;
-          })
+        // 已完成：实心圆圈带对勾
+        Column() {
+          Text('✓')
+            .fontSize(14)
+            .fontColor('#FFFFFF')
+            .fontWeight(FontWeight.Bold)
+        }
+        .width(24)
+        .height(24)
+        .borderRadius(12)
+        .backgroundColor(Constants.COLOR_SUCCESS)
+        .justifyContent(FlexAlign.Center)
+        .onClick(() => {
+          this.onCompleteAction = this.task.id;
+        })
       } else {
+        // 未完成：空心圆圈
         Text('')
           .width(24)
           .height(24)
@@ -52,6 +57,11 @@ export struct TaskItem {
             this.task.status === Constants.TASK_STATUS_COMPLETED
               ? Constants.COLOR_TEXT_SECONDARY
               : Constants.COLOR_TEXT_PRIMARY
+          )
+          .fontWeight(
+            this.task.status === Constants.TASK_STATUS_COMPLETED
+              ? FontWeight.Normal
+              : FontWeight.Medium
           )
           .decoration(
             this.task.status === Constants.TASK_STATUS_COMPLETED
@@ -119,9 +129,18 @@ export struct TaskItem {
     }
     .width('100%')
     .padding(16)
-    .backgroundColor('#FFFFFF')
+    .backgroundColor(
+      this.task.status === Constants.TASK_STATUS_COMPLETED
+        ? Constants.COLOR_BACKGROUND_SECONDARY
+        : Constants.COLOR_CARD_BACKGROUND
+    )
     .borderRadius(8)
     .margin({ bottom: 8 })
+    .opacity(
+      this.task.status === Constants.TASK_STATUS_COMPLETED
+        ? 0.7
+        : 1.0
+    )
     .onClick(() => {
       this.onTapAction = this.task.id;
     })

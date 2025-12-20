@@ -15,6 +15,10 @@
     {
       "name": "internet_permission_reason",
       "value": "需要访问网络以连接后端API服务"
+    },
+    {
+      "name": "microphone_permission_reason",
+      "value": "需要麦克风权限以支持语音记账功能"
     }
   ]
 }

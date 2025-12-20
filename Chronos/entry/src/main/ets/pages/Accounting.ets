@@ -4,6 +4,8 @@ import { Bill, BillType, BillCategory } from '../model/Bill';
 import { Constants } from '../common/Constants';
 import { Utils } from '../common/Utils';
 import { MimoAIService, BillRecognitionResult } from '../service/MimoAIService';
+import { AudioRecorderService } from '../service/AudioRecorderService';
+import { common } from '@kit.AbilityKit';
 
 /**
  * 账单分组接口
@@ -31,6 +33,10 @@ export struct Accounting {
   @State inputText: string = '';
   @State isRecording: boolean = false;
   @State isProcessing: boolean = false;
+  @State recordingDuration: number = 0; // 录音时长（秒）
+  @State recordingTimer: number = 0; // 录音计时器ID
+  @State isLongPressing: boolean = false; // 是否正在长按
+  private longPressTimer: number = 0; // 长按计时器ID
   
   // 账单详情
   @State selectedBill: Bill | null = null;
@@ -41,6 +47,7 @@ export struct Accounting {
 
   private billService: BillService = BillService.getInstance();
   private aiService: MimoAIService = MimoAIService.getInstance();
+  private audioRecorderService: AudioRecorderService = AudioRecorderService.getInstance();
 
   aboutToAppear() {
     this.loadBills();
@@ -51,6 +58,10 @@ export struct Accounting {
     if (apiKey && apiKey.length > 0) {
       this.aiService.setApiKey(apiKey);
     }
+    // 设置录音服务的上下文
+    // 注意：getContext已废弃，这里暂时不设置context
+    // 后续可以通过其他方式获取context，或者修改AudioRecorderService不需要context
+    // this.audioRecorderService.setContext(context);
   }
 
   /**
@@ -103,11 +114,104 @@ export struct Accounting {
   /**
    * 长按加号 - 开始录音模式
    */
-  onAddButtonLongPress(): void {
-    this.isRecording = true;
-    this.showInputBar = true;
-    // TODO: 实现录音功能
-    console.info('开始录音...');
+  async onAddButtonLongPress(): Promise<void> {
+    try {
+      // 检查权限
+      const hasPermission = await this.audioRecorderService.checkPermission();
+      if (!hasPermission) {
+        console.error('没有麦克风权限');
+        // TODO: 显示权限请求提示
+        return;
+      }
+
+      // 开始录音
+      await this.audioRecorderService.startRecording();
+      this.isRecording = true;
+      this.showInputBar = true;
+      this.recordingDuration = 0;
+      
+      // 开始计时
+      this.startRecordingTimer();
+      
+      console.info('开始录音...');
+    } catch (error) {
+      console.error('开始录音失败:', error);
+      this.isRecording = false;
+    }
+  }
+
+  /**
+   * 开始录音计时
+   */
+  startRecordingTimer(): void {
+    const timerId = setInterval(() => {
+      this.recordingDuration++;
+    }, 1000);
+    // 将timer ID存储为number类型
+    this.recordingTimer = timerId as number;
+  }
+
+  /**
+   * 停止录音计时
+   */
+  stopRecordingTimer(): void {
+    if (this.recordingTimer) {
+      clearInterval(this.recordingTimer);
+      this.recordingTimer = 0;
+    }
+  }
+
+  /**
+   * 停止录音并识别
+   */
+  async stopRecording(): Promise<void> {
+    try {
+      // 停止录音
+      const filePath = await this.audioRecorderService.stopRecording();
+      this.isRecording = false;
+      this.stopRecordingTimer();
+      
+      console.info('停止录音，文件路径:', filePath);
+      
+      // TODO: 将录音文件转换为文本
+      // 这里可以调用语音识别API
+      // 暂时使用模拟文本
+      this.inputText = '录音内容：' + this.formatDuration(this.recordingDuration);
+      
+      // 自动发送识别
+      await this.onSendInput();
+      
+      this.recordingDuration = 0;
+    } catch (error) {
+      console.error('停止录音失败:', error);
+      this.isRecording = false;
+      this.stopRecordingTimer();
+    }
+  }
+
+  /**
+   * 取消录音
+   */
+  async cancelRecording(): Promise<void> {
+    try {
+      await this.audioRecorderService.cancelRecording();
+      this.isRecording = false;
+      this.stopRecordingTimer();
+      this.recordingDuration = 0;
+      this.showInputBar = false;
+      console.info('取消录音');
+    } catch (error) {
+      console.error('取消录音失败:', error);
+    }
+  }
+
+  /**
+   * 格式化录音时长
+   */
+  formatDuration(seconds: number): string {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   }
 
   /**
@@ -153,10 +257,16 @@ export struct Accounting {
   /**
    * 关闭输入栏
    */
-  onCloseInputBar(): void {
+  async onCloseInputBar(): Promise<void> {
+    // 如果正在录音，先取消录音
+    if (this.isRecording) {
+      await this.cancelRecording();
+    }
     this.showInputBar = false;
     this.inputText = '';
     this.isRecording = false;
+    this.stopRecordingTimer();
+    this.recordingDuration = 0;
   }
 
   /**
@@ -186,8 +296,19 @@ export struct Accounting {
       // 右下角加号按钮
       this.buildAddButton()
 
-      // 输入栏（点击加号时显示）
+      // 输入栏遮罩层和输入栏（点击加号时显示）
       if (this.showInputBar) {
+        // 半透明遮罩层
+        Column()
+          .width('100%')
+          .height('100%')
+          .backgroundColor('#000000')
+          .opacity(0.3)
+          .onClick(() => {
+            this.onCloseInputBar();
+          })
+
+        // 输入栏
         this.buildInputBar()
       }
 
@@ -443,11 +564,38 @@ export struct Accounting {
       .height(56)
       .fontSize(32)
       .fontColor(Constants.COLOR_TEXT_ON_PRIMARY)
-      .backgroundColor(Constants.COLOR_PRIMARY)
+      .backgroundColor(this.isRecording ? Constants.COLOR_DANGER : Constants.COLOR_PRIMARY)
       .position({ x: '100%', y: '100%' })
-      .margin({ right: 16, bottom: 16 })
+      .translate({ x: -72, y: -72 })
+      .zIndex(20)
       .onClick(() => {
-        this.onAddButtonClick();
+        if (this.isRecording) {
+          // 如果正在录音，点击停止录音
+          this.stopRecording();
+        } else if (!this.isLongPressing) {
+          // 如果不是长按，展开输入栏
+          this.onAddButtonClick();
+        }
+        // 重置长按状态
+        this.isLongPressing = false;
+      })
+      .onTouch((event) => {
+        // 使用事件对象的type属性，不导入类型
+        if (event.type === 0 && !this.isRecording) { // 0 表示 Down
+          // 开始长按计时
+          const timerId = setTimeout(() => {
+            this.isLongPressing = true;
+            this.onAddButtonLongPress();
+          }, 500);
+          this.longPressTimer = timerId as number;
+        } else if (event.type === 1 || event.type === 3) { // 1 表示 Up, 3 表示 Cancel
+          // 取消长按计时
+          if (this.longPressTimer) {
+            clearTimeout(this.longPressTimer);
+            this.longPressTimer = 0;
+          }
+          this.isLongPressing = false;
+        }
       })
   }
 
@@ -457,11 +605,59 @@ export struct Accounting {
   @Builder
   buildInputBar() {
     Column() {
+      // 录音状态显示
+      if (this.isRecording) {
+        Row() {
+          // 录音动画指示器
+          Column() {
+            Text('●')
+              .fontSize(20)
+              .fontColor(Constants.COLOR_DANGER)
+          }
+          .width(24)
+          .height(24)
+          .justifyContent(FlexAlign.Center)
+          .animation({
+            iterations: -1,
+            duration: 1000,
+            curve: Curve.EaseInOut
+          })
+
+          // 录音时长
+          Text(`录音中 ${this.formatDuration(this.recordingDuration)}`)
+            .fontSize(14)
+            .fontColor(Constants.COLOR_DANGER)
+            .margin({ left: 8 })
+
+          Blank()
+
+          // 停止录音按钮
+          Button('停止')
+            .type(ButtonType.Normal)
+            .fontSize(14)
+            .backgroundColor(Constants.COLOR_DANGER)
+            .fontColor('#FFFFFF')
+            .margin({ left: 8 })
+            .onClick(() => {
+              this.stopRecording();
+            })
+        }
+        .width('100%')
+        .padding(12)
+        .backgroundColor(Constants.COLOR_CARD_BACKGROUND)
+        .borderRadius(8)
+        .margin({ bottom: 8 })
+      }
+
       Row() {
         // 输入框
-        TextInput({ placeholder: this.isRecording ? '正在录音...' : '输入账单描述，如：午餐15元' })
+        TextInput({ 
+          placeholder: this.isRecording ? '正在录音...' : '输入账单描述，如：午餐15元',
+          text: this.inputText
+        })
           .layoutWeight(1)
           .fontSize(16)
+          .enabled(!this.isRecording)
           .onChange((value: string) => {
             this.inputText = value;
           })
@@ -473,7 +669,7 @@ export struct Accounting {
           .backgroundColor(Constants.COLOR_PRIMARY)
           .fontColor(Constants.COLOR_TEXT_ON_PRIMARY)
           .margin({ left: 8 })
-          .enabled(!this.isProcessing && this.inputText.trim().length > 0)
+          .enabled(!this.isProcessing && !this.isRecording && this.inputText.trim().length > 0)
           .onClick(() => {
             this.onSendInput();
           })
@@ -497,10 +693,13 @@ export struct Accounting {
       .borderRadius(8)
     }
     .width('100%')
-    .padding(16)
+    .padding({ left: 16, right: 16, top: 16, bottom: 16 })
     .backgroundColor(Constants.COLOR_BACKGROUND_SECONDARY)
+    .borderRadius({ topLeft: 16, topRight: 16 })
+    .alignItems(HorizontalAlign.Start)
     .position({ x: 0, y: '100%' })
-    .translate({ y: -80 })
+    .translate({ y: this.isRecording ? -180 : -120 })
+    .zIndex(100)
   }
 
   /**

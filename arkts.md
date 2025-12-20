@@ -19,7 +19,6 @@ ArkTS兼容TS/JavaScript（简称JS）生态，开发者可以使用TS/JS进行�
 
 未来，ArkTS会结合应用开发/运行的需求持续演进，逐步增强并行和并发能力、扩展系统类型，以及引入分布式开发范式等更多特性。
 
-
 [](javascript:void(0);)
 
 [
@@ -1246,69 +1245,996 @@ HarmonyOS SDK提供的开放能力（接口）也需要在导入声明后使用�
 
 1. <pre class="typescript prettyprint linenums hljs language-typescript" hw-language="typescript" data-highlighted="yes"><ol class="linenums"><li><p>// a.ets</p></li><li data-node-id="20251220180742-m85q50l"><p>import { ClassAuthor } from './author';</p></li><li></li><li data-node-id="20251220180742-r0ko588"><p>export @interface MethodAnno {</p></li><li><p>  data: number = 0;</p></li><li data-node-id="20251220180742-ryckmhx"><p>}</p></li><li></li><li data-node-id="20251220180742-zg984q6"><p>@ClassAuthor</p></li><li><p>class MyClass {</p></li><li data-node-id="20251220180742-y02rylw"><p>  @MethodAnno({data: 123})</p></li><li><p>  foo() {}</p></li><li data-node-id="20251220180742-sw2ceh9"></li><li><p>  @MethodAnno({data: 456})</p></li><li data-node-id="20251220180742-f3e2i93"><p>  private bar() {}</p></li><li><p>}</p></li><li data-node-id="20251220180742-8ixdklw"></li><li><p>// a.d.ets 编译器生成的声明文件</p></li><li data-node-id="20251220180742-73nyn44"><p>import {ClassAuthor} from "./author";</p></li><li></li><li data-node-id="20251220180742-zq7drru"><p>export declare @interface MethodAnno {</p></li><li><p>  data: number = 0;</p></li><li data-node-id="20251220180742-8yt0kew"><p>}</p></li><li></li><li data-node-id="20251220180742-lgzc3i1"><p>@ClassAuthor</p></li><li><p>export declare class MyClass {</p></li><li data-node-id="20251220180742-5xppo7h"><p>  @MethodAnno({data: 123})</p></li><li><p>  foo(): void;</p></li><li data-node-id="20251220180742-527oyjm"></li><li><p>  bar; // 私有方法不保留注解</p></li><li data-node-id="20251220180742-a5m0ilz"><p>}</p></li></ol></pre>
 
-**开发者生成的.d.ets文件**
 
-开发者生成的.d.ets文件中的注解信息不会自动应用到实现的源代码中。
+
+[](javascript:void(0);)
+
+[
+
+    ](javascript:void(0);)[
+		](javascript:void(0);)[
+		](javascript:void(0);)[
+		](javascript:void(0);)[
+		](javascript:void(0);)[
+		](javascript:void(0);)[
+		](javascript:void(0);)[
+		](javascript:void(0);)[
+		](javascript:void(0);)[
+	](javascript:void(0);)
+
+# speechRecognizer（语音识别）
+
+**更新时间: 2025-12-19 14:01**
+
+语音识别服务提供将音频信息转换为文本的能力，便于用户与设备进行互动，实现实时语音交互、语音识别。
+
+目前本服务支持的语种为中文，支持的模型为离线。
+
+ **起始版本：** 4.1.0(11)
+
+## 导入模块
+
+**支持设备**Phone**PC/2in1**Tablet
+
+<pre class="typescript prettyprint linenums hljs language-typescript" data-highlighted="yes"><ol class="linenums"><li><p>import { speechRecognizer } from '@kit.CoreSpeechKit';</p></li></ol></pre>
+
+## speechRecognizer.createEngine
+
+**支持设备**Phone**PC/2in1**Tablet
+
+createEngine(createEngineParams: CreateEngineParams, callback: AsyncCallback`<SpeechRecognitionEngine>`): void
+
+创建SpeechRecognitionEngine实例，并初始化引擎。使用callback异步回调。
+
+ **系统能力：** SystemCapability.AI.SpeechRecognizer
+
+ **起始版本：** 4.1.0(11)
+
+**参数：**
+
+| 参数名             | 类型                                                                                                                                                                                                                                                                                                                                                                                                  | 必填 | 说明                           |
+| :----------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :--- | :----------------------------- |
+| createEngineParams | [CreateEngineParams](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/hms-ai-speechrecognizer#section1638144844811)                                                                                                                                                                                                                                                                     | 是   | 创建引擎实例的配置项。         |
+| callback           | [AsyncCallback](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/js-apis-base#asynccallback)[[SpeechRecognitionEngine](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/hms-ai-speechrecognizer#section153101728203110)](%5BSpeechRecognitionEngine%5D(https://developer.huawei.com/consumer/cn/doc/harmonyos-references/hms-ai-speechrecognizer#section153101728203110)) | 是   | 回调函数。返回创建的引擎实例。 |
+
+**错误码：**
+
+以下错误码的详细介绍请参见[Core Speech Kit错误码](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/errorcode-corespeech)。
+
+| 错误码ID   | 错误信息                                            |
+| :--------- | :-------------------------------------------------- |
+| 1002200001 | Create engine failed.                               |
+| 1002200006 | The engine of SpeechRecognition is busy.            |
+| 1002200008 | The engine of SpeechRecognition is being destroyed. |
+| 1002200009 | Internal Service Error.                             |
 
 **示例：**
 
-<pre class="typescript prettyprint linenums hljs language-typescript" hw-language="typescript" data-highlighted="yes"><ol class="linenums"><li><p>// b.d.ets 开发者生成的声明文件</p></li><li data-node-id="20251220180742-k9s9yhv"><p>@interface ClassAuthor {}</p></li><li></li><li data-node-id="20251220180742-a2yf6hq"><p>@ClassAuthor // 声明文件中有注解</p></li><li><p>class C {</p></li><li data-node-id="20251220180742-b5zd3m3"><p>  // ...</p></li><li><p>}</p></li><li data-node-id="20251220180742-kerdnn2"></li><li><p>// b.ets 开发者对声明文件实现的源代码</p></li><li data-node-id="20251220180742-au4qyew"><p>@interface ClassAuthor {}</p></li><li></li><li data-node-id="20251220180742-gubb8y4"><p>// 实现文件中没有注解</p></li><li><p>class C {</p></li><li data-node-id="20251220180742-3hm47m2"><p>  // ...</p></li><li><p>}</p></li></ol></pre>
+<pre class="typescript prettyprint linenums hljs language-typescript" data-highlighted="yes"><ol class="linenums"><li><p>import { BusinessError } from '@kit.BasicServicesKit';</p></li><li data-node-id="20251220195706-o3xfyfz"><p>import { speechRecognizer } from '@kit.CoreSpeechKit';</p></li><li></li><li data-node-id="20251220195706-5k7lg1c"><p>let asrEngine: speechRecognizer.SpeechRecognitionEngine;</p></li><li></li><li data-node-id="20251220195706-d0l43it"><p>// 设置创建引擎参数</p></li><li><p>let extraParams: Record<string, Object> = { "locate": "CN", "recognizerMode": "short" }</p></li><li data-node-id="20251220195706-gpxqtts"><p>let initParamsInfo: speechRecognizer.CreateEngineParams = {</p></li><li><p>  language: 'zh-CN',</p></li><li data-node-id="20251220195706-zqxxnr1"><p>  online: 1,</p></li><li><p>  extraParams: extraParams</p></li><li data-node-id="20251220195706-rj5jhpq"><p>};</p></li><li></li><li data-node-id="20251220195706-myc31at"><p>// 调用createEngine方法</p></li><li><p>speechRecognizer.createEngine(initParamsInfo, (err: BusinessError, speechRecognitionEngine: </p></li><li data-node-id="20251220195706-dlmn4s4"><p>speechRecognizer.SpeechRecognitionEngine) => {</p></li><li><p>  if (!err) {</p></li><li data-node-id="20251220195706-cwdxjxa"><p>    // 接收创建引擎的实例</p></li><li><p>    asrEngine = speechRecognitionEngine;</p></li><li data-node-id="20251220195706-9eyok39"><p>  } else {</p></li><li><p>      // 无法创建引擎时返回错误码1002200001，原因：语种不支持、模式不支持、初始化超时、资源不存在等导致创建引擎失败</p></li><li data-node-id="20251220195706-4r7bwrx"><p>      // 无法创建引擎时返回错误码1002200006，原因：引擎正在忙碌中，一般多个应用同时调用语音识别引擎时触发</p></li><li><p>      // 无法创建引擎时返回错误码1002200008，原因：引擎已被销毁</p></li><li data-node-id="20251220195706-3s99z18"><p>      console.error(`Failed to create engine. Code: ${err.code}, message: ${err.message}.`);</p></li><li><p>  }</p></li><li data-node-id="20251220195706-bgd7snu"><p>});</p></li><li></li><li data-node-id="20251220195706-8f9qpq0"><p>@Entry</p></li><li><p>@Component</p></li><li data-node-id="20251220195706-epc4f0n"><p>struct Page {</p></li><li></li><li data-node-id="20251220195706-u9daa20"><p>  build() {</p></li><li><p>  }</p></li><li data-node-id="20251220195706-bijvfrp"><p>}</p></li></ol></pre>
 
-在最终编译产物中，class C没有注解。
+## speechRecognizer.createEngine
 
-**重复注解和继承**
+**支持设备**Phone**PC/2in1**Tablet
 
-同一个实体不能重复使用同一注解，否则会导致编译错误。
+createEngine(createEngineParams: CreateEngineParams): Promise`<SpeechRecognitionEngine>`
 
-<pre class="typescript prettyprint linenums hljs language-typescript" hw-language="typescript" data-highlighted="yes"><ol class="linenums"><li><p>@MyAnno({name: "123", value: 456})</p></li><li data-node-id="20251220180742-pwd6lfz"><p>@MyAnno({name: "321", value: 654}) // 编译错误：不允许重复注释</p></li><li><p>class C {</p></li><li data-node-id="20251220180742-493rskq"><p>  // ...</p></li><li><p>}</p></li></ol></pre>
+创建SpeechRecognitionEngine实例，并初始化引擎。使用Promise异步回调。
 
-子类不会继承基类的注解，也不会继承基类方法的注解。
+ **系统能力：** SystemCapability.AI.SpeechRecognizer
 
-**注解和抽象类、抽象方法**
+ **起始版本：** 4.1.0(11)
 
-不支持对抽象类或抽象方法使用注解，否则将导致编译错误。
+**参数：**
 
-<pre class="typescript prettyprint linenums hljs language-typescript" hw-language="typescript" data-highlighted="yes"><ol class="linenums"><li><p>@MyAnno // 编译错误：不允许在抽象类和抽象方法上使用注解</p></li><li data-node-id="20251220180742-05ny944"><p>abstract class C {</p></li><li><p>  @MyAnno</p></li><li data-node-id="20251220180742-u1u0v0l"><p>  abstract foo(): void; // 编译错误：不允许在抽象类和抽象方法上使用注解</p></li><li><p>}</p></li></ol></pre>
+| 参数名             | 类型                                                                                                                              | 必填 | 说明                   |
+| :----------------- | :-------------------------------------------------------------------------------------------------------------------------------- | :--- | :--------------------- |
+| createEngineParams | [CreateEngineParams](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/hms-ai-speechrecognizer#section1638144844811) | 是   | 创建引擎实例的配置项。 |
 
-## ArkUI支持
+**返回值：**
 
-本节演示ArkTS为创建图形用户界面（GUI）程序提供的机制。ArkUI基于TypeScript提供了一系列扩展能力，以声明式地描述应用程序的GUI以及GUI组件间的交互。
+| 类型                                                                                                                                                                                                                                                                                               | 说明                              |
+| :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------- |
+| Promise[[SpeechRecognitionEngine](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/hms-ai-speechrecognizer#section153101728203110)](%5BSpeechRecognitionEngine%5D(https://developer.huawei.com/consumer/cn/doc/harmonyos-references/hms-ai-speechrecognizer#section153101728203110)) | Promise对象。返回创建的引擎实例。 |
 
-### ArkUI示例
+**错误码：**
 
-[MVVM代码示例](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/arkts-mvvm#代码示例)提供了一个完整的基于ArkUI的应用程序，以展示其GUI编程功能。
+以下错误码的详细介绍请参见[Core Speech Kit错误码](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/errorcode-corespeech)。
 
-有关ArkUI功能的更多详细信息，请参见ArkUI[基本语法概述](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/arkts-basic-syntax-overview)。
+| 错误码ID   | 错误信息                                            |
+| :--------- | :-------------------------------------------------- |
+| 1002200001 | Create engine failed.                               |
+| 1002200006 | The engine of SpeechRecognition is busy.            |
+| 1002200008 | The engine of SpeechRecognition is being destroyed. |
+| 1002200009 | Internal Service Error.                             |
 
-[](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/arkts-get-started "初识ArkTS语言")
+**示例：**
 
-[初识ArkTS语言](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/arkts-get-started "初识ArkTS语言")
+<pre class="typescript prettyprint linenums hljs language-typescript" data-highlighted="yes"><ol class="linenums"><li><p>import { BusinessError } from '@kit.BasicServicesKit';</p></li><li data-node-id="20251220195706-jxqmidc"><p>import { speechRecognizer } from '@kit.CoreSpeechKit';</p></li><li></li><li data-node-id="20251220195706-3sky7y5"><p>let asrEngine: speechRecognizer.SpeechRecognitionEngine;</p></li><li></li><li data-node-id="20251220195706-mcwfppm"><p>// 设置创建引擎参数</p></li><li><p>let extraParams: Record<string, Object> = { "locate": "CN", "recognizerMode": "short" }</p></li><li data-node-id="20251220195706-4uoquto"><p>let initParamsInfo: speechRecognizer.CreateEngineParams = {</p></li><li><p>  language: 'zh-CN',</p></li><li data-node-id="20251220195706-o199i6g"><p>  online: 1,</p></li><li><p>  extraParams: extraParams</p></li><li data-node-id="20251220195706-kq8vz6m"><p>};</p></li><li></li><li data-node-id="20251220195706-0o82nfr"><p>// 调用createEngine方法</p></li><li><p>speechRecognizer.createEngine(initParamsInfo).then((speechRecognitionEngine: speechRecognizer.SpeechRecognitionEngine) => {</p></li><li data-node-id="20251220195706-xdthrts"><p>  // 接收引擎实例 </p></li><li><p>  asrEngine = speechRecognitionEngine;</p></li><li data-node-id="20251220195706-kqm68lz"><p>  console.info(`Succeeded in creating engine.`);</p></li><li><p>}).catch((err: BusinessError) => {</p></li><li data-node-id="20251220195706-232i4wl"><p>  console.error(`Failed to create engine. Code: ${err.code}, message: ${err.message}.`);</p></li><li><p>});</p></li><li data-node-id="20251220195706-5ad5m2f"></li><li><p>@Entry</p></li><li data-node-id="20251220195706-9asmueb"><p>@Component</p></li><li><p>struct Page {</p></li><li data-node-id="20251220195706-1sex5sn"></li><li><p>  build() {</p></li><li data-node-id="20251220195706-p2s1ytd"><p>  }</p></li><li><p>}</p></li></ol></pre>
 
-[ArkTS编程规范](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/arkts-coding-style-guide "ArkTS编程规范")
+## SpeechRecognitionEngine
 
-[](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/arkts-coding-style-guide "ArkTS编程规范")
+**支持设备**Phone**PC/2in1**Tablet
+
+语音识别类，用于执行语音识别过程中的相关操作。在调用SpeechRecognitionEngine的方法前，需要先通过[createEngine](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/hms-ai-speechrecognizer#section53411946183318)方法创建一个[SpeechRecognitionEngine](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/hms-ai-speechrecognizer#section153101728203110)实例。
+
+ **系统能力：** SystemCapability.AI.SpeechRecognizer
+
+ **起始版本：** 4.1.0(11)
+
+### listLanguages
+
+**支持设备**Phone**PC/2in1**Tablet
+
+listLanguages(params: LanguageQuery, callback: AsyncCallback<Array`<string>`>): void
+
+查询支持的语种信息，使用callback异步回调。
+
+ **系统能力：** SystemCapability.AI.SpeechRecognizer
+
+ **起始版本：** 4.1.0(11)
+
+**参数：**
+
+| 参数名   | 类型                                                                                                                          | 必填 | 说明                                                            |
+| :------- | :---------------------------------------------------------------------------------------------------------------------------- | :--- | :-------------------------------------------------------------- |
+| params   | [LanguageQuery](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/hms-ai-speechrecognizer#section235272615215)   | 是   | 查询语种信息请求参数。                                          |
+| callback | [AsyncCallback](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/js-apis-base#asynccallback)<Array`<string>`> | 是   | 回调函数。返回查询结果。当前仅支持中文，返回结果为：["zh-CN"]。 |
+
+**错误码：**
+
+以下错误码的详细介绍请参见[Core Speech Kit错误码](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/errorcode-corespeech)。
+
+| 错误码ID   | 错误信息                       |
+| :--------- | :----------------------------- |
+| 401        | The parameter check failed.    |
+| 1002200007 | The engine is not initialized. |
+| 1002200009 | Internal Service Error.        |
+
+**示例：**
+
+<pre class="typescript prettyprint linenums hljs language-typescript" data-highlighted="yes"><ol class="linenums"><li><p>import { BusinessError } from '@kit.BasicServicesKit';</p></li><li data-node-id="20251220195706-8pfvlh0"><p>import { speechRecognizer } from '@kit.CoreSpeechKit';</p></li><li></li><li data-node-id="20251220195706-ygeegvd"><p>let asrEngine: speechRecognizer.SpeechRecognitionEngine;</p></li><li></li><li data-node-id="20251220195706-ack6pcw"><p>@Entry</p></li><li><p>@Component</p></li><li data-node-id="20251220195706-fxmnz20"><p>struct Page {</p></li><li><p>  // 查询语种信息，以callback形式返回</p></li><li data-node-id="20251220195706-dyphqmm"><p>  private queryLanguagesCallback() {</p></li><li><p>    // 设置查询相关参数</p></li><li data-node-id="20251220195706-qivrpta"><p>    let languageQuery: speechRecognizer.LanguageQuery = {</p></li><li><p>      sessionId: '123456'</p></li><li data-node-id="20251220195706-0oqbogh"><p>    };</p></li><li><p>    // 调用listLanguages方法</p></li><li data-node-id="20251220195706-9q9aotd"><p>    asrEngine.listLanguages(languageQuery, (err: BusinessError, languages: Array<string>) => {</p></li><li><p>      if (!err) {</p></li><li data-node-id="20251220195706-0npdzyr"><p>        // 接收目前支持的语种信息</p></li><li><p>        console.info(`Succeeded in listing languages, result: ${JSON.stringify(languages)}.`);</p></li><li data-node-id="20251220195706-hm6txaf"><p>      } else {</p></li><li><p>        console.error(`Failed to list languages. Code: ${err.code}, message: ${err.message}.`);</p></li><li data-node-id="20251220195706-6cdyt4n"><p>      }</p></li><li><p>    });</p></li><li data-node-id="20251220195706-8x2ies4"><p>  };</p></li><li></li><li data-node-id="20251220195706-x2wqtzn"><p>  build() {</p></li><li><p>  }</p></li><li data-node-id="20251220195706-gmlbeyf"><p>}</p></li></ol></pre>
+
+### listLanguages
+
+**支持设备**Phone**PC/2in1**Tablet
+
+listLanguages(params: LanguageQuery): Promise<Array`<string>`>
+
+查询支持的语种信息，使用Promise异步回调。
+
+ **系统能力：** SystemCapability.AI.SpeechRecognizer
+
+ **起始版本：** 4.1.0(11)
+
+**参数：**
+
+| 参数名 | 类型                                                                                                                        | 必填 | 说明                   |
+| :----- | :-------------------------------------------------------------------------------------------------------------------------- | :--- | :--------------------- |
+| params | [LanguageQuery](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/hms-ai-speechrecognizer#section235272615215) | 是   | 查询语种信息请求参数。 |
+
+**返回值：**
+
+| 类型                       | 说明                                                                 |
+| :------------------------- | :------------------------------------------------------------------- |
+| Promise<Array`<string>`> | Promise对象。返回查询的结果。当前仅支持中文，返回结果为：["zh-CN"]。 |
+
+**错误码：**
+
+以下错误码的详细介绍请参见[Core Speech Kit错误码](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/errorcode-corespeech)。
+
+| 错误码ID   | 错误信息                       |
+| :--------- | :----------------------------- |
+| 401        | The parameter check failed.    |
+| 1002200007 | The engine is not initialized. |
+| 1002200009 | Internal Service Error.        |
+
+**示例：**
+
+<pre class="typescript prettyprint linenums hljs language-typescript" data-highlighted="yes"><ol class="linenums"><li><p>import { BusinessError } from '@kit.BasicServicesKit';</p></li><li data-node-id="20251220195706-z5z55bv"><p>import { speechRecognizer } from '@kit.CoreSpeechKit';</p></li><li></li><li data-node-id="20251220195706-zu6v4vl"><p>let asrEngine: speechRecognizer.SpeechRecognitionEngine;</p></li><li><p>// 设置查询相关的参数</p></li><li data-node-id="20251220195706-xe574zc"><p>let languageQuery: speechRecognizer.LanguageQuery = {</p></li><li><p>  sessionId: '123456'</p></li><li data-node-id="20251220195706-gvarlw6"><p>};</p></li><li></li><li data-node-id="20251220195706-3565oel"><p>@Entry</p></li><li><p>@Component</p></li><li data-node-id="20251220195706-fv6shwr"><p>struct Page {</p></li><li><p>  build() {</p></li><li data-node-id="20251220195706-stw80dj"><p>    Button()</p></li><li><p>      .id('Button')</p></li><li data-node-id="20251220195706-ulezjjg"><p>      .fontSize(20)</p></li><li><p>      .onClick( () => {</p></li><li data-node-id="20251220195706-xzom77t"><p>        // 调用listLanguages方法，查询引擎目前支持的语种信息，以Promise返回</p></li><li><p>        asrEngine.listLanguages(languageQuery).then((res: Array<string>) => {</p></li><li data-node-id="20251220195706-cagf5ks"><p>          console.info(`Succeeded in listing languages, result: ${JSON.stringify(res)}.`);</p></li><li><p>        }).catch((err: BusinessError) => {</p></li><li data-node-id="20251220195706-8wqpk6e"><p>          console.error(`Failed to list languages. Code: ${err.code}, message: ${err.message}.`);</p></li><li><p>        });</p></li><li data-node-id="20251220195706-lx8hmwq"><p>      })</p></li><li><p>  }</p></li><li data-node-id="20251220195706-6h6i1yu"><p>}</p></li></ol></pre>
+
+### setListener
+
+**支持设备**Phone**PC/2in1**Tablet
+
+setListener(listener: RecognitionListener): void
+
+设置语音识别回调。
+
+ **系统能力：** SystemCapability.AI.SpeechRecognizer
+
+ **起始版本：** 4.1.0(11)
+
+**参数：**
+
+| 参数名   | 类型                                                                                                                              | 必填 | 说明                                               |
+| :------- | :-------------------------------------------------------------------------------------------------------------------------------- | :--- | :------------------------------------------------- |
+| listener | [RecognitionListener](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/hms-ai-speechrecognizer#section845815011389) | 是   | 回调对象，识别过程中所有回调信息均通过此对象返回。 |
+
+**示例：**
+
+<pre class="typescript prettyprint linenums hljs language-typescript" data-highlighted="yes"><ol class="linenums"><li><p>import { speechRecognizer } from '@kit.CoreSpeechKit';</p></li><li data-node-id="20251220195706-nzpppua"></li><li><p>let asrEngine: speechRecognizer.SpeechRecognitionEngine;</p></li><li data-node-id="20251220195706-ab4w6vp"><p>// 创建回调对象</p></li><li><p>let setListener: speechRecognizer.RecognitionListener = {</p></li><li data-node-id="20251220195706-oev4zgn"><p>  // 开始识别成功回调</p></li><li><p>  onStart(sessionId: string, eventMessage: string) {</p></li><li data-node-id="20251220195706-itzfe59"><p>    console.info(`onStart, sessionId: ${sessionId} eventMessage: ${eventMessage}`);</p></li><li><p>  },</p></li><li data-node-id="20251220195706-vu9ixkn"><p>  // 事件回调</p></li><li><p>  onEvent(sessionId: string, eventCode: number, eventMessage: string) {</p></li><li data-node-id="20251220195706-cdg1xv0"><p>    console.info(`onEvent, sessionId: ${sessionId} eventCode: ${eventCode} eventMessage: ${eventMessage}`);</p></li><li><p>  },</p></li><li data-node-id="20251220195706-cfbn3sc"><p>  // 识别结果回调，包括中间结果和最终结果</p></li><li><p>  onResult(sessionId: string, result: speechRecognizer.SpeechRecognitionResult) {</p></li><li data-node-id="20251220195706-2jpcwci"><p>    console.info(`onResult, sessionId: ${sessionId} sessionId: ${JSON.stringify(result)}`);</p></li><li><p>  },</p></li><li data-node-id="20251220195706-i5ir767"><p>  // 识别完成回调</p></li><li><p>  onComplete(sessionId: string, eventMessage: string) {</p></li><li data-node-id="20251220195706-kdtluax"><p>    console.info(`onComplete, sessionId: ${sessionId} eventMessage: ${eventMessage}`);</p></li><li><p>  },</p></li><li data-node-id="20251220195706-ckzy84n"><p>  // 错误回调，错误码通过本方法返回</p></li><li><p>  // 返回错误码1002200002，开始识别失败，重复启动startListening方法时触发</p></li><li data-node-id="20251220195706-xxb3yqg"><p>  onError(sessionId: string, errorCode: number, errorMessage: string) {</p></li><li><p>    console.error(`onError, sessionId: ${sessionId} errorCode: ${errorCode} errorMessage: ${errorMessage}`);</p></li><li data-node-id="20251220195706-v72f452"><p>  },</p></li><li><p>}</p></li><li data-node-id="20251220195706-jh6l4su"></li><li><p>@Entry</p></li><li data-node-id="20251220195706-aj1b7eh"><p>@Component</p></li><li><p>struct Page {</p></li><li data-node-id="20251220195706-ahkbasw"><p>  build() {</p></li><li><p>    Button()</p></li><li data-node-id="20251220195706-mydtonb"><p>      .id('Button')</p></li><li><p>      .onClick( () => {</p></li><li data-node-id="20251220195706-n7by4wq"><p>        // 设置回调</p></li><li><p>        asrEngine.setListener(setListener);</p></li><li data-node-id="20251220195706-ewbq5u0"><p>      })</p></li><li><p>  }</p></li><li data-node-id="20251220195706-r8wtip7"><p>}</p></li></ol></pre>
+
+### startListening
+
+**支持设备**Phone**PC/2in1**Tablet
+
+startListening(params: StartParams): void
+
+启动语音识别。
+
+ **系统能力：** SystemCapability.AI.SpeechRecognizer
+
+ **起始版本：** 4.1.0(11)
+
+**参数：**
+
+| 参数名 | 类型                                                                                                                       | 必填 | 说明                                                     |
+| :----- | :------------------------------------------------------------------------------------------------------------------------- | :--- | :------------------------------------------------------- |
+| params | [StartParams](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/hms-ai-speechrecognizer#section7843122735210) | 是   | 启动语音识别的相关参数，用于设置会话ID、音频配置信息等。 |
+
+**错误码：**
+
+以下错误码的详细介绍请参见[Core Speech Kit错误码](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/errorcode-corespeech)。
+
+| 错误码ID   | 错误信息                       |
+| :--------- | :----------------------------- |
+| 401        | The parameter check failed.    |
+| 1002200002 | Start listening failed.        |
+| 1002200007 | The engine is not initialized. |
+
+**示例：**
+
+<pre class="typescript prettyprint linenums hljs language-typescript" data-highlighted="yes"><ol class="linenums"><li><p>import { speechRecognizer } from '@kit.CoreSpeechKit';</p></li><li data-node-id="20251220195706-gzcp2s0"></li><li><p>let asrEngine: speechRecognizer.SpeechRecognitionEngine;</p></li><li data-node-id="20251220195706-wjgrsxd"><p>// 设置开始识别相关参数</p></li><li><p>let recognizerParams: speechRecognizer.StartParams = {</p></li><li data-node-id="20251220195706-94bqr1m"><p>  sessionId: '123456',</p></li><li><p>  audioInfo: { audioType: 'pcm', sampleRate: 16000, soundChannel: 1, sampleBit: 16 }</p></li><li data-node-id="20251220195706-1i3hozv"><p>}</p></li><li></li><li data-node-id="20251220195706-7f8uht1"><p>@Entry</p></li><li><p>@Component</p></li><li data-node-id="20251220195706-wc66xpf"><p>struct Page {</p></li><li><p>  build() {</p></li><li data-node-id="20251220195706-ndmtc6l"><p>    Button()</p></li><li><p>      .id('Button')</p></li><li data-node-id="20251220195706-s1a986f"><p>      .onClick( () => {</p></li><li><p>        // 调用开始识别方法</p></li><li data-node-id="20251220195706-fqik3d6"><p>        asrEngine.startListening(recognizerParams);</p></li><li><p>      })</p></li><li data-node-id="20251220195706-k1ydb8w"><p>  }</p></li><li><p>}</p></li></ol></pre>
+
+### writeAudio
+
+**支持设备**Phone**PC/2in1**Tablet
+
+writeAudio(sessionId: string, audio: Uint8Array): void
+
+写音频流，最大音频长度为60000ms。为了确保收到识别结果，请优先调用[setListener](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/hms-ai-speechrecognizer#section1745872517348)和[startListening](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/hms-ai-speechrecognizer#section140216144119)。
+
+ **系统能力：** SystemCapability.AI.SpeechRecognizer
+
+ **起始版本：** 4.1.0(11)
+
+**参数：**
+
+| 参数名    | 类型       | 必填 | 说明                                                                                                                                                   |
+| :-------- | :--------- | :--- | :----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| sessionId | string     | 是   | 会话ID。由字母、数字、下划线和短横线组成。区分不同会话，无长度限制。                                                                                   |
+| audio     | Uint8Array | 是   | 待识别的音频数据，当前仅支持音频数据长度为640字节或1280字节。每次发送音频调用间隔必须为20ms（传输音频长度为640字节）或40ms（传输音频长度为1280字节）。 |
+
+**错误码：**
+
+以下错误码的详细介绍请参见[Core Speech Kit错误码](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/errorcode-corespeech)。
+
+| 错误码ID   | 错误信息                                                  |
+| :--------- | :-------------------------------------------------------- |
+| 401        | The parameter check failed.                               |
+| 1002200003 | Exceeded the maximum audio length supported.              |
+| 1002200007 | The engine is not initialized.                            |
+| 1002200010 | Write audio failed because the start listening is failed. |
+
+**示例：**
+
+<pre class="typescript prettyprint linenums hljs language-typescript" data-highlighted="yes"><ol class="linenums"><li><p>import { speechRecognizer } from '@kit.CoreSpeechKit';</p></li><li data-node-id="20251220195706-gwcxrys"></li><li><p>let asrEngine: speechRecognizer.SpeechRecognitionEngine;</p></li><li data-node-id="20251220195706-66zh02n"><p>let sessionId: string = '123456';</p></li><li><p>let uint8Array: Uint8Array = new Uint8Array();</p></li><li data-node-id="20251220195706-wqvrj30"><p>// 可以通过如下方式获取音频流：1、通过录音获取音频流；2、从音频文件中读取音频流</p></li><li><p>// 2、从音频文件中读取音频流:<a href="https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/speechrecognizer-guide#section56481271497" target="_blank">demo参考</a></p></li><li data-node-id="20251220195706-ho7hr1p"></li><li><p>@Entry</p></li><li data-node-id="20251220195706-9ovho0i"><p>@Component</p></li><li><p>struct Page {</p></li><li data-node-id="20251220195706-f4ofpoj"><p>  build() {</p></li><li><p>    Button()</p></li><li data-node-id="20251220195706-lpkof9g"><p>      .id('Button')</p></li><li><p>      .onClick( () => {</p></li><li data-node-id="20251220195706-pkil2wv"><p>        // 写入音频流，音频流长度仅支持640字节或1280字节</p></li><li><p>        asrEngine.writeAudio(sessionId, uint8Array);</p></li><li data-node-id="20251220195706-vwxsgtr"><p>      })</p></li><li><p>  }</p></li><li data-node-id="20251220195706-11r6dot"><p>}</p></li></ol></pre>
+
+### finish
+
+**支持设备**Phone**PC/2in1**Tablet
+
+finish(sessionId: string): void
+
+结束识别。为了确保事件回调，请优先调用[setListener](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/hms-ai-speechrecognizer#section1745872517348)。
+
+ **系统能力：** SystemCapability.AI.SpeechRecognizer
+
+ **起始版本：** 4.1.0(11)
+
+**参数：**
+
+| 参数名    | 类型   | 必填 | 说明                                                                 |
+| :-------- | :----- | :--- | :------------------------------------------------------------------- |
+| sessionId | string | 是   | 会话ID。由字母、数字、下划线和短横线组成。区分不同会话，无长度限制。 |
+
+**错误码：**
+
+以下错误码的详细介绍请参见[Core Speech Kit错误码](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/errorcode-corespeech)。
+
+| 错误码ID   | 错误信息                       |
+| :--------- | :----------------------------- |
+| 401        | The parameter check failed.    |
+| 1002200004 | Finish recognition failed.     |
+| 1002200007 | The engine is not initialized. |
+
+**示例：**
+
+<pre class="typescript prettyprint linenums hljs language-typescript" data-highlighted="yes"><ol class="linenums"><li><p>import { speechRecognizer } from '@kit.CoreSpeechKit';</p></li><li data-node-id="20251220195706-pq9o5dw"></li><li><p>let asrEngine: speechRecognizer.SpeechRecognitionEngine;</p></li><li data-node-id="20251220195706-rsdhkfs"><p>let sessionId: string = '123456';</p></li><li><p>let uint8Array: Uint8Array = new Uint8Array();</p></li><li data-node-id="20251220195706-yqfvk9o"><p>// 可以通过如下方式获取音频流：1、通过录音获取音频流；2、从音频文件中读取音频流</p></li><li><p>// 2、从音频文件中读取音频流:demo参考</p></li><li data-node-id="20251220195706-dpfoql2"></li><li><p>@Entry</p></li><li data-node-id="20251220195706-wthtnd8"><p>@Component</p></li><li><p>struct Page {</p></li><li data-node-id="20251220195706-m1gkiif"><p>  build() {</p></li><li><p>    Column(){</p></li><li data-node-id="20251220195706-jbyvy5h"><p>      Button()</p></li><li><p>        .id('Button')</p></li><li data-node-id="20251220195706-99gviip"><p>        .onClick( () => {</p></li><li><p>          // 写入音频流，音频流长度仅支持640字节或1280字节</p></li><li data-node-id="20251220195706-nzp0n4h"><p>          asrEngine.writeAudio(sessionId, uint8Array);</p></li><li><p>        })</p></li><li data-node-id="20251220195706-6hjhnzu"></li><li><p>      Button() {</p></li><li data-node-id="20251220195706-wck0kgx"><p>        Text("finish")</p></li><li><p>          .fontColor(Color.White)</p></li><li data-node-id="20251220195706-utrbwbh"><p>          .fontSize(20)</p></li><li><p>      }</p></li><li data-node-id="20251220195706-iaz6mfe"><p>      .type(ButtonType.Capsule)</p></li><li><p>      .backgroundColor("#0x317AE7")</p></li><li data-node-id="20251220195706-9qja54d"><p>      .width("80%")</p></li><li><p>      .height(50)</p></li><li data-node-id="20251220195706-2uzmf1q"><p>      .margin(10)</p></li><li><p>      .onClick(() => {</p></li><li data-node-id="20251220195706-vnofzjs"><p>        // 结束识别</p></li><li><p>        asrEngine.finish(sessionId);</p></li><li data-node-id="20251220195706-72o6pwr"><p>      })</p></li><li><p>    }</p></li><li data-node-id="20251220195706-w8wun2y"><p>  }</p></li><li><p>}</p></li></ol></pre>
+
+### cancel
+
+**支持设备**Phone**PC/2in1**Tablet
+
+cancel(sessionId: string): void
+
+取消识别。为了确保事件回调，请优先调用[setListener](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/hms-ai-speechrecognizer#section1745872517348)。
+
+ **系统能力：** SystemCapability.AI.SpeechRecognizer
+
+ **起始版本：** 4.1.0(11)
+
+**参数：**
+
+| 参数名    | 类型   | 必填 | 说明                                                                 |
+| :-------- | :----- | :--- | :------------------------------------------------------------------- |
+| sessionId | string | 是   | 会话ID。由字母、数字、下划线和短横线组成。区分不同会话，无长度限制。 |
+
+**错误码：**
+
+以下错误码的详细介绍请参见[Core Speech Kit错误码](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/errorcode-corespeech)。
+
+| 错误码ID   | 错误信息                       |
+| :--------- | :----------------------------- |
+| 401        | The parameter check failed.    |
+| 1002200005 | Cancel recognition failed.     |
+| 1002200007 | The engine is not initialized. |
+
+**示例：**
+
+<pre class="typescript prettyprint linenums hljs language-typescript" data-highlighted="yes"><ol class="linenums"><li><p>import { speechRecognizer } from '@kit.CoreSpeechKit';</p></li><li data-node-id="20251220195706-wc7sclf"></li><li><p>let asrEngine: speechRecognizer.SpeechRecognitionEngine;</p></li><li data-node-id="20251220195706-zrh956f"><p>let sessionId: string = '123456';</p></li><li><p>let uint8Array: Uint8Array = new Uint8Array();</p></li><li data-node-id="20251220195706-ik8fi2k"><p>// 可以通过如下方式获取音频流：1、通过录音获取音频流；2、从音频文件中读取音频流</p></li><li><p>// 2、从音频文件中读取音频流:demo参考</p></li><li data-node-id="20251220195706-u8ibaio"></li><li><p>@Entry</p></li><li data-node-id="20251220195706-rey0a4j"><p>@Component</p></li><li><p>struct Page {</p></li><li data-node-id="20251220195706-z8d27x6"><p>  build() {</p></li><li><p>    Column(){</p></li><li data-node-id="20251220195706-sj2z9lo"><p>      Button()</p></li><li><p>        .id('Button')</p></li><li data-node-id="20251220195706-pu1tddz"><p>        .onClick( () => {</p></li><li><p>          // 写入音频流，音频流长度仅支持640字节或1280字节</p></li><li data-node-id="20251220195706-oi5ww5c"><p>          asrEngine.writeAudio(sessionId, uint8Array);</p></li><li><p>        })</p></li><li data-node-id="20251220195706-u7d464j"></li><li><p>      Button() {</p></li><li data-node-id="20251220195706-0lo1swp"><p>        Text("cancel")</p></li><li><p>          .fontColor(Color.White)</p></li><li data-node-id="20251220195706-dwfdwuu"><p>          .fontSize(20)</p></li><li><p>      }</p></li><li data-node-id="20251220195706-abyse1a"><p>      .type(ButtonType.Capsule)</p></li><li><p>      .backgroundColor("#0x317AE7")</p></li><li data-node-id="20251220195706-oy0qt68"><p>      .width("80%")</p></li><li><p>      .height(50)</p></li><li data-node-id="20251220195706-446m47i"><p>      .margin(10)</p></li><li><p>      .onClick(() => {</p></li><li data-node-id="20251220195706-kqg59qt"><p>        // 调用cancel方法</p></li><li><p>        asrEngine.cancel('123456');</p></li><li data-node-id="20251220195706-kzjwqu3"><p>      })</p></li><li><p>    }</p></li><li data-node-id="20251220195706-hrvp7xl"><p>  }</p></li><li><p>}</p></li></ol></pre>
+
+### isBusy
+
+**支持设备**Phone**PC/2in1**Tablet
+
+isBusy(): boolean
+
+判断引擎是否繁忙。
+
+ **系统能力：** SystemCapability.AI.SpeechRecognizer
+
+ **起始版本：** 4.1.0(11)
+
+**返回值：**
+
+| 类型    | 说明                                                                                      |
+| :------ | :---------------------------------------------------------------------------------------- |
+| boolean | 服务是否处于繁忙状态的返回值。* true：引擎正处于繁忙状态。* false：引擎没有处于繁忙状态。 |
+
+**错误码：**
+
+以下错误码的详细介绍请参见[Core Speech Kit错误码](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/errorcode-corespeech)。
+
+| 错误码ID   | 错误信息                       |
+| :--------- | :----------------------------- |
+| 1002200007 | The engine is not initialized. |
+
+**示例：**
+
+<pre class="typescript prettyprint linenums hljs language-typescript" data-highlighted="yes"><ol class="linenums"><li><p>import { speechRecognizer } from '@kit.CoreSpeechKit';</p></li><li data-node-id="20251220195706-wt9ftm3"></li><li><p>let asrEngine: speechRecognizer.SpeechRecognitionEngine;</p></li><li data-node-id="20251220195706-xw6b49v"><p>let sessionId: string = '123456';</p></li><li><p>let uint8Array: Uint8Array = new Uint8Array();</p></li><li data-node-id="20251220195706-m9ha2vv"><p>// 可以通过如下方式获取音频流：1、通过录音获取音频流；2、从音频文件中读取音频流</p></li><li><p>// 2、从音频文件中读取音频流:demo参考</p></li><li data-node-id="20251220195706-tqk0uzk"></li><li><p>@Entry</p></li><li data-node-id="20251220195706-2v457xt"><p>@Component</p></li><li><p>struct Page {</p></li><li data-node-id="20251220195706-rhs2an3"><p>  build() {</p></li><li><p>    Column() {</p></li><li data-node-id="20251220195706-iyt4lba"><p>      Button()</p></li><li><p>        .id('Button')</p></li><li data-node-id="20251220195706-2wrh3t2"><p>        .onClick(() => {</p></li><li><p>          // 写入音频流，音频流长度仅支持640字节或1280字节</p></li><li data-node-id="20251220195706-xyahv25"><p>          asrEngine.writeAudio(sessionId, uint8Array);</p></li><li><p>        })</p></li><li data-node-id="20251220195706-5i7kibv"></li><li><p>      Button() {</p></li><li data-node-id="20251220195706-3u40o4i"><p>        Text("cancel")</p></li><li><p>          .fontColor(Color.White)</p></li><li data-node-id="20251220195706-hjfj2dz"><p>          .fontSize(20)</p></li><li><p>      }</p></li><li data-node-id="20251220195706-i7a7xpx"><p>      .type(ButtonType.Capsule)</p></li><li><p>      .backgroundColor("#0x317AE7")</p></li><li data-node-id="20251220195706-jecmvd2"><p>      .width("80%")</p></li><li><p>      .height(50)</p></li><li data-node-id="20251220195706-yy3hzyh"><p>      .margin(10)</p></li><li><p>      .onClick(() => {</p></li><li data-node-id="20251220195706-gx6wb6j"><p>        // 调用isBusy方法</p></li><li><p>        let isBusy = asrEngine.isBusy();</p></li><li data-node-id="20251220195706-4oskhtf"><p>        console.info(`isBusy: ${isBusy}`);</p></li><li><p>      })</p></li><li data-node-id="20251220195706-a5bio73"><p>    }</p></li><li><p>  }</p></li><li data-node-id="20251220195706-f012n6b"><p>}</p></li></ol></pre>
+
+### shutdown
+
+**支持设备**Phone**PC/2in1**Tablet
+
+shutdown(): void
+
+关闭引擎，释放资源。
+
+ **系统能力：** SystemCapability.AI.SpeechRecognizer
+
+ **起始版本：** 4.1.0(11)
+
+**示例：**
+
+<pre class="typescript prettyprint linenums hljs language-typescript" data-highlighted="yes"><ol class="linenums"><li><p>import { speechRecognizer } from '@kit.CoreSpeechKit';</p></li><li data-node-id="20251220195706-wjxaa4p"></li><li><p>let asrEngine: speechRecognizer.SpeechRecognitionEngine;</p></li><li data-node-id="20251220195706-10l3p83"><p>let sessionId: string = '123456';</p></li><li><p>let uint8Array: Uint8Array = new Uint8Array();</p></li><li data-node-id="20251220195706-gllpcst"><p>// 可以通过如下方式获取音频流：1、通过录音获取音频流；2、从音频文件中读取音频流</p></li><li><p>// 2、从音频文件中读取音频流:demo参考</p></li><li data-node-id="20251220195706-b62abb8"></li><li><p>@Entry</p></li><li data-node-id="20251220195706-60d9viy"><p>@Component</p></li><li><p>struct Page {</p></li><li data-node-id="20251220195706-jvvkh57"><p>  build() {</p></li><li><p>    Column() {</p></li><li data-node-id="20251220195706-pae1apv"><p>      Button()</p></li><li><p>        .id('Button')</p></li><li data-node-id="20251220195706-bihtrf1"><p>        .onClick(() => {</p></li><li><p>          // 写入音频流，音频流长度仅支持640字节或1280字节</p></li><li data-node-id="20251220195706-rzvgth2"><p>          asrEngine.writeAudio(sessionId, uint8Array);</p></li><li><p>        })</p></li><li data-node-id="20251220195706-qyggm3q"></li><li><p>      Button() {</p></li><li data-node-id="20251220195706-x7lzkqp"><p>        Text("cancel")</p></li><li><p>          .fontColor(Color.White)</p></li><li data-node-id="20251220195706-20wzzje"><p>          .fontSize(20)</p></li><li><p>      }</p></li><li data-node-id="20251220195706-keyhgu5"><p>      .type(ButtonType.Capsule)</p></li><li><p>      .backgroundColor("#0x317AE7")</p></li><li data-node-id="20251220195706-sswj68z"><p>      .width("80%")</p></li><li><p>      .height(50)</p></li><li data-node-id="20251220195706-xmeff3t"><p>      .margin(10)</p></li><li><p>      .onClick(() => {</p></li><li data-node-id="20251220195706-i5e6ca0"><p>        // 调用shutdown方法</p></li><li><p>        asrEngine.shutdown();</p></li><li data-node-id="20251220195706-w231fkw"><p>      })</p></li><li><p>    }</p></li><li data-node-id="20251220195706-wzmt1tv"><p>  }</p></li><li><p>}</p></li></ol></pre>
+
+## RecognitionListener
+
+**支持设备**Phone**PC/2in1**Tablet
+
+语音识别的回调对象，通过此对象可返回识别过程的相关状态，例如识别开始、识别完成、音频开始、音频结束等。
+
+ **系统能力：** SystemCapability.AI.SpeechRecognizer
+
+ **起始版本：** 4.1.0(11)
+
+### onStart
+
+**支持设备**Phone**PC/2in1**Tablet
+
+onStart(sessionId: string, eventMessage: string): void
+
+开始识别时，回调此方法。
+
+ **系统能力：** SystemCapability.AI.SpeechRecognizer
+
+ **起始版本：** 4.1.0(11)
+
+**参数：**
+
+| 参数名       | 类型   | 必填 | 说明                                                                                                        |
+| :----------- | :----- | :--- | :---------------------------------------------------------------------------------------------------------- |
+| sessionId    | string | 是   | 会话ID。由字母、数字、下划线和短横线组成。区分不同会话，无长度限制。                                        |
+| eventMessage | string | 是   | 开始识别信息描述。返回值为一个句子，描述开始识别结果的状态信息，开始识别成功则返回：startListening success. |
+
+**示例：**
+
+<pre class="typescript prettyprint linenums hljs language-typescript" data-highlighted="yes"><ol class="linenums"><li><p>import { speechRecognizer } from '@kit.CoreSpeechKit';</p></li><li data-node-id="20251220195706-i6ulcii"></li><li><p>let asrEngine: speechRecognizer.SpeechRecognitionEngine;</p></li><li data-node-id="20251220195706-982t1s4"><p>// 创建回调对象</p></li><li><p>let setListener: speechRecognizer.RecognitionListener = {</p></li><li data-node-id="20251220195706-0datgt6"><p>  // 开始识别成功回调</p></li><li><p>  onStart(sessionId: string, eventMessage: string) {</p></li><li data-node-id="20251220195706-zz3fmm7"><p>    console.info(`onStart, sessionId: ${sessionId} eventMessage: ${eventMessage}`);</p></li><li><p>  },</p></li><li data-node-id="20251220195706-sxn3gxb"><p>  // 事件回调</p></li><li><p>  onEvent(sessionId: string, eventCode: number, eventMessage: string) {</p></li><li data-node-id="20251220195706-u8ta07y"><p>    console.info(`onEvent, sessionId: ${sessionId} eventCode: ${eventCode} eventMessage: ${eventMessage}`);</p></li><li><p>  },</p></li><li data-node-id="20251220195706-g2md3w8"><p>  // 识别结果回调，包括中间结果和最终结果</p></li><li><p>  onResult(sessionId: string, result: speechRecognizer.SpeechRecognitionResult) {</p></li><li data-node-id="20251220195706-tpntzsd"><p>    console.info(`onResult, sessionId: ${sessionId} sessionId: ${JSON.stringify(result)}`);</p></li><li><p>  },</p></li><li data-node-id="20251220195706-wj8zvnq"><p>  // 识别完成回调</p></li><li><p>  onComplete(sessionId: string, eventMessage: string) {</p></li><li data-node-id="20251220195706-tqdxqod"><p>    console.info(`onComplete, sessionId: ${sessionId} eventMessage: ${eventMessage}`);</p></li><li><p>  },</p></li><li data-node-id="20251220195706-m93jg3r"><p>  // 错误回调，错误码通过本方法返回</p></li><li><p>  // 返回错误码1002200002，开始识别失败，重复启动startListening方法时触发</p></li><li data-node-id="20251220195706-she302m"><p>  onError(sessionId: string, errorCode: number, errorMessage: string) {</p></li><li><p>    console.error(`onError, sessionId: ${sessionId} errorCode: ${errorCode} errorMessage: ${errorMessage}`);</p></li><li data-node-id="20251220195706-17ov7kz"><p>  },</p></li><li><p>}</p></li><li data-node-id="20251220195706-hdrm5ah"></li><li><p>@Entry</p></li><li data-node-id="20251220195706-2ulswud"><p>@Component</p></li><li><p>struct Page {</p></li><li data-node-id="20251220195706-403mqgx"><p>  build() {</p></li><li><p>    Button()</p></li><li data-node-id="20251220195706-jdksr0g"><p>      .id('Button')</p></li><li><p>      .onClick( () => {</p></li><li data-node-id="20251220195706-4hzzpza"><p>        // 设置回调</p></li><li><p>        asrEngine.setListener(setListener);</p></li><li data-node-id="20251220195706-ryhsnig"><p>      })</p></li><li><p>  }</p></li><li data-node-id="20251220195706-fqgdb73"><p>}</p></li></ol></pre>
+
+### onEvent
+
+**支持设备**Phone**PC/2in1**Tablet
+
+onEvent(sessionId: string, eventCode: number, eventMessage: string): void
+
+识别过程中的事件都通过此方法回调，例如音频开始、音频结束。vadBegin或vadEnd时触发。
+
+ **系统能力：** SystemCapability.AI.SpeechRecognizer
+
+ **起始版本：** 4.1.0(11)
+
+**参数：**
+
+| 参数名       | 类型   | 必填 | 说明                                                                                                           |
+| :----------- | :----- | :--- | :------------------------------------------------------------------------------------------------------------- |
+| sessionId    | string | 是   | 会话ID。由字母、数字、下划线和短横线组成。区分不同会话，无长度限制。                                           |
+| eventCode    | number | 是   | 事件标识。* 1：音频开始标识。* 3：音频结束标识。                                                               |
+| eventMessage | string | 是   | 事件信息描述。返回值为一个句子，描述识别过程的事件信息。* 音频开始：speech started.* 音频结束：speech stopped. |
+
+**示例：**
+
+<pre class="typescript prettyprint linenums hljs language-typescript" data-highlighted="yes"><ol class="linenums"><li><p>import { speechRecognizer } from '@kit.CoreSpeechKit';</p></li><li data-node-id="20251220195706-aoytab5"></li><li><p>let asrEngine: speechRecognizer.SpeechRecognitionEngine;</p></li><li data-node-id="20251220195706-rrvvfcc"><p>// 创建回调对象</p></li><li><p>let setListener: speechRecognizer.RecognitionListener = {</p></li><li data-node-id="20251220195706-t74si08"><p>  // 开始识别成功回调</p></li><li><p>  onStart(sessionId: string, eventMessage: string) {</p></li><li data-node-id="20251220195706-wx5v0yu"><p>    console.info(`onStart, sessionId: ${sessionId} eventMessage: ${eventMessage}`);</p></li><li><p>  },</p></li><li data-node-id="20251220195706-8w7ekdr"><p>  // 事件回调</p></li><li><p>  onEvent(sessionId: string, eventCode: number, eventMessage: string) {</p></li><li data-node-id="20251220195706-f2ks6q8"><p>    console.info(`onEvent, sessionId: ${sessionId} eventCode: ${eventCode} eventMessage: ${eventMessage}`);</p></li><li><p>  },</p></li><li data-node-id="20251220195706-qomi9cu"><p>  // 识别结果回调，包括中间结果和最终结果</p></li><li><p>  onResult(sessionId: string, result: speechRecognizer.SpeechRecognitionResult) {</p></li><li data-node-id="20251220195706-lcrirk0"><p>    console.info(`onResult, sessionId: ${sessionId} sessionId: ${JSON.stringify(result)}`);</p></li><li><p>  },</p></li><li data-node-id="20251220195706-dzu8bps"><p>  // 识别完成回调</p></li><li><p>  onComplete(sessionId: string, eventMessage: string) {</p></li><li data-node-id="20251220195706-apoapvm"><p>    console.info(`onComplete, sessionId: ${sessionId} eventMessage: ${eventMessage}`);</p></li><li><p>  },</p></li><li data-node-id="20251220195706-pzrc5so"><p>  // 错误回调，错误码通过本方法返回</p></li><li><p>  // 返回错误码1002200002，开始识别失败，重复启动startListening方法时触发</p></li><li data-node-id="20251220195706-yk797v4"><p>  onError(sessionId: string, errorCode: number, errorMessage: string) {</p></li><li><p>    console.error(`onError, sessionId: ${sessionId} errorCode: ${errorCode} errorMessage: ${errorMessage}`);</p></li><li data-node-id="20251220195706-g9xslp3"><p>  },</p></li><li><p>}</p></li><li data-node-id="20251220195706-mcu949s"></li><li><p>@Entry</p></li><li data-node-id="20251220195706-mdst88p"><p>@Component</p></li><li><p>struct Page {</p></li><li data-node-id="20251220195706-psittzx"><p>  build() {</p></li><li><p>    Button()</p></li><li data-node-id="20251220195706-nz5w774"><p>      .id('Button')</p></li><li><p>      .onClick( () => {</p></li><li data-node-id="20251220195706-utgxujv"><p>        // 设置回调</p></li><li><p>        asrEngine.setListener(setListener);</p></li><li data-node-id="20251220195706-sie3rjf"><p>      })</p></li><li><p>  }</p></li><li data-node-id="20251220195706-v49fbcs"><p>}</p></li></ol></pre>
+
+### onResult
+
+**支持设备**Phone**PC/2in1**Tablet
+
+onResult(sessionId: string, result: SpeechRecognitionResult): void
+
+识别的中间结果和最终结果都通过此方法返回。
+
+ **系统能力：** SystemCapability.AI.SpeechRecognizer
+
+ **起始版本：** 4.1.0(11)
+
+**参数：**
+
+| 参数名    | 类型                                                                                                                                  | 必填 | 说明                                                                 |
+| :-------- | :------------------------------------------------------------------------------------------------------------------------------------ | :--- | :------------------------------------------------------------------- |
+| sessionId | string                                                                                                                                | 是   | 会话ID。由字母、数字、下划线和短横线组成。区分不同会话，无长度限制。 |
+| result    | [SpeechRecognitionResult](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/hms-ai-speechrecognizer#section270311282525) | 是   | 识别结果。                                                           |
+
+**示例：**
+
+<pre class="typescript prettyprint linenums hljs language-typescript" data-highlighted="yes"><ol class="linenums"><li><p>import { speechRecognizer } from '@kit.CoreSpeechKit';</p></li><li data-node-id="20251220195706-l350n39"></li><li><p>let asrEngine: speechRecognizer.SpeechRecognitionEngine;</p></li><li data-node-id="20251220195706-gfrawcg"><p>// 创建回调对象</p></li><li><p>let setListener: speechRecognizer.RecognitionListener = {</p></li><li data-node-id="20251220195706-k4s6fi9"><p>  // 开始识别成功回调</p></li><li><p>  onStart(sessionId: string, eventMessage: string) {</p></li><li data-node-id="20251220195706-dfwqbm4"><p>    console.info(`onStart, sessionId: ${sessionId} eventMessage: ${eventMessage}`);</p></li><li><p>  },</p></li><li data-node-id="20251220195706-flmpi2j"><p>  // 事件回调</p></li><li><p>  onEvent(sessionId: string, eventCode: number, eventMessage: string) {</p></li><li data-node-id="20251220195706-665zpvn"><p>    console.info(`onEvent, sessionId: ${sessionId} eventCode: ${eventCode} eventMessage: ${eventMessage}`);</p></li><li><p>  },</p></li><li data-node-id="20251220195706-e6ak1vh"><p>  // 识别结果回调，包括中间结果和最终结果</p></li><li><p>  onResult(sessionId: string, result: speechRecognizer.SpeechRecognitionResult) {</p></li><li data-node-id="20251220195706-lqe8j6r"><p>    console.info(`onResult, sessionId: ${sessionId} sessionId: ${JSON.stringify(result)}`);</p></li><li><p>  },</p></li><li data-node-id="20251220195706-72xg95p"><p>  // 识别完成回调</p></li><li><p>  onComplete(sessionId: string, eventMessage: string) {</p></li><li data-node-id="20251220195706-dpib8wf"><p>    console.info(`onComplete, sessionId: ${sessionId} eventMessage: ${eventMessage}`);</p></li><li><p>  },</p></li><li data-node-id="20251220195706-oejoqax"><p>  // 错误回调，错误码通过本方法返回</p></li><li><p>  // 返回错误码1002200002，开始识别失败，重复启动startListening方法时触发</p></li><li data-node-id="20251220195706-cllim3y"><p>  onError(sessionId: string, errorCode: number, errorMessage: string) {</p></li><li><p>    console.error(`onError, sessionId: ${sessionId} errorCode: ${errorCode} errorMessage: ${errorMessage}`);</p></li><li data-node-id="20251220195706-zc0pae5"><p>  },</p></li><li><p>}</p></li><li data-node-id="20251220195706-261519l"></li><li><p>@Entry</p></li><li data-node-id="20251220195706-nrbhq7d"><p>@Component</p></li><li><p>struct Page {</p></li><li data-node-id="20251220195706-9mqsw65"><p>  build() {</p></li><li><p>    Button()</p></li><li data-node-id="20251220195706-gy1m6is"><p>      .id('Button')</p></li><li><p>      .onClick( () => {</p></li><li data-node-id="20251220195706-zvis4u1"><p>        // 设置回调</p></li><li><p>        asrEngine.setListener(setListener);</p></li><li data-node-id="20251220195706-mxofm8l"><p>      })</p></li><li><p>  }</p></li><li data-node-id="20251220195706-wy7wfz2"><p>}</p></li></ol></pre>
+
+### onComplete
+
+**支持设备**Phone**PC/2in1**Tablet
+
+onComplete(sessionId: string, eventMessage: string): void
+
+识别结束或者调用[finish](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/hms-ai-speechrecognizer#section14433919171116)方法主动结束识别时回调此方法，返回会话ID、识别完成的相关描述信息。
+
+ **系统能力：** SystemCapability.AI.SpeechRecognizer
+
+ **起始版本：** 4.1.0(11)
+
+**参数：**
+
+| 参数名       | 类型   | 必填 | 说明                                                                             |
+| :----------- | :----- | :--- | :------------------------------------------------------------------------------- |
+| sessionId    | string | 是   | 会话ID。由字母、数字、下划线和短横线组成。区分不同会话，无长度限制。             |
+| eventMessage | string | 是   | 识别完成的相关信息。返回值为一个句子，描述识别结束的状态信息：recognize complete |
+
+**示例：**
+
+<pre class="typescript prettyprint linenums hljs language-typescript" data-highlighted="yes"><ol class="linenums"><li><p>import { speechRecognizer } from '@kit.CoreSpeechKit';</p></li><li data-node-id="20251220195706-74zq32h"></li><li><p>let asrEngine: speechRecognizer.SpeechRecognitionEngine;</p></li><li data-node-id="20251220195706-bk6vqox"><p>// 创建回调对象</p></li><li><p>let setListener: speechRecognizer.RecognitionListener = {</p></li><li data-node-id="20251220195706-p4vkn5i"><p>  // 开始识别成功回调</p></li><li><p>  onStart(sessionId: string, eventMessage: string) {</p></li><li data-node-id="20251220195706-ky9ra85"><p>    console.info(`onStart, sessionId: ${sessionId} eventMessage: ${eventMessage}`);</p></li><li><p>  },</p></li><li data-node-id="20251220195706-ed7cb73"><p>  // 事件回调</p></li><li><p>  onEvent(sessionId: string, eventCode: number, eventMessage: string) {</p></li><li data-node-id="20251220195706-7cgg3i1"><p>    console.info(`onEvent, sessionId: ${sessionId} eventCode: ${eventCode} eventMessage: ${eventMessage}`);</p></li><li><p>  },</p></li><li data-node-id="20251220195706-d5lfs6q"><p>  // 识别结果回调，包括中间结果和最终结果</p></li><li><p>  onResult(sessionId: string, result: speechRecognizer.SpeechRecognitionResult) {</p></li><li data-node-id="20251220195706-g0ajqwz"><p>    console.info(`onResult, sessionId: ${sessionId} sessionId: ${JSON.stringify(result)}`);</p></li><li><p>  },</p></li><li data-node-id="20251220195706-myjpi2d"><p>  // 识别完成回调</p></li><li><p>  onComplete(sessionId: string, eventMessage: string) {</p></li><li data-node-id="20251220195706-0v9uo9l"><p>    console.info(`onComplete, sessionId: ${sessionId} eventMessage: ${eventMessage}`);</p></li><li><p>  },</p></li><li data-node-id="20251220195706-r18r5ra"><p>  // 错误回调，错误码通过本方法返回</p></li><li><p>  // 返回错误码1002200002，开始识别失败，重复启动startListening方法时触发</p></li><li data-node-id="20251220195706-09zgpe5"><p>  onError(sessionId: string, errorCode: number, errorMessage: string) {</p></li><li><p>    console.error(`onError, sessionId: ${sessionId} errorCode: ${errorCode} errorMessage: ${errorMessage}`);</p></li><li data-node-id="20251220195706-omhl1p8"><p>  },</p></li><li><p>}</p></li><li data-node-id="20251220195706-65sotay"></li><li><p>@Entry</p></li><li data-node-id="20251220195706-crzzlx3"><p>@Component</p></li><li><p>struct Page {</p></li><li data-node-id="20251220195706-plp3zo9"><p>  build() {</p></li><li><p>    Button()</p></li><li data-node-id="20251220195706-0ztqr6s"><p>      .id('Button')</p></li><li><p>      .onClick( () => {</p></li><li data-node-id="20251220195706-4nokmr6"><p>        // 设置回调</p></li><li><p>        asrEngine.setListener(setListener);</p></li><li data-node-id="20251220195706-haypf3d"><p>      })</p></li><li><p>  }</p></li><li data-node-id="20251220195706-9as1jlr"><p>}</p></li></ol></pre>
+
+### onError
+
+**支持设备**Phone**PC/2in1**Tablet
+
+onError(sessionId: string, errorCode: number, errorMessage: string): void
+
+识别过程中，出现错误时回调，返回会话ID、错误码及错误信息描述。
+
+ **系统能力：** SystemCapability.AI.SpeechRecognizer
+
+ **起始版本：** 4.1.0(11)
+
+**参数：**
+
+| 参数名       | 类型   | 必填 | 说明                                                                                                           |
+| :----------- | :----- | :--- | :------------------------------------------------------------------------------------------------------------- |
+| sessionId    | string | 是   | 会话ID。由字母、数字、下划线和短横线组成。区分不同会话，无长度限制。                                           |
+| errorCode    | number | 是   | [Core Speech Kit错误码](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/errorcode-corespeech)。 |
+| errorMessage | string | 是   | 错误信息描述。                                                                                                 |
+
+**示例：**
+
+<pre class="typescript prettyprint linenums hljs language-typescript" data-highlighted="yes"><ol class="linenums"><li><p>import { speechRecognizer } from '@kit.CoreSpeechKit';</p></li><li data-node-id="20251220195706-j5o8lgs"></li><li><p>let asrEngine: speechRecognizer.SpeechRecognitionEngine;</p></li><li data-node-id="20251220195706-o9dzz7k"><p>// 创建回调对象</p></li><li><p>let setListener: speechRecognizer.RecognitionListener = {</p></li><li data-node-id="20251220195706-isy61pd"><p>  // 开始识别成功回调</p></li><li><p>  onStart(sessionId: string, eventMessage: string) {</p></li><li data-node-id="20251220195706-otszlpp"><p>    console.info(`onStart, sessionId: ${sessionId} eventMessage: ${eventMessage}`);</p></li><li><p>  },</p></li><li data-node-id="20251220195706-y6xiqjk"><p>  // 事件回调</p></li><li><p>  onEvent(sessionId: string, eventCode: number, eventMessage: string) {</p></li><li data-node-id="20251220195706-fhs9qbv"><p>    console.info(`onEvent, sessionId: ${sessionId} eventCode: ${eventCode} eventMessage: ${eventMessage}`);</p></li><li><p>  },</p></li><li data-node-id="20251220195706-d9lrdwu"><p>  // 识别结果回调，包括中间结果和最终结果</p></li><li><p>  onResult(sessionId: string, result: speechRecognizer.SpeechRecognitionResult) {</p></li><li data-node-id="20251220195706-8mkf5bf"><p>    console.info(`onResult, sessionId: ${sessionId} sessionId: ${JSON.stringify(result)}`);</p></li><li><p>  },</p></li><li data-node-id="20251220195706-mubn6ei"><p>  // 识别完成回调</p></li><li><p>  onComplete(sessionId: string, eventMessage: string) {</p></li><li data-node-id="20251220195706-1npb7vc"><p>    console.info(`onComplete, sessionId: ${sessionId} eventMessage: ${eventMessage}`);</p></li><li><p>  },</p></li><li data-node-id="20251220195706-blsvq97"><p>  // 错误回调，错误码通过本方法返回</p></li><li><p>  // 返回错误码1002200002，开始识别失败，重复启动startListening方法时触发</p></li><li data-node-id="20251220195706-svuroyl"><p>  onError(sessionId: string, errorCode: number, errorMessage: string) {</p></li><li><p>    console.error(`onError, sessionId: ${sessionId} errorCode: ${errorCode} errorMessage: ${errorMessage}`);</p></li><li data-node-id="20251220195706-v5q35cv"><p>  },</p></li><li><p>}</p></li><li data-node-id="20251220195706-2wwvmqu"></li><li><p>@Entry</p></li><li data-node-id="20251220195706-s966fik"><p>@Component</p></li><li><p>struct Page {</p></li><li data-node-id="20251220195706-poog4hz"><p>  build() {</p></li><li><p>    Button()</p></li><li data-node-id="20251220195706-jpp1wly"><p>      .id('Button')</p></li><li><p>      .onClick( () => {</p></li><li data-node-id="20251220195706-1y2pbfp"><p>        // 设置回调</p></li><li><p>        asrEngine.setListener(setListener);</p></li><li data-node-id="20251220195706-dr2dnsn"><p>      })</p></li><li><p>  }</p></li><li data-node-id="20251220195706-yn1rmxo"><p>}</p></li></ol></pre>
+
+## CreateEngineParams
+
+**支持设备**Phone**PC/2in1**Tablet
+
+创建引擎实例的相关参数，用于配置语种、模式、区域信息等。
+
+ **系统能力：** SystemCapability.AI.SpeechRecognizer
+
+ **起始版本：** 4.1.0(11)
+
+| 名称        | 类型                   | 只读 | 可选 | 说明                                                                                                                                                                                                                                                                                                                                                                |
+| :---------- | :--------------------- | :--- | :--- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| language    | string                 | 否   | 否   | 语种，当前仅支持“zh-CN”中文。                                                                                                                                                                                                                                                                                                                                     |
+| online      | number                 | 否   | 否   | 模式。1为离线，当前仅支持离线模式。                                                                                                                                                                                                                                                                                                                                 |
+| extraParams | Record<string, Object> | 否   | 是   | * <'locate', string> 区域信息。可选，不设置时默认为“CN”，当前仅支持“CN”。* <'recognizerMode', Object> 语言模式。可选，不设置时默认为“short”，当前支持“short“和“long”。* <'sysGeneralLexicon, string[]> 系统热词。支持配置热词提高识别率。系统热词针对应用，在整个识别过程中都生效。可选，不设置时默认为空。热词总数不超过200，每个热词长度范围为[2, 20]。 |
+
+## LanguageQuery
+
+**支持设备**Phone**PC/2in1**Tablet
+
+查询语种信息时的相关参数，例如查询离线模式下服务支持的语种信息，需将online参数设置为1。
+
+ **系统能力：** SystemCapability.AI.SpeechRecognizer
+
+ **起始版本：** 4.1.0(11)
+
+| 名称        | 类型                   | 只读 | 可选 | 说明                                                                 |
+| :---------- | :--------------------- | :--- | :--- | :------------------------------------------------------------------- |
+| sessionId   | string                 | 否   | 否   | 会话ID。由字母、数字、下划线和短横线组成。区分不同会话，无长度限制。 |
+| extraParams | Record<string, Object> | 否   | 是   | * <'online', number> 模式。可选，1为离线，当前仅支持离线。           |
+
+## StartParams
+
+**支持设备**Phone**PC/2in1**Tablet
+
+启动语音识别的相关参数，用于设置会话ID、音频配置信息等。
+
+ **系统能力：** SystemCapability.AI.SpeechRecognizer
+
+ **起始版本：** 4.1.0(11)
+
+| 名称        | 类型                                                                                                                      | 只读 | 可选 | 说明                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| :---------- | :------------------------------------------------------------------------------------------------------------------------ | :--- | :--- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| sessionId   | string                                                                                                                    | 否   | 否   | 会话ID。由字母、数字、下划线和短横线组成。区分不同会话，无长度限制。                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| audioInfo   | [AudioInfo](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/hms-ai-speechrecognizer#section85771521101910) | 否   | 否   | 音频配置信息。                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| extraParams | Record<string, Object>                                                                                                    | 否   | 是   | * <'recognitionMode', number>实时语音识别模式。0：实时录音识别（需应用开启录音权限：ohos.permission.MICROPHONE），若需结束录音，则调用[finish](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/hms-ai-speechrecognizer#section14433919171116)方法；1：实时音频转文字识别，开启此模式时需要额外调用[writeAudio](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/hms-ai-speechrecognizer#section72131731149)方法，传入待识别音频流；可选，不传参时默认为1。* <'vadBegin', number>Voice Activity Detection(VAD)前端点设置。参数范围是[500,10000]。可选，不传参时默认为10000ms。* <'vadEnd', number>Voice Activity Detection(VAD)后端点设置。参数范围是[500,10000]。可选，不传参时默认为800ms。* <'maxAudioDuration', number>最大支持音频时长，不传参时默认20000ms。短语音模式支持范围[20000-60000]，单位ms。长语音模式支持范围[20000 - 8 * 60 * 60 * 1000]，单位ms。* <'recognizerOption', <'enablePartialResult', boolean>>蹦字模式。（只支持长语音模式下进行配置）可选，不传参时默认为开启。开启蹦字模式："recognizerOption": recognizerOption = {"enablePartialResult": true}关闭蹦字模式："recognizerOption": recognizerOption = {"enablePartialResult": false}* <'sessionGeneralLexicon': string[]>会话热词。支持配置热词提高识别率。会话热词优先级比系统热词更高，会话结束时释放。可选，不设置时默认为空。热词总数不超过200，每个热词长度范围为[2, 20]。 |
+
+## AudioInfo
+
+**支持设备**Phone**PC/2in1**Tablet
+
+音频配置信息。
+
+ **系统能力：** SystemCapability.AI.SpeechRecognizer
+
+ **起始版本：** 4.1.0(11)
+
+| 名称         | 类型                   | 只读 | 可选 | 说明                                                                                          |
+| :----------- | :--------------------- | :--- | :--- | :-------------------------------------------------------------------------------------------- |
+| audioType    | string                 | 否   | 否   | 音频类型。当前仅支持“pcm”。                                                                 |
+| sampleRate   | number                 | 否   | 否   | 音频的采样率。当前仅支持16000采样率。                                                         |
+| sampleBit    | number                 | 否   | 否   | 音频返回的采样位数。当前仅支持16位。                                                          |
+| soundChannel | number                 | 否   | 否   | 音频返回的通道数信息。当前仅支持通道1。                                                       |
+| extraParams  | Record<string, Object> | 否   | 是   | * <'compressRate', number> 音频的压缩率。可选，pcm格式音频默认为0。预留参数，当前无实际使用。 |
+
+## SpeechRecognitionResult
+
+**支持设备**Phone**PC/2in1**Tablet
+
+音频识别结果信息。
+
+ **系统能力：** SystemCapability.AI.SpeechRecognizer
+
+ **起始版本：** 4.1.0(11)
+
+| 名称    | 类型    | 只读 | 可选 | 说明                                                                                        |
+| :------ | :------ | :--- | :--- | :------------------------------------------------------------------------------------------ |
+| isFinal | boolean | 否   | 否   | 是否为本条子句最终结果的判断。* true：是本条子句的最终结果。* false：是本条子句的中间结果。 |
+| isLast  | boolean | 否   | 否   | 是否为最后一条句子的判断。* true：是最后一条句子。* false：不是最后一条句子。               |
+| result  | string  | 否   | 否   | 最优识别结果。                                                                              |
+
+[](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/hms-ai-texttospeech "textToSpeech（文本转语音）")
+
+
+
+
+[](javascript:void(0);)
+
+[
+
+    ](javascript:void(0);)[
+		](javascript:void(0);)[
+		](javascript:void(0);)[
+		](javascript:void(0);)[
+		](javascript:void(0);)[
+		](javascript:void(0);)[
+		](javascript:void(0);)[
+		](javascript:void(0);)[
+		](javascript:void(0);)[
+		](javascript:void(0);)[
+](javascript:void(0);)
+
+简体中文
+
+[](https://developer.huawei.com/consumer/cn/huawei-app/)[
+获取开发者联盟APP](https://developer.huawei.com/consumer/cn/huawei-app/)
+
+[](https://developer.huawei.com/consumer/cn/)
+
+[
+](https://developer.huawei.com/consumer/cn/)*  探索
+
+* 设计
+* 开发
+* 分发
+* 推广与变现
+* 生态合作
+* 支持
+* 更多
+* [探索](https://developer.huawei.com/consumer/cn/discover/)
+* [设计](https://developer.huawei.com/consumer/cn/design/)
+* [开发](https://developer.huawei.com/consumer/cn/develop/)
+* [分发](https://developer.huawei.com/consumer/cn/distribute/)
+* [推广与变现](https://developer.huawei.com/consumer/cn/promote/)
+* [生态合作	](https://developer.huawei.com/consumer/cn/cooperate/)
+* [支持](https://developer.huawei.com/consumer/cn/support/)
+
+搜索
+
+[文档](https://developer.huawei.com/consumer/cn/doc/)[管理中心](https://developer.huawei.com/consumer/cn/console)
+
+[]()
+
+[
+            ]()[
+            ]()[]()
+
+HarmonyOS
+
+* [版本说明 ](https://developer.huawei.com/consumer/cn/doc/harmonyos-releases/overview-503-beta1?istab=1&m=1)
+* [指南 ](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/application-dev-guide?istab=1&m=1)
+* [API参考 ](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/development-intro-api?istab=1&m=1)
+* [最佳实践 ](https://developer.huawei.com/consumer/cn/doc/best-practices/bpta-best-practices-overview?istab=1&m=1)
+* [FAQ ](https://developer.huawei.com/consumer/cn/doc/harmonyos-faqs/faqs-ability-kit?istab=1&m=1)
+* [变更预告 ](https://developer.huawei.com/consumer/cn/doc/harmonyos-roadmap/changelogs-pre?istab=1&m=1)
+* 更多
+
+[ ]
+
+高级筛选
+
+API version[ ]
+
+设备[ ]
+
+元服务API集[ ]
+
+[ ] 只看筛选内容
+
+[ ]
+
+    您当前正在浏览HarmonyOS最新文档，覆盖已发布的所有API版本，可在API参考中[筛选您使用的API版本](https://developer.huawei.com/consumer/cn/doc/harmonyos-releases/doc-updates#section1810915471038)。详细的版本配套关系请参考[版本说明](https://developer.huawei.com/consumer/cn/doc/harmonyos-releases/overview-allversion)。
+
+**API参考**
+
+应用框架[ArkUI（方舟UI框架）](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/arkui-api)[ArkTS组件](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/arkui-declarative-comp)[按钮与选择](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/buttons-and-selections)**CalendarPicker**
+
+# CalendarPicker
+
+**更新时间: 2025-12-19 14:05**
+
+日历选择器组件，提供下拉日历弹窗，可以让用户选择日期。
+
+说明
+
+该组件从API version 10开始支持。后续版本如有新增内容，则采用上角标单独标记该内容的起始版本。
+
+## 子组件
+
+**支持设备**Phone**PC/2in1**Tablet**TV**Wearable
+
+无
+
+## 接口
+
+**支持设备**Phone**PC/2in1**Tablet**TV**Wearable
+
+CalendarPicker(options?: CalendarOptions)
+
+日历选择器。
+
+**元服务API：** 从API version 11开始，该接口支持在元服务中使用。
+
+**系统能力：** SystemCapability.ArkUI.ArkUI.Full
+
+**设备行为差异：** 该接口在Wearable设备上使用时，应用程序运行异常，异常信息中提示接口未定义，在其他设备中可正常调用。
+
+**参数：**
+
+| 参数名  | 类型                                                                                                                                         | 必填 | 说明                       |
+| :------ | :------------------------------------------------------------------------------------------------------------------------------------------- | :--- | :------------------------- |
+| options | [CalendarOptions](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/ts-basic-components-calendarpicker#calendaroptions对象说明) | 否   | 配置日历选择器组件的参数。 |
+
+## 属性
+
+**支持设备**Phone**PC/2in1**Tablet**TV**Wearable
+
+除支持[通用属性](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/ts-component-general-attributes)外，还支持以下属性：
+
+### edgeAlign
+
+**支持设备**Phone**PC/2in1**Tablet**TV**Wearable
+
+edgeAlign(alignType: CalendarAlign, offset?: Offset)
+
+设置选择器与入口组件的对齐方式。
+
+**元服务API：** 从API version 11开始，该接口支持在元服务中使用。
+
+**系统能力：** SystemCapability.ArkUI.ArkUI.Full
+
+**设备行为差异：** 该接口在Wearable设备上使用时，应用程序运行异常，异常信息中提示接口未定义，在其他设备中可正常调用。
+
+**参数：**
+
+| 参数名    | 类型                                                                                                                                     | 必填 | 说明                                                                   |
+| :-------- | :--------------------------------------------------------------------------------------------------------------------------------------- | :--- | :--------------------------------------------------------------------- |
+| alignType | [CalendarAlign](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/ts-basic-components-calendarpicker#calendaralign枚举说明) | 是   | 对齐方式的类型。默认值：CalendarAlign.END                              |
+| offset    | [Offset](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/ts-types#offset)                                                 | 否   | 按照对齐方式对齐后，选择器相对入口组件的偏移量。默认值：{dx: 0, dy: 0} |
+
+### edgeAlign
+
+**支持设备**Phone**PC/2in1**Tablet**TV**Wearable
+
+edgeAlign(alignType: Optional`<CalendarAlign>`, offset?: Offset)
+
+设置选择器与入口组件的对齐方式。与[edgeAlign](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/ts-basic-components-calendarpicker#edgealign)相比，alignType参数新增了对undefined类型的支持。
+
+**元服务API：** 从API version 18开始，该接口支持在元服务中使用。
+
+**系统能力：** SystemCapability.ArkUI.ArkUI.Full
+
+**设备行为差异：** 该接口在Wearable设备上使用时，应用程序运行异常，异常信息中提示接口未定义，在其他设备中可正常调用。
+
+**参数：**
+
+| 参数名    | 类型                                                                                                                                                                                                                                                                                                                                                                                                                                                  | 必填 | 说明                                                                                |
+| :-------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :--- | :---------------------------------------------------------------------------------- |
+| alignType | [Optional](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/ts-universal-attributes-custom-property#optionalt12)[[CalendarAlign](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/ts-basic-components-calendarpicker#calendaralign枚举说明)](%5BCalendarAlign%5D(https://developer.huawei.com/consumer/cn/doc/harmonyos-references/ts-basic-components-calendarpicker#calendaralign%E6%9E%9A%E4%B8%BE%E8%AF%B4%E6%98%8E)) | 是   | 对齐方式的类型。默认值：CalendarAlign.END当alignType的值为undefined时，使用默认值。 |
+| offset    | [Offset](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/ts-types#offset)                                                                                                                                                                                                                                                                                                                                                              | 否   | 按照对齐方式对齐后，选择器相对入口组件的偏移量。默认值：{dx: 0, dy: 0}              |
+
+### textStyle
+
+**支持设备**Phone**PC/2in1**Tablet**TV**Wearable
+
+textStyle(value: PickerTextStyle)
+
+入口区的文本颜色、字号、字体粗细。
+
+**元服务API：** 从API version 11开始，该接口支持在元服务中使用。
+
+**系统能力：** SystemCapability.ArkUI.ArkUI.Full
+
+**设备行为差异：** 该接口在Wearable设备上使用时，应用程序运行异常，异常信息中提示接口未定义，在其他设备中可正常调用。
+
+**参数：**
+
+| 参数名 | 类型                                                                                                                       | 必填 | 说明                                                                                                               |
+| :----- | :------------------------------------------------------------------------------------------------------------------------- | :--- | :----------------------------------------------------------------------------------------------------------------- |
+| value  | [PickerTextStyle](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/ts-picker-common#pickertextstyle对象说明) | 是   | 设置入口区的文本颜色、字号、字体粗细。默认值：{color: '#ff182431',font: {size: '16fp',weight: FontWeight.Regular}} |
+
+### textStyle
+
+**支持设备**Phone**PC/2in1**Tablet**TV**Wearable
+
+textStyle(style: Optional`<PickerTextStyle>`)
+
+入口区的文本颜色、字号、字体粗细。与[textStyle](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/ts-basic-components-calendarpicker#textstyle)相比，style参数新增了对undefined类型的支持。
+
+**元服务API：** 从API version 18开始，该接口支持在元服务中使用。
+
+**系统能力：** SystemCapability.ArkUI.ArkUI.Full
+
+**设备行为差异：** 该接口在Wearable设备上使用时，应用程序运行异常，异常信息中提示接口未定义，在其他设备中可正常调用。
+
+**参数：**
+
+| 参数名 | 类型                                                                                                                                                                                                                                                                                                                                                                                                                      | 必填 | 说明                                                                                                                                                     |
+| :----- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | :--- | :------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| style  | [Optional](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/ts-universal-attributes-custom-property#optionalt12)[[PickerTextStyle](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/ts-picker-common#pickertextstyle对象说明)](%5BPickerTextStyle%5D(https://developer.huawei.com/consumer/cn/doc/harmonyos-references/ts-picker-common#pickertextstyle%E5%AF%B9%E8%B1%A1%E8%AF%B4%E6%98%8E)) | 是   | 设置入口区的文本颜色、字号、字体粗细。默认值：{color: '#ff182431',font: {size: '16fp',weight: FontWeight.Regular}}当style的值为undefined时，使用默认值。 |
+
+### markToday
+
+**支持设备**Phone**PC/2in1**Tablet**TV**Wearable
+
+markToday(enabled: boolean)
+
+设置日历选择器中系统当前日期是否保持高亮显示。
+
+**元服务API：** 从API version 19开始，该接口支持在元服务中使用。
+
+**系统能力：** SystemCapability.ArkUI.ArkUI.Full
+
+**设备行为差异：** 该接口在Wearable设备上使用时，应用程序运行异常，异常信息中提示接口未定义，在其他设备中可正常调用。
+
+**参数：**
+
+| 参数名  | 类型    | 必填 | 说明                                                                                                                                                           |
+| :------ | :------ | :--- | :------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| enabled | boolean | 是   | 设置日历选择器中系统当前日期是否保持高亮显示。- true：系统当前日期在日历选择器内保持高亮显示。- false：系统当前日期在日历选择器内不保持高亮显示。默认值：false |
+
+## 事件
+
+**支持设备**Phone**PC/2in1**Tablet**TV**Wearable
+
+除支持[通用事件](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/ts-component-general-events)，还支持以下事件：
+
+### onChange
+
+**支持设备**Phone**PC/2in1**Tablet**TV**Wearable
+
+onChange(callback: Callback`<Date>`)
+
+选择日期时触发该事件。不能通过双向绑定的状态变量触发。
+
+**元服务API：** 从API version 11开始，该接口支持在元服务中使用。
+
+**系统能力：** SystemCapability.ArkUI.ArkUI.Full
+
+**设备行为差异：** 该接口在Wearable设备上使用时，应用程序运行异常，异常信息中提示接口未定义，在其他设备中可正常调用。
+
+**参数：**
+
+| 参数名   | 类型                                                                                                     | 必填 | 说明           |
+| :------- | :------------------------------------------------------------------------------------------------------- | :--- | :------------- |
+| callback | [Callback](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/ts-types#callback12)`<Date>` | 是   | 选中的日期值。 |
+
+### onChange
+
+**支持设备**Phone**PC/2in1**Tablet**TV**Wearable
+
+onChange(callback: Optional<Callback`<Date>`>)
+
+选择日期时触发该事件。不能通过双向绑定的状态变量触发。与[onChange](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/ts-basic-components-calendarpicker#onchange)相比，callback参数新增了对undefined类型的支持。
+
+说明
+
+从API version 20开始，该接口支持在[attributeModifier](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/ts-universal-attributes-attribute-modifier#attributemodifier)中调用。
+
+**元服务API：** 从API version 18开始，该接口支持在元服务中使用。
+
+**系统能力：** SystemCapability.ArkUI.ArkUI.Full
+
+**设备行为差异：** 该接口在Wearable设备上使用时，应用程序运行异常，异常信息中提示接口未定义，在其他设备中可正常调用。
+
+**参数：**
+
+| 参数名   | 类型                                                                                                                                                                                                                                                                                                                                               | 必填 | 说明                                                        |
+| :------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :--- | :---------------------------------------------------------- |
+| callback | [Optional](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/ts-universal-attributes-custom-property#optionalt12)[[Callback](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/ts-types#callback12)date<>](%5BCallback%5D(https://developer.huawei.com/consumer/cn/doc/harmonyos-references/ts-types#callback12)%3CDate) | 是   | 选中的日期值。当callback的值为undefined时，不使用回调函数。 |
+
+## CalendarOptions对象说明
+
+**支持设备**Phone**PC/2in1**Tablet**TV**Wearable
+
+日历选择器组件的参数说明。
+
+**系统能力：** SystemCapability.ArkUI.ArkUI.Full
+
+**设备行为差异：** 该接口在Wearable设备上使用时，应用程序运行异常，异常信息中提示接口未定义，在其他设备中可正常调用。
+
+| 名称       | 类型   | 只读                                                                                         | 可选 | 说明                                                                                                                                                                                                      |
+| :--------- | :----- | :------------------------------------------------------------------------------------------- | :--- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| hintRadius | number | [Resource](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/ts-types#resource) | 否   | 是                                                                                                                                                                                                        |
+| selected   | Date   | 否                                                                                           | 是   | 设置选中项的日期。选中的日期未设置或日期格式不符合规范则为默认值。默认值：当前系统日期。取值范围：[Date('0001-01-01'), Date('5000-12-31')]**元服务API：**从API version 11开始，该接口支持在元服务中使用。 |
+| start      |        |                                                                                              |      |                                                                                                                                                                                                           |
+
+| Date | 否 | 是 | 设置开始日期。默认值：Date('0001-01-01')取值范围：[Date('0001-01-01'), Date('5000-12-31')]**元服务API：**从API version 18开始，该接口支持在元服务中使用。 |
+| ---- | -- | -- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| end  |    |    |                                                                                                                                                           |
+
+| Date              | 否 | 是 | 设置结束日期。默认值：Date('5000-12-31')取值范围：[Date('0001-01-01'), Date('5000-12-31')]**元服务API：**从API version 18开始，该接口支持在元服务中使用。 |
+| ----------------- | -- | -- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| disabledDateRange |    |    |                                                                                                                                                           |
+
+| [DateRange](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/ts-picker-common#daterange19对象说明)[] | 否 | 是 | 设置禁用日期区间。**说明：**1. 若日期区间内的开始日期或结束日期未设置或设置为异常值，则该日期区间无效。2. 若在日期区间内，结束日期早于开始日期，则该日期区间无效。3. 当在入口区选定某日期，通过上下箭头调整日期进行增加或减少操作时，若遇到禁用日期，系统将自动跳过整个禁用区间。**元服务API：**从API version 19开始，该接口支持在元服务中使用。 |
+| ------------------------------------------------------------------------------------------------------------------ | -- | -- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+
+**start和end设置规则：**
+
+| 场景                                      | 说明                                           |
+| :---------------------------------------- | :--------------------------------------------- |
+| start日期晚于end日期                      | start日期、end日期都设置无效，选中日期为默认值 |
+| 选中日期早于start日期                     | 选中日期为start日期                            |
+| 选中日期晚于end日期                       | 选中日期为end日期                              |
+| start日期晚于当前系统日期，选中日期未设置 | 选中日期为start日期                            |
+| end日期早于当前系统日期，选中日期未设置   | 选中日期为end日期                              |
+| 日期格式不符合规范，如‘1999-13-32’      | start日期或end日期设置无效，选中日期取默认值   |
+
+## CalendarAlign枚举说明
+
+**支持设备**Phone**PC/2in1**Tablet**TV**Wearable
+
+对齐方式类型。
+
+**元服务API：** 从API version 11开始，该接口支持在元服务中使用。
+
+**系统能力：** SystemCapability.ArkUI.ArkUI.Full
+
+**设备行为差异：** 该接口在Wearable设备上使用时，应用程序运行异常，异常信息中提示接口未定义，在其他设备中可正常调用。
+
+| 名称   | 值 | 说明                                       |
+| :----- | :- | :----------------------------------------- |
+| START  | 0  | 设置选择器与入口组件的对齐方式为左对齐。   |
+| CENTER | 1  | 设置选择器与入口组件的对齐方式为居中对齐。 |
+| END    | 2  | 设置选择器与入口组件的对齐方式为右对齐。   |
+
+## 示例
+
+**支持设备**Phone**PC/2in1**Tablet**TV**Wearable
+
+### 示例1（设置下拉日历弹窗）
+
+该示例实现了日历选择器组件，提供下拉日历弹窗。
+
+<pre class="ts prettyprint linenums hljs language-typescript" data-highlighted="yes"><ol class="linenums"><li><p>// xxx.ets</p></li><li data-node-id="20251220200523-oewvsfc"><p>@Entry</p></li><li><p>@Component</p></li><li data-node-id="20251220200523-0k4t2dh"><p>struct CalendarPickerExample {</p></li><li><p>  private selectedDate: Date = new Date('2024-03-05');</p></li><li data-node-id="20251220200523-7tlo2n6"></li><li><p>  build() {</p></li><li data-node-id="20251220200523-3ke77m4"><p>    Column() {</p></li><li><p>      Column() {</p></li><li data-node-id="20251220200523-vxsiob1"><p>        CalendarPicker({ hintRadius: 10, selected: this.selectedDate })</p></li><li><p>          .edgeAlign(CalendarAlign.END)</p></li><li data-node-id="20251220200523-xl2m8p2"><p>          .textStyle({ color: "#ff182431", font: { size: 20, weight: FontWeight.Normal } })</p></li><li><p>          .margin(10)</p></li><li data-node-id="20251220200523-c8pkcdm"><p>          .onChange((value) => {</p></li><li><p>            console.info(`CalendarPicker onChange: ${value.toString()}`);</p></li><li data-node-id="20251220200523-zq8x8s4"><p>          })</p></li><li><p>      }.alignItems(HorizontalAlign.End).width("100%")</p></li><li data-node-id="20251220200523-epqpva7"></li><li><p>      Text('日历日期选择器').fontSize(30)</p></li><li data-node-id="20251220200523-ox8haeq"><p>    }.width('100%').margin({ top: 350 })</p></li><li><p>  }</p></li><li data-node-id="20251220200523-c5no9fg"><p>}</p></li></ol></pre>
+
+![](https://alliance-communityfile-drcn.dbankcdn.com/FileServer/getFile/cmtyPub/011/111/111/0000000000011111111.20251219140547.31909603294090911755262863028413:50001231000000:2800:8FB30600AC2C9B53DB137211DA7C5DCC7B74939B86F09C14BC9433F2EF87C545.gif)
+
+### 示例2（设置开始日期和结束日期）
+
+该示例通过start和end设置日历选择器的开始日期和结束日期。
+
+从API version 18开始，[CalendarOptions](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/ts-basic-components-calendarpicker#calendaroptions对象说明)中新增了start、end属性。
+
+<pre class="ts prettyprint linenums hljs language-typescript" data-highlighted="yes"><ol class="linenums"><li><p>// xxx.ets</p></li><li data-node-id="20251220200523-y4d1oa0"><p>@Entry</p></li><li><p>@Component</p></li><li data-node-id="20251220200523-s3uu72a"><p>struct CalendarPickerExample {</p></li><li><p>  private selectedDate: Date = new Date('2025-01-15');</p></li><li data-node-id="20251220200523-kp1ppax"><p>  private startDate: Date = new Date('2025-01-05');</p></li><li><p>  private endDate: Date = new Date('2025-01-25');</p></li><li data-node-id="20251220200523-grutlqn"></li><li><p>  build() {</p></li><li data-node-id="20251220200523-03y4je1"><p>    Column() {</p></li><li><p>      Column() {</p></li><li data-node-id="20251220200523-6totkxm"><p>        CalendarPicker({ hintRadius: 10, selected: this.selectedDate, start: this.startDate, end: this.endDate })</p></li><li><p>          .edgeAlign(CalendarAlign.END)</p></li><li data-node-id="20251220200523-gxyemhp"><p>          .textStyle({ color: "#ff182431", font: { size: 20, weight: FontWeight.Normal } })</p></li><li><p>          .margin(10)</p></li><li data-node-id="20251220200523-vxskrc2"><p>          .onChange((value) => {</p></li><li><p>            console.info(`CalendarPicker onChange: ${value.toString()}`);</p></li><li data-node-id="20251220200523-g78awcd"><p>          })</p></li><li><p>      }.alignItems(HorizontalAlign.End).width("100%")</p></li><li data-node-id="20251220200523-qqfxs2r"><p>    }.width('100%').margin({ top: 350 })</p></li><li><p>  }</p></li><li data-node-id="20251220200523-bu48kql"><p>}</p></li></ol></pre>
+
+![](https://alliance-communityfile-drcn.dbankcdn.com/FileServer/getFile/cmtyPub/011/111/111/0000000000011111111.20251219140547.62303920138313421648935909250322:50001231000000:2800:468379CC80F644B201926D9E8A6AC15F93FD9DA12B2A015D6B2C9A5822A8C759.jpg)
+
+### 示例3（设置日历选择器在系统当前日期时，保持高亮显示和禁用日期区间）
+
+该示例通过[markToday](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/ts-basic-components-calendarpicker#marktoday19)设置日历选择器在系统当前日期时，开启保持高亮显示，同时，通过[disabledDateRange](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/ts-basic-components-calendarpicker#calendaroptions对象说明)设置日历选择器的禁用日期区间。
+
+从API version 19开始，新增了markToday接口。
+
+<pre class="ts prettyprint linenums hljs language-typescript" data-highlighted="yes"><ol class="linenums"><li><p>// xxx.ets</p></li><li data-node-id="20251220200523-it6tlm4"><p>@Entry</p></li><li><p>@Component</p></li><li data-node-id="20251220200523-ba240d0"><p>struct CalendarPickerExample {</p></li><li><p>  private disabledDateRange: DateRange[] = [</p></li><li data-node-id="20251220200523-k3mxzx1"><p>    { start: new Date('2025-01-01'), end: new Date('2025-01-02') },</p></li><li><p>    { start: new Date('2025-01-09'), end: new Date('2025-01-10') },</p></li><li data-node-id="20251220200523-ckm5sqb"><p>    { start: new Date('2025-01-15'), end: new Date('2025-01-16') },</p></li><li><p>    { start: new Date('2025-01-19'), end: new Date('2025-01-19') },</p></li><li data-node-id="20251220200523-6vdu3sz"><p>    { start: new Date('2025-01-22'), end: new Date('2025-01-25') }</p></li><li><p>  ];</p></li><li data-node-id="20251220200523-m0h5vt5"></li><li><p>  build() {</p></li><li data-node-id="20251220200523-aru6355"><p>    Column() {</p></li><li><p>      CalendarPicker({ disabledDateRange: this.disabledDateRange })</p></li><li data-node-id="20251220200523-jshww4s"><p>        .margin(10)</p></li><li><p>        .markToday(true)</p></li><li data-node-id="20251220200523-eik9tt1"><p>        .onChange((value) => {</p></li><li><p>          console.info(`CalendarPicker onChange: ${value.toString()}`);</p></li><li data-node-id="20251220200523-hs2k0vn"><p>        })</p></li><li><p>    }.alignItems(HorizontalAlign.End).width('100%')</p></li><li data-node-id="20251220200523-n8yoq4e"><p>  }</p></li><li><p>}</p></li></ol></pre>
+
+![](https://alliance-communityfile-drcn.dbankcdn.com/FileServer/getFile/cmtyPub/011/111/111/0000000000011111111.20251219140547.21768615714863575433486445376184:50001231000000:2800:A04E46D26DD70A09C14A9282EC254143BDFE10EBFFBFE369D7CD25BDBDFCC057.gif)
+
+[](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/ts-basic-components-checkboxgroup "CheckboxGroup")
+
+[CheckboxGroup](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/ts-basic-components-checkboxgroup "CheckboxGroup")
+
+[DatePicker](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/ts-basic-components-datepicker "DatePicker")
+
+[](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/ts-basic-components-datepicker "DatePicker")
 
 相关推荐
 
-*文档*[泛型接口](https://developer.huawei.com/consumer/cn/doc/cangjie-guides-V5/generic_interface-V5 "泛型接口")
+*文档*[SubHeaderV2](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/ohos-arkui-advanced-subheaderv2 "SubHeaderV2")
 
-*文档*[从Java到ArkTS的迁移指导](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/getting-started-with-arkts-for-java-programmers "从Java到ArkTS的迁移指导")
+*文档*[FolderStack](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/ts-container-folderstack "FolderStack")
 
-*文档*[ArkTS高性能编程实践](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/arkts-high-performance-programming "ArkTS高性能编程实践")
+*文档*[SegmentButtonV2](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/ohos-arkui-advanced-segmentbuttonv2 "SegmentButtonV2")
 
-*文档*[oh_predicates.h](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/capi-oh-predicates-h "oh_predicates.h")
+*文档*[TreeView](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/ohos-arkui-advanced-treeview "TreeView")
 
-*文档*[单元测试框架使用指导](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/unittest-guidelines "单元测试框架使用指导")
+*文档*[ToolBarV2](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/ohos-arkui-advanced-toolbarv2 "ToolBarV2")
 
-*文档*[包的导入](https://developer.huawei.com/consumer/cn/doc/cangjie-guides-V5/import-V5 "包的导入")
+*文档*[Filter](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/ohos-arkui-advanced-filter "Filter")
 
-*文档*[OH_VObject](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/capi-rdb-oh-vobject "OH_VObject")
+*文档*[SegmentButton](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/ohos-arkui-advanced-segmentbutton "SegmentButton")
 
-*文档*[OH_Predicates](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/capi-rdb-oh-predicates "OH_Predicates")
+*文档*[Popup](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/ohos-arkui-advanced-popup "Popup")
 
-*文档*[使用Node-API进行扩展能力功能开发](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/use-napi-about-extension "使用Node-API进行扩展能力功能开发")
+*文档*[ToolBar](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/ohos-arkui-advanced-toolbar "ToolBar")
 
-*文档*[GraphicsAccelerate](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/_graphics_accelerate "GraphicsAccelerate")
+*文档*[ProgressButtonV2](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/ohos-arkui-advanced-progressbuttonv2 "ProgressButtonV2")
 
 意见反馈
 
@@ -1322,97 +2248,39 @@ HarmonyOS SDK提供的开放能力（接口）也需要在导入声明后使用�
 
 本文导读
 
-[基本知识](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/introduction-to-arkts#基本知识)
+[子组件](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/ts-basic-components-calendarpicker#子组件)
 
-[声明](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/introduction-to-arkts#声明)
+[接口](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/ts-basic-components-calendarpicker#接口)
 
-[类型](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/introduction-to-arkts#类型)
+[属性](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/ts-basic-components-calendarpicker#属性)
 
-[运算符](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/introduction-to-arkts#运算符)
+[edgeAlign](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/ts-basic-components-calendarpicker#edgealign)
 
-[语句](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/introduction-to-arkts#语句)
+[edgeAlign](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/ts-basic-components-calendarpicker#edgealign18)
 
-[函数](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/introduction-to-arkts#函数)
+[textStyle](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/ts-basic-components-calendarpicker#textstyle)
 
-[函数声明](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/introduction-to-arkts#函数声明)
+[textStyle](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/ts-basic-components-calendarpicker#textstyle18)
 
-[可选参数](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/introduction-to-arkts#可选参数)
+[markToday](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/ts-basic-components-calendarpicker#marktoday19)
 
-[rest参数](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/introduction-to-arkts#rest参数)
+[事件](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/ts-basic-components-calendarpicker#事件)
 
-[返回类型](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/introduction-to-arkts#返回类型)
+[onChange](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/ts-basic-components-calendarpicker#onchange)
 
-[函数的作用域](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/introduction-to-arkts#函数的作用域)
+[onChange](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/ts-basic-components-calendarpicker#onchange18)
 
-[函数调用](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/introduction-to-arkts#函数调用)
+[CalendarOptions对象说明](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/ts-basic-components-calendarpicker#calendaroptions对象说明)
 
-[函数类型](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/introduction-to-arkts#函数类型)
+[CalendarAlign枚举说明](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/ts-basic-components-calendarpicker#calendaralign枚举说明)
 
-[箭头函数（又名Lambda函数）](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/introduction-to-arkts#箭头函数又名lambda函数)
+[示例](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/ts-basic-components-calendarpicker#示例)
 
-[闭包](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/introduction-to-arkts#闭包)
+[示例1（设置下拉日历弹窗）](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/ts-basic-components-calendarpicker#示例1设置下拉日历弹窗)
 
-[函数重载](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/introduction-to-arkts#函数重载)
+[示例2（设置开始日期和结束日期）](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/ts-basic-components-calendarpicker#示例2设置开始日期和结束日期)
 
-[类](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/introduction-to-arkts#类)
-
-[字段](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/introduction-to-arkts#字段)
-
-[方法](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/introduction-to-arkts#方法)
-
-[构造函数](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/introduction-to-arkts#构造函数)
-
-[可见性修饰符](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/introduction-to-arkts#可见性修饰符)
-
-[对象字面量](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/introduction-to-arkts#对象字面量)
-
-[抽象类](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/introduction-to-arkts#抽象类)
-
-[接口](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/introduction-to-arkts#接口)
-
-[接口属性](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/introduction-to-arkts#接口属性)
-
-[接口继承](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/introduction-to-arkts#接口继承)
-
-[抽象类和接口](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/introduction-to-arkts#抽象类和接口)
-
-[泛型类型和函数](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/introduction-to-arkts#泛型类型和函数)
-
-[泛型类和接口](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/introduction-to-arkts#泛型类和接口)
-
-[泛型约束](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/introduction-to-arkts#泛型约束)
-
-[泛型函数](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/introduction-to-arkts#泛型函数)
-
-[泛型默认值](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/introduction-to-arkts#泛型默认值)
-
-[空安全](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/introduction-to-arkts#空安全)
-
-[非空断言运算符](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/introduction-to-arkts#非空断言运算符)
-
-[空值合并运算符](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/introduction-to-arkts#空值合并运算符)
-
-[可选链](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/introduction-to-arkts#可选链)
-
-[模块](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/introduction-to-arkts#模块)
-
-[导出](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/introduction-to-arkts#导出)
-
-[导入](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/introduction-to-arkts#导入)
-
-[顶层语句](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/introduction-to-arkts#顶层语句)
-
-[关键字](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/introduction-to-arkts#关键字)
-
-[this](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/introduction-to-arkts#this)
-
-[注解](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/introduction-to-arkts#注解)
-
-[用户自定义注解](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/introduction-to-arkts#用户自定义注解)
-
-[ArkUI支持](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/introduction-to-arkts#arkui支持)
-
-[ArkUI示例](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/introduction-to-arkts#arkui示例)
+[示例3（设置日历选择器在系统当前日期时，保持高亮显示和禁用日期区间）](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/ts-basic-components-calendarpicker#示例3设置日历选择器在系统当前日期时保持高亮显示和禁用日期区间)
 
 [ ]
 

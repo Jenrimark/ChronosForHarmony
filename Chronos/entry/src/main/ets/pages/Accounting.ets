@@ -5,6 +5,7 @@ import { Constants } from '../common/Constants';
 import { Utils } from '../common/Utils';
 import { MimoAIService, BillRecognitionResult } from '../service/MimoAIService';
 import { AudioRecorderService } from '../service/AudioRecorderService';
+import { SpeechRecognitionService } from '../service/SpeechRecognitionService';
 import { common } from '@kit.AbilityKit';
 
 /**
@@ -48,6 +49,7 @@ export struct Accounting {
   private billService: BillService = BillService.getInstance();
   private aiService: MimoAIService = MimoAIService.getInstance();
   private audioRecorderService: AudioRecorderService = AudioRecorderService.getInstance();
+  private speechRecognitionService: SpeechRecognitionService = SpeechRecognitionService.getInstance();
 
   aboutToAppear() {
     this.loadBills();
@@ -124,16 +126,42 @@ export struct Accounting {
         return;
       }
 
+      // 初始化语音识别引擎
+      try {
+        await this.speechRecognitionService.initEngine();
+      } catch (error) {
+        console.error('初始化语音识别引擎失败:', error);
+        // 即使识别引擎初始化失败，也继续录音流程
+      }
+
       // 开始录音
       await this.audioRecorderService.startRecording();
-      this.isRecording = true;
-      this.showInputBar = true;
+    this.isRecording = true;
+    this.showInputBar = true;
       this.recordingDuration = 0;
+      
+      // 开始语音识别
+      try {
+        await this.speechRecognitionService.startRecognition(
+          (text: string) => {
+            // 实时更新识别结果（中间结果）
+            if (text && text.trim()) {
+              this.inputText = text;
+            }
+          },
+          (error: Error) => {
+            console.error('语音识别错误:', error);
+          }
+        );
+      } catch (error) {
+        console.error('启动语音识别失败:', error);
+        // 即使识别启动失败，也继续录音流程
+      }
       
       // 开始计时
       this.startRecordingTimer();
       
-      console.info('开始录音...');
+      console.info('开始录音和语音识别...');
     } catch (error) {
       console.error('开始录音失败:', error);
       this.isRecording = false;
@@ -173,10 +201,21 @@ export struct Accounting {
       
       console.info('停止录音，文件路径:', filePath);
       
-      // TODO: 将录音文件转换为文本
-      // 这里可以调用语音识别API
-      // 暂时使用模拟文本
-      this.inputText = '录音内容：' + this.formatDuration(this.recordingDuration);
+      // 结束语音识别并获取结果
+      let recognitionText = '';
+      try {
+        recognitionText = await this.speechRecognitionService.finishRecognition();
+        console.info('语音识别结果:', recognitionText);
+      } catch (error) {
+        console.error('获取语音识别结果失败:', error);
+      }
+      
+      // 如果识别结果为空，使用时长作为提示
+      if (!recognitionText || !recognitionText.trim()) {
+        this.inputText = '录音内容：' + this.formatDuration(this.recordingDuration);
+      } else {
+        this.inputText = recognitionText;
+      }
       
       // 自动发送识别
       await this.onSendInput();
@@ -186,6 +225,13 @@ export struct Accounting {
       console.error('停止录音失败:', error);
       this.isRecording = false;
       this.stopRecordingTimer();
+      
+      // 确保取消语音识别
+      try {
+        await this.speechRecognitionService.cancelRecognition();
+      } catch (err) {
+        console.error('取消语音识别失败:', err);
+      }
     }
   }
 
@@ -195,6 +241,14 @@ export struct Accounting {
   async cancelRecording(): Promise<void> {
     try {
       await this.audioRecorderService.cancelRecording();
+      
+      // 取消语音识别
+      try {
+        await this.speechRecognitionService.cancelRecognition();
+      } catch (error) {
+        console.error('取消语音识别失败:', error);
+      }
+      
       this.isRecording = false;
       this.stopRecordingTimer();
       this.recordingDuration = 0;
@@ -574,7 +628,7 @@ export struct Accounting {
           this.stopRecording();
         } else if (!this.isLongPressing) {
           // 如果不是长按，展开输入栏
-          this.onAddButtonClick();
+        this.onAddButtonClick();
         }
         // 重置长按状态
         this.isLongPressing = false;

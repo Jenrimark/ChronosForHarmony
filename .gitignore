@@ -1,0 +1,120 @@
+# ============================================
+# 通用忽略规则
+# ============================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+*.iml
+*.log
+*.tmp
+*.temp
+
+# ============================================
+# 后端 (Spring Boot / Maven)
+# ============================================
+Back/target/
+Back/.mvn/
+Back/mvnw
+Back/mvnw.cmd
+Back/.classpath
+Back/.project
+Back/.settings/
+Back/.springBeans
+Back/*.iml
+Back/.idea/
+Back/*.log
+Back/application-local.yml
+Back/application-secret.yml
+
+# Maven
+Back/.mvn/wrapper/maven-wrapper.jar
+Back/.mvn/wrapper/maven-wrapper.properties
+
+# ============================================
+# 前端 (HarmonyOS / ArkTS)
+# ============================================
+Chronos/node_modules/
+Chronos/oh_modules/
+Chronos/.preview/
+Chronos/build/
+Chronos/.cxx/
+Chronos/.test/
+Chronos/.idea/
+Chronos/.deveco/
+Chronos/.hvigor/
+Chronos/.hvigorWrapper/
+Chronos/local.properties
+Chronos/*.iml
+
+# HarmonyOS 构建产物
+Chronos/**/build/
+Chronos/**/entry/build/
+Chronos/**/entry/default/
+Chronos/**/entry/default/cache/
+Chronos/**/entry/default/generated/
+Chronos/**/entry/default/intermediates/
+Chronos/**/entry/default/outputs/
+Chronos/**/entry/default/loader/
+Chronos/**/entry/default/loader_out/
+Chronos/**/entry/default/package/
+Chronos/**/entry/default/patch/
+Chronos/**/entry/default/process_profile/
+Chronos/**/entry/default/res/
+Chronos/**/entry/default/router_map/
+Chronos/**/entry/default/share_config/
+Chronos/**/entry/default/source_map/
+Chronos/**/entry/default/stripped_native_libs/
+
+# HarmonyOS 测试
+Chronos/**/ohosTest/build/
+Chronos/**/test/build/
+
+# ============================================
+# 其他
+# ============================================
+# 照片和截图（如果不需要版本控制）
+photo/
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.bmp
+!Chronos/**/resources/**/*.png
+!Chronos/**/resources/**/*.jpg
+
+# 临时文件
+*.bak
+*.backup
+*.orig
+
+# 环境变量和密钥文件
+.env
+.env.local
+.env.*.local
+*.key
+*.pem
+*.p12
+*.jks
+secrets/
+
+# 数据库文件
+*.db
+*.sqlite
+*.sqlite3
+
+# 压缩文件
+*.zip
+*.tar
+*.tar.gz
+*.rar
+*.7z
+

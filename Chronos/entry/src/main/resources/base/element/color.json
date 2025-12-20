@@ -1,0 +1,36 @@
+{
+  "color": [
+    {
+      "name": "start_window_background",
+      "value": "#FF6B35"
+    },
+    {
+      "name": "primary",
+      "value": "#FF6B35"
+    },
+    {
+      "name": "primary_dark",
+      "value": "#E55A2B"
+    },
+    {
+      "name": "primary_light",
+      "value": "#FF8C5A"
+    },
+    {
+      "name": "background",
+      "value": "#FFF5F0"
+    },
+    {
+      "name": "card_background",
+      "value": "#FFFFFF"
+    },
+    {
+      "name": "text_primary",
+      "value": "#2C1810"
+    },
+    {
+      "name": "text_secondary",
+      "value": "#8B6F5A"
+    }
+  ]
+}

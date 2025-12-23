@@ -193,7 +193,7 @@ export struct NormalMsgView {
         } else if (line.isUnorderedList) {
           // 无序列表项
           Row() {
-            Text('•')
+            Text(' ')
               .fontSize(16)
               .fontColor(Constants.COLOR_PRIMARY)
               .margin({ right: 8 })
@@ -201,26 +201,30 @@ export struct NormalMsgView {
           }
           .width('100%')
           .margin({ bottom: 6 })
+          .margin({ right: 8 })
           .alignItems(VerticalAlign.Top)
-        } else if (line.isOrderedList) {
-          // 有序列表 - 固定序号宽度，确保文字对齐
-          Row() {
-            Text(line.number)
-              .fontSize(14)
-              .fontColor(Constants.COLOR_PRIMARY)
-              .fontWeight(FontWeight.Medium)
-              .width(24)
-              .textAlign(TextAlign.Start)
-            Column() {
-              this.buildFormattedText(line.text)
-            }
-            .layoutWeight(1)
-            .alignItems(HorizontalAlign.Start)
-          }
-          .width('100%')
-          .margin({ bottom: 6 })
-          .alignItems(VerticalAlign.Top)
-        } else {
+         } else if (line.isOrderedList) {
+           // 有序列表 - 固定序号宽度，确保文字对齐
+           Row() {
+             // 显示列表序号（如：1. 2. 3.）
+             Text(line.number)
+               .fontSize(14)  // 设置序号字体大小为14
+               .fontColor(Constants.COLOR_PRIMARY)  // 使用主题色作为序号颜色
+               .fontWeight(FontWeight.Medium)  // 设置序号字体为中等粗细
+               .width(24)  // 固定序号宽度为24，确保对齐
+               .textAlign(TextAlign.Start)  // 序号左对齐
+             // 包裹文字内容的列容器
+             Column() {
+               // 构建格式化的文本内容（支持加粗等Markdown格式）
+               this.buildFormattedText(line.text)
+             }
+             .layoutWeight(1)  // 文字部分占据剩余的所有空间
+             .alignItems(HorizontalAlign.Start)  // 文字内容左对齐
+           }
+           .width('100%')  // 整个Row占满父容器宽度
+           .margin({ bottom: 6 })  // 列表项底部留6像素间距
+           .alignItems(VerticalAlign.Top)  // Row内容顶部对齐（序号和文字都从顶部开始）
+         } else {
           // 普通文本
           Column() {
             this.buildFormattedText(line.text)

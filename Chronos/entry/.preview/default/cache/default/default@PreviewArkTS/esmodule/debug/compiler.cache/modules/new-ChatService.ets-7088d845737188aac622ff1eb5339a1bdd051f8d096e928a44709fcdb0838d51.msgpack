@@ -1,0 +1,720 @@
+Ôr@Ÿªassertions¤code´customTransformCache¬dependencies¢id¤meta±moduleSideEffects¬originalCode±originalSourcemap«resolvedIds®sourcemapChainµsyntheticNamedExportsµtransformDependencies®transformFiles¨cacheAstÔrAÚ&šimport http from "@ohos.net.http";
+import { Constants } from '../common/Constants';
+/**
+ * èŠå¤©æœåŠ¡ - é›†æˆMIMO AI
+ */
+export class ChatService {
+    constructor() {
+        this.apiKey = Constants.MIMO_API_KEY;
+        this.baseUrl = Constants.MIMO_API_URL;
+        this.model = 'mimo-v2-flash'; // é»˜è®¤æ¨¡å‹
+        this.conversationHistory = [];
+        // åˆå§‹åŒ–ç³»ç»Ÿæ¶ˆæ¯
+        this.conversationHistory = [
+            {
+                role: 'system',
+                content: 'ä½ æ˜¯è¾°åºåŠ©æ‰‹ï¼Œä¸€ä¸ªæ™ºèƒ½çš„ç”Ÿæ´»ç®¡ç†åŠ©æ‰‹ã€‚ä½ å¯ä»¥å¸®åŠ©ç”¨æˆ·ç®¡ç†ä»»åŠ¡ã€è®°è´¦ã€æä¾›å»ºè®®ç­‰ã€‚è¯·ç”¨å‹å¥½ã€ä¸“ä¸šçš„è¯­æ°”å›å¤ç”¨æˆ·ã€‚'
+            }
+        ];
+    }
+    static getInstance() {
+        if (!ChatService.instance) {
+            ChatService.instance = new ChatService();
+        }
+        return ChatService.instance;
+    }
+    /**
+     * å‘é€æ¶ˆæ¯å¹¶è·å–AIå›å¤ï¼ˆæµå¼è¾“å‡ºï¼‰
+     */
+    async sendMessageStream(userMessage, onChunk) {
+        if (!this.apiKey || this.apiKey === '') {
+            throw new Error('MIMO API Keyæœªè®¾ç½®');
+        }
+        // æ·»åŠ ç”¨æˆ·æ¶ˆæ¯åˆ°å†å²è®°å½•
+        this.conversationHistory.push({
+            role: 'user',
+            content: userMessage
+        });
+        let fullResponse = '';
+        try {
+            // è°ƒç”¨æµå¼API
+            await this.callMimoAPIStream((chunk) => {
+                fullResponse += chunk;
+                onChunk(chunk);
+            });
+            // æ·»åŠ AIå›å¤åˆ°å†å²è®°å½•
+            this.conversationHistory.push({
+                role: 'assistant',
+                content: fullResponse
+            });
+            return fullResponse;
+        }
+        catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            console.error('å‘é€æ¶ˆæ¯å¤±è´¥:', errorMessage);
+            throw new Error(`å‘é€æ¶ˆæ¯å¤±è´¥: ${errorMessage}`);
+        }
+    }
+    /**
+     * å‘é€æ¶ˆæ¯å¹¶è·å–AIå›å¤ï¼ˆå…¼å®¹æ—§æ¥å£ï¼‰
+     */
+    async sendMessage(userMessage) {
+        let fullResponse = '';
+        await this.sendMessageStream(userMessage, (chunk) => {
+            fullResponse += chunk;
+        });
+        return fullResponse;
+    }
+    /**
+     * è°ƒç”¨MIMO APIï¼ˆæµå¼è¾“å‡ºï¼‰
+     * ç”±äºHarmonyOS httpæ¨¡å—å¯èƒ½ä¸æ”¯æŒçœŸæ­£çš„æµå¼å“åº”ï¼Œå…ˆä½¿ç”¨éæµå¼è¯·æ±‚ï¼Œç„¶åæ¨¡æ‹Ÿæµå¼è¾“å‡º
+     */
+    async callMimoAPIStream(onChunk) {
+        // æ„å»ºè¯·æ±‚æ¶ˆæ¯åˆ—è¡¨
+        const messages = [];
+        for (const msg of this.conversationHistory) {
+            messages.push({
+                role: msg.role,
+                content: msg.content
+            });
+        }
+        // ä½¿ç”¨éæµå¼è¯·æ±‚ï¼ˆæ›´å¯é ï¼‰
+        const requestData = {
+            model: this.model,
+            messages: messages,
+            temperature: 0.7
+            // ä¸ä½¿ç”¨ stream: trueï¼Œå› ä¸ºHarmonyOSå¯èƒ½ä¸æ”¯æŒ
+        };
+        const httpRequest = http.createHttp();
+        try {
+            const response = await httpRequest.request(this.baseUrl, {
+                method: http.RequestMethod.POST,
+                header: {
+                    'api-key': this.apiKey,
+                    'Content-Type': 'application/json'
+                },
+                extraData: JSON.stringify(requestData),
+                connectTimeout: 30000,
+                readTimeout: 30000
+            });
+            if (response.responseCode !== 200) {
+                const errorText = await response.result.toString();
+                console.error('MIMO APIé”™è¯¯å“åº”:', errorText);
+                console.error('è¯·æ±‚URL:', this.baseUrl);
+                console.error('è¯·æ±‚ä½“:', JSON.stringify(requestData));
+                throw new Error(`MIMO APIè¯·æ±‚å¤±è´¥ï¼ŒçŠ¶æ€ç : ${response.responseCode}ï¼Œé”™è¯¯ä¿¡æ¯: ${errorText}`);
+            }
+            const result = await response.result.toString();
+            console.info('MIMO APIå“åº”çŠ¶æ€ç :', response.responseCode);
+            console.info('MIMO APIå“åº”å†…å®¹:', result.substring(0, 500)); // æ‰“å°å‰500å­—ç¬¦ç”¨äºè°ƒè¯•
+            // è§£æJSONå“åº”
+            try {
+                const data = JSON.parse(result);
+                const parseInfo = {
+                    hasChoices: !!data.choices,
+                    choicesLength: data.choices?.length || 0,
+                    hasMessage: !!data.choices?.[0]?.message,
+                    hasContent: !!data.choices?.[0]?.message?.content
+                };
+                console.info('è§£æå¾Œçš„æ•¸æ“šçµæ§‹:', JSON.stringify(parseInfo));
+                if (data.choices && data.choices.length > 0 && data.choices[0].message?.content) {
+                    // è·å–å®Œæ•´å†…å®¹
+                    const fullContent = data.choices[0].message.content;
+                    console.info('è·å–åˆ°AIå“åº”ï¼Œå†…å®¹é•¿åº¦:', fullContent.length);
+                    if (!fullContent || fullContent.trim() === '') {
+                        throw new Error('APIè¿”å›çš„å…§å®¹ç‚ºç©º');
+                    }
+                    // ä¸ºäº†æ›´å¥½çš„ä½“éªŒï¼Œå…ˆç«‹å³è¾“å‡ºä¸€éƒ¨åˆ†å†…å®¹
+                    console.info('å‡†å¤‡å¼€å§‹æµå¼è¾“å‡ºï¼Œå†…å®¹é•¿åº¦:', fullContent.length);
+                    if (fullContent.length > 20) {
+                        const firstChunk = fullContent.substring(0, 20);
+                        console.info('è¾“å‡ºç¬¬ä¸€æ‰¹å†…å®¹ï¼Œé•¿åº¦:', firstChunk.length);
+                        onChunk(firstChunk);
+                        // ç„¶åå¿«é€Ÿè¾“å‡ºå‰©ä½™å†…å®¹
+                        const remainingContent = fullContent.substring(20);
+                        console.info('å‡†å¤‡è¾“å‡ºå‰©ä½™å†…å®¹ï¼Œé•¿åº¦:', remainingContent.length);
+                        await this.simulateStreamOutput(remainingContent, onChunk);
+                    }
+                    else {
+                        // å†…å®¹å¾ˆçŸ­ï¼Œç›´æ¥è¾“å‡º
+                        console.info('å†…å®¹è¾ƒçŸ­ï¼Œç›´æ¥è¾“å‡ºå…¨éƒ¨');
+                        onChunk(fullContent);
+                    }
+                    console.info('æµå¼è¾“å‡ºå®Œæˆ');
+                }
+                else {
+                    // æ›´è©³ç´°çš„éŒ¯èª¤ä¿¡æ¯
+                    const errorDetails = {
+                        hasChoices: !!data.choices,
+                        choicesLength: data.choices?.length || 0,
+                        firstChoice: data.choices?.[0] ? JSON.stringify(data.choices[0]).substring(0, 200) : 'null'
+                    };
+                    console.error('MIMO APIè¿”å›æ ¼å¼éŒ¯èª¤ï¼Œè©³æƒ…:', JSON.stringify(errorDetails));
+                    throw new Error(`MIMO APIè¿”å›æ ¼å¼é”™è¯¯ï¼šchoicesä¸ºç©ºæˆ–æ ¼å¼ä¸æ­£ç¡®ã€‚éŸ¿æ‡‰æ•¸æ“š: ${JSON.stringify(errorDetails)}`);
+                }
+            }
+            catch (parseError) {
+                const errorMsg = parseError instanceof Error ? parseError.message : String(parseError);
+                console.error('è§£æéŸ¿æ‡‰å¤±æ•—ï¼ŒåŸå§‹éŸ¿æ‡‰:', result.substring(0, 1000));
+                console.error('è§£æéŒ¯èª¤è©³æƒ…:', errorMsg);
+                throw new Error(`è§£æMIMO APIå“åº”å¤±è´¥: ${errorMsg}ã€‚è«‹æª¢æŸ¥APIéŸ¿æ‡‰æ ¼å¼æ˜¯å¦æ­£ç¢ºã€‚`);
+            }
+        }
+        catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            console.error('è°ƒç”¨MIMO APIå¤±è´¥:', errorMessage);
+            throw new Error(`MIMO APIè°ƒç”¨å¤±è´¥: ${errorMessage}`);
+        }
+        finally {
+            httpRequest.destroy();
+        }
+    }
+    /**
+     * æ¨¡æ‹Ÿæµå¼è¾“å‡ºï¼ˆé€è¯æ˜¾ç¤ºï¼Œå¿«é€Ÿæ›´æ–°ï¼‰
+     */
+    async simulateStreamOutput(content, onChunk) {
+        console.info('simulateStreamOutputå¼€å§‹ï¼Œå†…å®¹é•¿åº¦:', content.length);
+        // å¦‚æœå†…å®¹å¾ˆçŸ­ï¼Œç›´æ¥ä¸€æ¬¡æ€§è¾“å‡º
+        if (content.length <= 50) {
+            console.info('å†…å®¹è¾ƒçŸ­ï¼Œç›´æ¥è¾“å‡ºå…¨éƒ¨');
+            onChunk(content);
+            console.info('simulateStreamOutputå®Œæˆï¼ˆçŸ­å†…å®¹ï¼‰');
+            return;
+        }
+        // æŒ‰è¯åˆ†ç»„ï¼Œå®ç°æ‰“å­—æœºæ•ˆæœ
+        const words = content.split(/(\s+)/); // ä¿ç•™ç©ºæ ¼
+        const chunkSize = 5; // æ¯æ¬¡æ˜¾ç¤º5ä¸ªè¯ï¼ŒåŠ å¿«é€Ÿåº¦
+        console.info('åˆ†è¯å®Œæˆï¼Œæ€»è¯æ•°:', words.length, 'æ¯æ‰¹å¤§å°:', chunkSize);
+        for (let i = 0; i < words.length; i += chunkSize) {
+            const chunk = words.slice(i, i + chunkSize).join('');
+            console.info(`è¾“å‡ºç¬¬${Math.floor(i / chunkSize) + 1}æ‰¹å†…å®¹ï¼Œé•¿åº¦:`, chunk.length);
+            onChunk(chunk);
+            // å‡å°‘å»¶è¿Ÿï¼ŒåŠ å¿«æ˜¾ç¤ºé€Ÿåº¦
+            if (i + chunkSize < words.length) {
+                await new Promise((resolve) => setTimeout(resolve, 20));
+            }
+        }
+        console.info('simulateStreamOutputå®Œæˆï¼ˆé•¿å†…å®¹ï¼‰');
+    }
+    /**
+     * è°ƒç”¨MIMO APIï¼ˆéæµå¼ï¼Œå…¼å®¹æ—§æ¥å£ï¼‰
+     */
+    async callMimoAPI() {
+        let fullResponse = '';
+        await this.callMimoAPIStream((chunk) => {
+            fullResponse += chunk;
+        });
+        return fullResponse;
+    }
+    /**
+     * æ¸…ç©ºå¯¹è¯å†å²
+     */
+    clearHistory() {
+        this.conversationHistory = [
+            {
+                role: 'system',
+                content: 'ä½ æ˜¯è¾°åºåŠ©æ‰‹ï¼Œä¸€ä¸ªæ™ºèƒ½çš„ç”Ÿæ´»ç®¡ç†åŠ©æ‰‹ã€‚ä½ å¯ä»¥å¸®åŠ©ç”¨æˆ·ç®¡ç†ä»»åŠ¡ã€è®°è´¦ã€æä¾›å»ºè®®ç­‰ã€‚è¯·ç”¨å‹å¥½ã€ä¸“ä¸šçš„è¯­æ°”å›å¤ç”¨æˆ·ã€‚'
+            }
+        ];
+    }
+    /**
+     * è·å–å¯¹è¯å†å²
+     */
+    getHistory() {
+        return [...this.conversationHistory];
+    }
+}
+//# sourceMappingURL=ChatService.js.mapÂ’Ùe hvigor_ignore_D:_My_Study_A_deveco_DevEco Studio_sdk_default_openharmony_ets_api_@ohos.net.http.d.tsÙ?E:\CODE\Chronos\Chronos\entry\src\main\ets\common\Constants.etsÙBE:\CODE\Chronos\Chronos\entry\src\main\ets\service\ChatService.etsÔrBœªmoduleName±isLocalDependency¯isNodeEntryFile§pkgPath±belongProjectPath§pkgNameªpkgVersion±dependencyPkgInfo¯hostModulesInfo°belongModulePath§checker¬shouldEmitJs¥entryÃÂ½E:\CODE\Chronos\Chronos\entry·E:\CODE\Chronos\Chronos¥entry¥1.0.0Ô  ‘ÔrC’²hostDependencyName®hostModuleName¶../service/ChatService¥entry½E:\CODE\Chronos\Chronos\entryÔrDÜ ®¬getNodeCount²getIdentifierCount®getSymbolCount¬getTypeCountµgetInstantiationCountµgetRelationCacheSizes±isUndefinedSymbol±isArgumentsSymbol¯isUnknownSymbol¯getMergedSymbol®getDiagnostics´getGlobalDiagnostics´getRecursionIdentity¶getUnmatchedProperties¹getTypeOfSymbolAtLocation¯getTypeOfSymbolÙ(getSymbolsOfParameterPropertyDeclaration·getDeclaredTypeOfSymbol³getPropertiesOfType±getPropertyOfTypeÙ"getPrivateIdentifierPropertyOfType·getTypeOfPropertyOfType²getIndexInfoOfType³getIndexInfosOfTypeºgetIndexInfosOfIndexSymbol³getSignaturesOfType²getIndexTypeOfType¬getIndexType¬getBaseTypes¸getBaseTypeOfLiteralType®getWidenedType³getTypeFromTypeNode°getParameterTypeÙ$getParameterIdentifierNameAtPosition¸getPromisedTypeOfPromise®getAwaitedType¸getReturnTypeOfSignature®isNullableType¯getNullableType²getNonNullableType²getNonOptionalType°getTypeArguments®typeToTypeNodeÙ$indexInfoToIndexSignatureDeclaration¿signatureToSignatureDeclaration²symbolToEntityName²symbolToExpression¬symbolToNodeÙ!symbolToTypeParameterDeclarations¼symbolToParameterDeclarationºtypeParameterToDeclaration±getSymbolsInScope³getSymbolAtLocation·getIndexInfosAtLocationÙ!getShorthandAssignmentValueSymbolÙ#getExportSpecifierLocalTargetSymbol·getExportSymbolOfSymbol±getTypeAtLocationÙ tryGetTypeAtLocationWithoutCheckºgetTypeOfAssignmentPatternÙ*getPropertySymbolOfDestructuringAssignment±signatureToString¬typeToString®symbolToStringµtypePredicateToString®writeSignature©writeType«writeSymbol²writeTypePredicate¼getAugmentedPropertiesOfType®getRootSymbols²getSymbolOfExpando±getContextualTypeÙ(getContextualTypeForObjectLiteralElementÙ#getContextualTypeForArgumentAtIndexÙ getContextualTypeForJsxAttribute²isContextSensitiveÙ!getTypeOfPropertyOfContextualTypeµgetFullyQualifiedNameÙ#tryGetResolvedSignatureWithoutCheck´getResolvedSignatureÙ/getResolvedSignatureForStringLiteralCompletionsÙ$getResolvedSignatureForSignatureHelpµgetExpandedParameters¹hasEffectiveRestParameterºcontainsArgumentsReference°getConstantValueµisValidPropertyAccessÙ#isValidPropertyAccessForCompletions»getSignatureFromDeclarationºisImplementationOfOverload¹getImmediateAliasedSymbol°getAliasedSymbol¯getEmitResolver²getExportsOfModule¿getExportsAndPropertiesOfModuleÙ forEachExportAndPropertyOfModule¯getSymbolWalker±getAmbientModules¹getJsxIntrinsicTagNamesAt³isOptionalParameter»tryGetMemberInModuleExportsÙ(tryGetMemberInModuleExportsAndProperties´tryFindAmbientModuleÙ(tryFindAmbientModuleWithoutAugmentations¯getApparentType¬getUnionType²isTypeAssignableTo³createAnonymousType¯createSignature¬createSymbol¯createIndexInfoªgetAnyType­getStringType­getNumberType±createPromiseType¯createArrayType¹getElementTypeOfArrayType®getBooleanType¬getFalseType«getTrueType«getVoidType°getUndefinedType«getNullType¯getESSymbolType¬getNeverType¯getOptionalType®getPromiseType²getPromiseLikeType´getAsyncIterableType²isSymbolAccessible«isArrayType«isTupleType¯isArrayLikeTypeÙ#isTypeInvalidDueToUnionDiscriminantºgetExactOptionalProperties¿getAllPossiblePropertiesOfTypesÙ(getSuggestedSymbolForNonexistentPropertyÙ#getSuggestionForNonexistentPropertyÙ,getSuggestedSymbolForNonexistentJSXAttributeÙ&getSuggestedSymbolForNonexistentSymbolÙ!getSuggestionForNonexistentSymbolÙ&getSuggestedSymbolForNonexistentModuleÙ!getSuggestionForNonexistentExportÙ+getSuggestedSymbolForNonexistentClassMember·getBaseConstraintOfType»getDefaultFromTypeParameter«resolveName¯getJsxNamespaceµgetJsxFragmentFactory¸getAccessibleSymbolChain»getTypePredicateOfSignature¹resolveExternalModuleName»resolveExternalModuleSymbol°tryGetThisTypeAt¹getTypeArgumentConstraint¸getSuggestionDiagnostics¸runWithCancellationTokenÙ3getLocalTypeParametersOfClassOrInterfaceOrTypeAlias´isDeclarationVisible´isPropertyAccessible»getTypeOnlyAliasDeclaration¿getMemberOverrideModifierStatusÙ!isTypeParameterPossiblyReferenced²getConstEnumRelate´clearConstEnumRelateµdeleteConstEnumRelateÙ$getTypeArgumentsForResolvedSignatureµgetCheckedSourceFilesÙ"collectHaveTsNoCheckFilesForLinter·clearQualifiedNameCache®isStaticRecord²isStaticSourceFile³createIntrinsicTypeÔ  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  ÃÃÚ)fimport { http } from '@kit.NetworkKit';
+import { Constants } from '../common/Constants';
+
+/**
+ * èŠå¤©æ¶ˆæ¯æ¥å£
+ */
+export interface ChatMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+
+/**
+ * MIMO APIè¯·æ±‚æ¶ˆæ¯æ¥å£
+ */
+interface MimoMessage {
+  role: string;
+  content: string;
+}
+
+/**
+ * MIMO APIå“åº”æ ¼å¼é…ç½®
+ */
+interface MimoResponseFormat {
+  type: string;
+}
+
+/**
+ * MIMO APIè¯·æ±‚æ¥å£
+ */
+interface MimoRequest {
+  model: string;
+  messages: MimoMessage[];
+  temperature?: number;
+  response_format?: MimoResponseFormat;
+  max_completion_tokens?: number;
+  stream?: boolean;
+}
+
+/**
+ * MIMO APIæ¶ˆæ¯æ¥å£
+ */
+interface MimoResponseMessage {
+  role: string;
+  content: string;
+}
+
+/**
+ * MIMO APIé€‰æ‹©æ¥å£
+ */
+interface MimoResponseChoice {
+  message: MimoResponseMessage;
+  finish_reason?: string;
+}
+
+/**
+ * MIMO APIä½¿ç”¨æƒ…å†µæ¥å£
+ */
+interface MimoUsage {
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+}
+
+/**
+ * MIMO APIå“åº”æ¥å£
+ */
+interface MimoResponse {
+  choices: MimoResponseChoice[];
+  id?: string;
+  model?: string;
+  usage?: MimoUsage;
+}
+
+/**
+ * MIMO APIæµå¼å“åº”å¢é‡æ¥å£
+ */
+interface MimoStreamDelta {
+  content?: string;
+  role?: string;
+}
+
+/**
+ * MIMO APIæµå¼å“åº”é€‰æ‹©æ¥å£
+ */
+interface MimoStreamChoice {
+  delta: MimoStreamDelta;
+  finish_reason?: string;
+}
+
+/**
+ * MIMO APIæµå¼å“åº”æ¥å£
+ */
+interface MimoStreamResponse {
+  choices: MimoStreamChoice[];
+  id?: string;
+  model?: string;
+}
+
+/**
+ * APIéŒ¯èª¤è©³æƒ…æ¥å£
+ */
+interface ApiErrorDetails {
+  hasChoices: boolean;
+  choicesLength: number;
+  firstChoice: string;
+}
+
+/**
+ * APIéŸ¿æ‡‰è§£æä¿¡æ¯æ¥å£
+ */
+interface ApiResponseParseInfo {
+  hasChoices: boolean;
+  choicesLength: number;
+  hasMessage: boolean;
+  hasContent: boolean;
+}
+
+/**
+ * èŠå¤©æœåŠ¡ - é›†æˆMIMO AI
+ */
+export class ChatService {
+  private static instance: ChatService;
+  private apiKey: string = Constants.MIMO_API_KEY;
+  private baseUrl: string = Constants.MIMO_API_URL;
+  private model: string = 'mimo-v2-flash'; // é»˜è®¤æ¨¡å‹
+  private conversationHistory: ChatMessage[] = [];
+
+  private constructor() {
+    // åˆå§‹åŒ–ç³»ç»Ÿæ¶ˆæ¯
+    this.conversationHistory = [
+      {
+        role: 'system',
+        content: 'ä½ æ˜¯è¾°åºåŠ©æ‰‹ï¼Œä¸€ä¸ªæ™ºèƒ½çš„ç”Ÿæ´»ç®¡ç†åŠ©æ‰‹ã€‚ä½ å¯ä»¥å¸®åŠ©ç”¨æˆ·ç®¡ç†ä»»åŠ¡ã€è®°è´¦ã€æä¾›å»ºè®®ç­‰ã€‚è¯·ç”¨å‹å¥½ã€ä¸“ä¸šçš„è¯­æ°”å›å¤ç”¨æˆ·ã€‚'
+      }
+    ];
+  }
+
+  static getInstance(): ChatService {
+    if (!ChatService.instance) {
+      ChatService.instance = new ChatService();
+    }
+    return ChatService.instance;
+  }
+
+  /**
+   * å‘é€æ¶ˆæ¯å¹¶è·å–AIå›å¤ï¼ˆæµå¼è¾“å‡ºï¼‰
+   */
+  async sendMessageStream(
+    userMessage: string,
+    onChunk: (chunk: string) => void
+  ): Promise<string> {
+    if (!this.apiKey || this.apiKey === '') {
+      throw new Error('MIMO API Keyæœªè®¾ç½®');
+    }
+
+    // æ·»åŠ ç”¨æˆ·æ¶ˆæ¯åˆ°å†å²è®°å½•
+    this.conversationHistory.push({
+      role: 'user',
+      content: userMessage
+    });
+
+    let fullResponse = '';
+
+    try {
+      // è°ƒç”¨æµå¼API
+      await this.callMimoAPIStream((chunk: string) => {
+        fullResponse += chunk;
+        onChunk(chunk);
+      });
+      
+      // æ·»åŠ AIå›å¤åˆ°å†å²è®°å½•
+      this.conversationHistory.push({
+        role: 'assistant',
+        content: fullResponse
+      });
+
+      return fullResponse;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('å‘é€æ¶ˆæ¯å¤±è´¥:', errorMessage);
+      throw new Error(`å‘é€æ¶ˆæ¯å¤±è´¥: ${errorMessage}`);
+    }
+  }
+
+  /**
+   * å‘é€æ¶ˆæ¯å¹¶è·å–AIå›å¤ï¼ˆå…¼å®¹æ—§æ¥å£ï¼‰
+   */
+  async sendMessage(userMessage: string): Promise<string> {
+    let fullResponse = '';
+    await this.sendMessageStream(userMessage, (chunk: string) => {
+      fullResponse += chunk;
+    });
+    return fullResponse;
+  }
+
+  /**
+   * è°ƒç”¨MIMO APIï¼ˆæµå¼è¾“å‡ºï¼‰
+   * ç”±äºHarmonyOS httpæ¨¡å—å¯èƒ½ä¸æ”¯æŒçœŸæ­£çš„æµå¼å“åº”ï¼Œå…ˆä½¿ç”¨éæµå¼è¯·æ±‚ï¼Œç„¶åæ¨¡æ‹Ÿæµå¼è¾“å‡º
+   */
+  private async callMimoAPIStream(onChunk: (chunk: string) => void): Promise<void> {
+    // æ„å»ºè¯·æ±‚æ¶ˆæ¯åˆ—è¡¨
+    const messages: MimoMessage[] = [];
+    for (const msg of this.conversationHistory) {
+      messages.push({
+        role: msg.role,
+        content: msg.content
+      });
+    }
+
+    // ä½¿ç”¨éæµå¼è¯·æ±‚ï¼ˆæ›´å¯é ï¼‰
+    const requestData: MimoRequest = {
+      model: this.model,
+      messages: messages,
+      temperature: 0.7
+      // ä¸ä½¿ç”¨ stream: trueï¼Œå› ä¸ºHarmonyOSå¯èƒ½ä¸æ”¯æŒ
+    };
+
+    const httpRequest = http.createHttp();
+    
+    try {
+      const response = await httpRequest.request(this.baseUrl, {
+        method: http.RequestMethod.POST,
+        header: {
+          'api-key': this.apiKey,
+          'Content-Type': 'application/json'
+        },
+        extraData: JSON.stringify(requestData),
+        connectTimeout: 30000,
+        readTimeout: 30000
+      });
+
+      if (response.responseCode !== 200) {
+        const errorText = await response.result.toString();
+        console.error('MIMO APIé”™è¯¯å“åº”:', errorText);
+        console.error('è¯·æ±‚URL:', this.baseUrl);
+        console.error('è¯·æ±‚ä½“:', JSON.stringify(requestData));
+        throw new Error(`MIMO APIè¯·æ±‚å¤±è´¥ï¼ŒçŠ¶æ€ç : ${response.responseCode}ï¼Œé”™è¯¯ä¿¡æ¯: ${errorText}`);
+      }
+
+      const result = await response.result.toString();
+      console.info('MIMO APIå“åº”çŠ¶æ€ç :', response.responseCode);
+      console.info('MIMO APIå“åº”å†…å®¹:', result.substring(0, 500)); // æ‰“å°å‰500å­—ç¬¦ç”¨äºè°ƒè¯•
+      
+      // è§£æJSONå“åº”
+      try {
+        const data: MimoResponse = JSON.parse(result) as MimoResponse;
+        const parseInfo: ApiResponseParseInfo = {
+          hasChoices: !!data.choices,
+          choicesLength: data.choices?.length || 0,
+          hasMessage: !!data.choices?.[0]?.message,
+          hasContent: !!data.choices?.[0]?.message?.content
+        };
+        console.info('è§£æå¾Œçš„æ•¸æ“šçµæ§‹:', JSON.stringify(parseInfo));
+        
+        if (data.choices && data.choices.length > 0 && data.choices[0].message?.content) {
+          // è·å–å®Œæ•´å†…å®¹
+          const fullContent = data.choices[0].message.content;
+          console.info('è·å–åˆ°AIå“åº”ï¼Œå†…å®¹é•¿åº¦:', fullContent.length);
+          
+          if (!fullContent || fullContent.trim() === '') {
+            throw new Error('APIè¿”å›çš„å…§å®¹ç‚ºç©º');
+          }
+          
+          // ä¸ºäº†æ›´å¥½çš„ä½“éªŒï¼Œå…ˆç«‹å³è¾“å‡ºä¸€éƒ¨åˆ†å†…å®¹
+          console.info('å‡†å¤‡å¼€å§‹æµå¼è¾“å‡ºï¼Œå†…å®¹é•¿åº¦:', fullContent.length);
+          if (fullContent.length > 20) {
+            const firstChunk = fullContent.substring(0, 20);
+            console.info('è¾“å‡ºç¬¬ä¸€æ‰¹å†…å®¹ï¼Œé•¿åº¦:', firstChunk.length);
+            onChunk(firstChunk);
+            // ç„¶åå¿«é€Ÿè¾“å‡ºå‰©ä½™å†…å®¹
+            const remainingContent = fullContent.substring(20);
+            console.info('å‡†å¤‡è¾“å‡ºå‰©ä½™å†…å®¹ï¼Œé•¿åº¦:', remainingContent.length);
+            await this.simulateStreamOutput(remainingContent, onChunk);
+          } else {
+            // å†…å®¹å¾ˆçŸ­ï¼Œç›´æ¥è¾“å‡º
+            console.info('å†…å®¹è¾ƒçŸ­ï¼Œç›´æ¥è¾“å‡ºå…¨éƒ¨');
+            onChunk(fullContent);
+          }
+          console.info('æµå¼è¾“å‡ºå®Œæˆ');
+        } else {
+          // æ›´è©³ç´°çš„éŒ¯èª¤ä¿¡æ¯
+          const errorDetails: ApiErrorDetails = {
+            hasChoices: !!data.choices,
+            choicesLength: data.choices?.length || 0,
+            firstChoice: data.choices?.[0] ? JSON.stringify(data.choices[0]).substring(0, 200) : 'null'
+          };
+          console.error('MIMO APIè¿”å›æ ¼å¼éŒ¯èª¤ï¼Œè©³æƒ…:', JSON.stringify(errorDetails));
+          throw new Error(`MIMO APIè¿”å›æ ¼å¼é”™è¯¯ï¼šchoicesä¸ºç©ºæˆ–æ ¼å¼ä¸æ­£ç¡®ã€‚éŸ¿æ‡‰æ•¸æ“š: ${JSON.stringify(errorDetails)}`);
+        }
+      } catch (parseError) {
+        const errorMsg = parseError instanceof Error ? parseError.message : String(parseError);
+        console.error('è§£æéŸ¿æ‡‰å¤±æ•—ï¼ŒåŸå§‹éŸ¿æ‡‰:', result.substring(0, 1000));
+        console.error('è§£æéŒ¯èª¤è©³æƒ…:', errorMsg);
+        throw new Error(`è§£æMIMO APIå“åº”å¤±è´¥: ${errorMsg}ã€‚è«‹æª¢æŸ¥APIéŸ¿æ‡‰æ ¼å¼æ˜¯å¦æ­£ç¢ºã€‚`);
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('è°ƒç”¨MIMO APIå¤±è´¥:', errorMessage);
+      throw new Error(`MIMO APIè°ƒç”¨å¤±è´¥: ${errorMessage}`);
+    } finally {
+      httpRequest.destroy();
+    }
+  }
+
+  /**
+   * æ¨¡æ‹Ÿæµå¼è¾“å‡ºï¼ˆé€è¯æ˜¾ç¤ºï¼Œå¿«é€Ÿæ›´æ–°ï¼‰
+   */
+  private async simulateStreamOutput(
+    content: string,
+    onChunk: (chunk: string) => void
+  ): Promise<void> {
+    console.info('simulateStreamOutputå¼€å§‹ï¼Œå†…å®¹é•¿åº¦:', content.length);
+    // å¦‚æœå†…å®¹å¾ˆçŸ­ï¼Œç›´æ¥ä¸€æ¬¡æ€§è¾“å‡º
+    if (content.length <= 50) {
+      console.info('å†…å®¹è¾ƒçŸ­ï¼Œç›´æ¥è¾“å‡ºå…¨éƒ¨');
+      onChunk(content);
+      console.info('simulateStreamOutputå®Œæˆï¼ˆçŸ­å†…å®¹ï¼‰');
+      return;
+    }
+    
+    // æŒ‰è¯åˆ†ç»„ï¼Œå®ç°æ‰“å­—æœºæ•ˆæœ
+    const words = content.split(/(\s+)/); // ä¿ç•™ç©ºæ ¼
+    const chunkSize = 5; // æ¯æ¬¡æ˜¾ç¤º5ä¸ªè¯ï¼ŒåŠ å¿«é€Ÿåº¦
+    console.info('åˆ†è¯å®Œæˆï¼Œæ€»è¯æ•°:', words.length, 'æ¯æ‰¹å¤§å°:', chunkSize);
+    
+    for (let i = 0; i < words.length; i += chunkSize) {
+      const chunk = words.slice(i, i + chunkSize).join('');
+      console.info(`è¾“å‡ºç¬¬${Math.floor(i / chunkSize) + 1}æ‰¹å†…å®¹ï¼Œé•¿åº¦:`, chunk.length);
+      onChunk(chunk);
+      // å‡å°‘å»¶è¿Ÿï¼ŒåŠ å¿«æ˜¾ç¤ºé€Ÿåº¦
+      if (i + chunkSize < words.length) {
+        await new Promise<void>((resolve: () => void) => setTimeout(resolve, 20));
+      }
+    }
+    console.info('simulateStreamOutputå®Œæˆï¼ˆé•¿å†…å®¹ï¼‰');
+  }
+
+  /**
+   * è°ƒç”¨MIMO APIï¼ˆéæµå¼ï¼Œå…¼å®¹æ—§æ¥å£ï¼‰
+   */
+  private async callMimoAPI(): Promise<string> {
+    let fullResponse = '';
+    await this.callMimoAPIStream((chunk: string) => {
+      fullResponse += chunk;
+    });
+    return fullResponse;
+  }
+
+  /**
+   * æ¸…ç©ºå¯¹è¯å†å²
+   */
+  clearHistory(): void {
+    this.conversationHistory = [
+      {
+        role: 'system',
+        content: 'ä½ æ˜¯è¾°åºåŠ©æ‰‹ï¼Œä¸€ä¸ªæ™ºèƒ½çš„ç”Ÿæ´»ç®¡ç†åŠ©æ‰‹ã€‚ä½ å¯ä»¥å¸®åŠ©ç”¨æˆ·ç®¡ç†ä»»åŠ¡ã€è®°è´¦ã€æä¾›å»ºè®®ç­‰ã€‚è¯·ç”¨å‹å¥½ã€ä¸“ä¸šçš„è¯­æ°”å›å¤ç”¨æˆ·ã€‚'
+      }
+    ];
+  }
+
+  /**
+   * è·å–å¯¹è¯å†å²
+   */
+  getHistory(): ChatMessage[] {
+    return [...this.conversationHistory];
+  }
+}
+
+ÀÔrE’®@ohos.net.http³../common/ConstantsÔrF—ªassertions¨external¢id¤meta±moduleSideEffectsªresolvedByµsyntheticNamedExportsAÃÙe hvigor_ignore_D:_My_Study_A_deveco_DevEco Studio_sdk_default_openharmony_ets_api_@ohos.net.http.d.tsAÃªoh-resolveÂFAÂÙ?E:\CODE\Chronos\Chronos\entry\src\main\ets\common\Constants.etsAÃªoh-resolveÂ“ÔrG–§version¤fileªsourceRoot§sources¥names¨mappings®ChatService.js ‘¯ChatService.etsÜ â–”    ”  	”  ”  ”!  &”"  '˜”   ” ”	 	” ” ” ”/ /”0 0‘”  Ìu ‘” Ìw””  Ìx ” Ìx” Ìx” Ìx‘” Ì—” Ìz
+” Ìz” Ìz” Ìz$”  Ìz%”, Ìz1”- Ìz2—” Ì{
+” Ì{” Ì{”  Ì{%”! Ì{&”- Ì{2”. Ì{3—” Ì|
+” Ì|” Ì|”$ Ì|)”% Ì|*”& Ì|+”- Ì|2•” Ì}
+”  Ì}”# Ì}/”% Ì}1”& Ì}2’” Ì€” Ì€•” Ì” Ì” Ì	”  Ì”# Ì‘” Ì‚”” Ìƒ” Ìƒ” Ìƒ” Ìƒ”” Ì„” Ì„” Ì„”ÌR Ì„ÌJ‘” Ì…’”	 Ì†”
+ Ì†’” Ì‡” Ì‡”” Ì‰”
+ Ì‰” Ì‰	” Ì‰—” ÌŠ” ÌŠ” ÌŠ	” ÌŠ” ÌŠ”! ÌŠ”# ÌŠ™” Ì‹” Ì‹” Ì‹”  Ì‹”# Ì‹”' Ì‹!”2 Ì‹,”4 Ì‹.”5 Ì‹/‘”	 ÌŒ–” Ì” Ì” Ì” Ì”# Ì”$ Ì ’” Ì” Ì‘” Ì‘” Ì’˜” Ì“”	 Ì“”
+ Ì“” Ì“” Ì””' Ì””) Ì•”0 Ì•$” Ì—” Ì—” Ì—	” Ì—” Ì—” Ì—” Ì—”  Ì—”! Ì—”' Ì—#”, Ì—(”. Ì—*”0 Ì—,˜” Ì˜” Ì˜” Ì˜” Ì˜” Ì˜”- Ì˜'”. Ì˜(”/ Ì˜)‘”	 Ì™’” Ì›” Ì›—” Ìœ” Ìœ” Ìœ	”  Ìœ”! Ìœ”% Ìœ!”& Ìœ"”” Ì” Ì
+” Ì” Ì”” Ì” Ì” Ì”  Ì“”	 ÌŸ”
+ ÌŸ” ÌŸ–” Ì¡” Ì¡” Ì¡” Ì¡” Ì¡” Ì¡’” Ì£” Ì£’” Ì¤” Ì¤š” Ì¥” Ì¥” Ì¥” Ì¥”( Ì¥"”) Ì¥#”* Ì¥$”/ Ì¥1”1 Ì¥3”3 Ì¥5•” Ì¦” Ì¦”  Ì¦”% Ì¦”& Ì¦–” Ì§” Ì§” Ì§” Ì§” Ì§” Ì§”” Ì¨” Ì¨” Ì¨” Ì¨	’” Ìª” Ìª—” Ì«” Ì«
+” Ì«”$ Ì«”% Ì«”) Ì«#”* Ì«$”” Ì¬” Ì¬” Ì¬”! Ì¬”” Ì­” Ì­” Ì­”% Ì­“” Ì®” Ì®” Ì®	”” Ì°” Ì°” Ì°”  Ì°‘”	 Ì±”” Ì±” Ì±” Ì±” Ì±Ü ” Ì²” Ì²” Ì²”! Ì²”& Ì² ”2 Ì²,”7 Ì²1”8 Ì²2”9 Ì²3”: Ì²4”? Ì²9”Ì@ Ì²:”ÌG Ì²ÌA”ÌH Ì²ÌB”ÌI Ì²ÌC”ÌJ Ì²ÌD”ÌP Ì²ÌJ”ÌQ Ì²ÌK”ÌV Ì²ÌP”ÌW Ì²ÌQ”ÌX Ì²ÌRš” Ì³” Ì³” Ì³” Ì³” Ì³”# Ì³”% Ì³”1 Ì³+”2 Ì³,”3 Ì³-š” Ì´” Ì´” Ì´” Ì´” Ì´”' Ì´!”3 Ì´-”5 Ì´/”6 Ì´0”7 Ì´1‘”	 Ìµ’” Ì¶” Ì¶‘” Ì¸‘” Ìº–” Ì»”	 Ì»”
+ Ì»” Ì»” Ì»”! Ì»'–” Ì¼” Ì¼” Ì¼” Ì¼” Ì¼” Ì¼œ” Ì½” Ì½
+” Ì½” Ì½”$ Ì½ ”% Ì½!”0 Ì½,”2 Ì½.”3 Ì½/”8 Ì½<”: Ì½>”< Ì½Ì@•” Ì¾” Ì¾” Ì¾”! Ì¾”" Ì¾”” Ì¿”	 Ì¿”
+ Ì¿” Ì¿”” ÌÀ” ÌÀ” ÌÀ” ÌÀ’” ÌÁ” ÌÁ‘” ÌÃ‘” ÌÆ–” ÌÇ
+”	 ÌÇ”
+ ÌÇ” ÌÇ!” ÌÇ"”# ÌÇÌB’” ÌÈ” ÌÈ–” ÌÉ” ÌÉ
+” ÌÉ” ÌÉ$” ÌÉ&” ÌÉ'™” ÌÊ” ÌÊ	” ÌÊ” ÌÊ” ÌÊ” ÌÊ” ÌÊ”2 ÌÊ.”4 ÌÊ0•” ÌË” ÌË” ÌË” ÌË” ÌË–” ÌÌ” ÌÌ” ÌÌ” ÌÌ” ÌÌ” ÌÌ–” ÌÍ” ÌÍ” ÌÍ” ÌÍ” ÌÍ”$ ÌÍ“” ÌÎ” ÌÎ” ÌÎ	‘”	 ÌÏ’” ÌÑ” ÌÑ”” ÌÒ” ÌÒ
+” ÌÒ” ÌÒ%–” ÌÓ” ÌÓ” ÌÓ” ÌÓ” ÌÓ” ÌÓ”” ÌÔ” ÌÔ” ÌÔ” ÌÔ”” ÌÕ” ÌÕ” ÌÕ” ÌÕ’” ÌÖ”0 ÌÖ*’”	 Ì×”
+ Ì×™” ÌÙ” ÌÙ
+” ÌÙ” ÌÙ”  ÌÙ”! ÌÙ”+ ÌÙ'”- ÌÙ)”. ÌÙ*’” ÌÛ” ÌÛ” ÌÜ” ÌÜ” ÌÜ” ÌÜ”# ÌÜ”. ÌÜ(”/ ÌÜ)”6 ÌÜ0”7 ÌÜ1”; ÌÜ5”< ÌÜ6”ÌC ÌÜ=”ÌE ÌÜ?˜” Ìİ” Ìİ” Ìİ” Ìİ” Ìİ”* Ìİ"”+ Ìİ#”/ Ìİ'“” ÌŞ” ÌŞ” ÌŞ–” Ìß
+” Ìß” Ìß”# Ìß”$ Ìß”* Ìß ”” Ìà
+”" Ìà”$ Ìà”6 Ìà,‘” Ìá	™” Ìâ” Ìâ” Ìâ” Ìâ”  Ìâ”) Ìâ!”* Ìâ"”5 Ìâ-”6 Ìâ.”” Ìã” Ìã”  Ìã”% Ìã”” Ìä” Ìä” Ìä”" Ìä“” Ìå” Ìå” Ìå	˜” Ìç” Ìç
+” Ìç” Ìç”% Ìç”* Ìç$”- Ìç'”/ Ìç)œ” Ìè” Ìè” Ìè”" Ìè”( Ìè ”0 Ìè(”1 Ìè)”7 Ìè/”8 Ìè0”Ì@ Ìè8”ÌB Ìè:”ÌC Ìè;š” Ìé” Ìé” Ìé” Ìé” Ìé”- Ìé%”/ Ìé'”8 Ìé0”9 Ìé1”: Ìé2œ” Ìê” Ìê” Ìê” Ìê” Ìê”& Ìê”( Ìê ”, Ìê$”- Ìê%”4 Ìê,”5 Ìê-”6 Ìê.Ÿ” Ìë” Ìë” Ìë” Ìë” Ìë”$ Ìë”& Ìë”* Ìë"”+ Ìë#”4 Ìë,”5 Ìë-”Ì@ Ìë8”ÌA Ìë9”ÌB Ìë:”ÌC Ìë;” Ìì” Ìì” Ìì” Ìì”  Ìì”5 Ìì-”= Ìì5”> Ìì6”ÌJ ÌìÌB”ÌT ÌìÌL”Ì] ÌìÌU”Ì_ ÌìÌW”Ì` ÌìÌX”Ìa ÌìÌY‘” Ìíœ” Ìï” Ìï” Ìï” Ìï”! Ìï”) Ìï#”* Ìï$”0 Ìï*”1 Ìï+”9 Ìï3”; Ìï5”< Ìï6œ” Ìğ” Ìğ” Ìğ” Ìğ” Ìğ”) Ìğ#”+ Ìğ%”3 Ìğ-”4 Ìğ.”Ì@ Ìğ:”ÌA Ìğ;”ÌB Ìğ<Ü ” Ìñ” Ìñ” Ìñ” Ìñ” Ìñ”( Ìñ"”* Ìñ$”0 Ìñ*”1 Ìñ+”: Ìñ4”; Ìñ5”< Ìñ6”> Ìñ8”ÌA Ìñ;”ÌB Ìñ<”ÌC Ìñ=”ÌD Ìñ>”ÌE Ìñ?”ÌT ÌñÌN’” Ìó” Ìó’” Ìô” Ìô
+›” Ìõ” Ìõ” Ìõ” Ìõ#”! Ìõ'”" Ìõ(”' Ìõ-”( Ìõ.”. Ìõ4”/ ÌõÌE”0 ÌõÌF”” Ìö” Ìö” Ìö”" Ìö0˜” Ì÷
+” Ì÷”  Ì÷”! Ì÷”" Ì÷”& Ì÷”' Ì÷”. Ì÷$š” Ìø
+”! Ìø”# Ìø”' Ìø”( Ìø”/ Ìø%”1 Ìø'”7 Ìø-”; Ìø1”< Ìø2” Ìù
+” Ìù”  Ìù”! Ìù”" Ìù”& Ìù”' Ìù”. Ìù$”0 Ìù&”1 Ìù'”2 Ìù(”3 Ìù)”5 Ìù+”< Ìù2Ü ” Ìú
+” Ìú”  Ìú”! Ìú”" Ìú”& Ìú”' Ìú”. Ìú$”0 Ìú&”1 Ìú'”2 Ìú(”3 Ìú)”5 Ìú+”< Ìú2”> Ìú4”ÌE Ìú;’” Ìû	” Ìû
+Ÿ” Ìü” Ìü” Ìü” Ìü” Ìü”( Ìü ”* Ìü"”. Ìü&”/ Ìü'”8 Ìü0”9 Ìü1”ÌB Ìü:”ÌC Ìü;”ÌD Ìü<”ÌE Ìü=Ü ” Ìş” Ìş” Ìş” Ìş”  Ìş”$ Ìş”( Ìş ”) Ìş!”0 Ìş(”1 Ìş)”7 Ìş/”: Ìş2”; Ìş3”? Ìş7”ÌC Ìş;”ÌD Ìş<”ÌK ÌşÌC”ÌL ÌşÌD”ÌM ÌşÌE”ÌN ÌşÌF”ÌO ÌşÌG”ÌV ÌşÌN”ÌX ÌşÌP”Ì_ ÌşÌW”Ìa ÌşÌY’” Ìÿ
+” ÌÿŸ” Í 
+” Í ”% Í ”( Í ”, Í "”- Í #”4 Í *”5 Í +”6 Í ,”7 Í -”8 Í .”? Í 5”Ì@ Í 6”ÌG Í =”ÌH Í >œ” Í
+” Í” Í”  Í”! Í”0 Í&”2 Í(”= Í3”> Í4”ÌD Í:”ÌE Í;”ÌF Í<œ” Í
+” Í” Í”$ Í”( Í”3 Í)”4 Í*”8 Í.”: Í0”? Í5”ÌA Í7”ÌC Í9˜” Í” Í”" Í”' Í”( Í”4 Í(”5 Í)”6 Í*‘” Í’” Í
+”) Íœ” Í
+” Í” Í”  Í”! Í”1 Í'”3 Í)”> Í4”? Í5”ÌE Í;”ÌF Í<”ÌG Í=˜” Í	
+” Í	”# Í	”$ Í	”* Í	 ”- Í	#”/ Í	%”1 Í	'” Í
+” Í
+”( Í
+”+ Í
+”6 Í
+*”7 Í
++”Ì@ Í
+4”ÌA Í
+5”ÌB Í
+6”ÌD Í
+8”ÌF Í
+:”ÌG Í
+;”ÌH Í
+<œ” Í” Í”  Í”$ Í”% Í”2 Í&”4 Í(”> Í2”? Í3”ÌE Í9”ÌF Í:”ÌG Í;–” Í” Í”  Í”* Í”+ Í”, Í ’” Í”% Í›” Í” Í”. Í"”1 Í%”< Í0”= Í1”ÌF Í:”ÌG Í;”ÌI Í=”ÌJ Í>”ÌK Í?œ” Í” Í”  Í”$ Í”% Í”3 Í'”5 Í)”ÌE Í9”ÌF Í:”ÌL ÍÌ@”ÌM ÍÌA”ÌN ÍÌB›” Í” Í”" Í”# Í”7 Í+”8 Í,”ÌH Í<”ÌJ Í>”ÌQ ÍÌE”ÌR ÍÌF”ÌS ÍÌG‘” Í‘” Í’” Í”$ Í˜” Í” Í”  Í”$ Í”% Í”2 Í&”3 Í'”4 Í(–” Í” Í”  Í”+ Í”, Í ”- Í!‘” Í˜” Í
+” Í” Í”  Í”! Í”) Í”* Í ”+ Í!‘” Í	‘” Í’” Í
+” Í”” Í
+” Í”& Í”) Í0˜” Í”" Í”$ Í”% Í”& Í”* Í”+ Í”2 Í&š” Í”% Í”' Í”+ Í”, Í ”3 Í'”5 Í)”; Í/”? Í3”Ì@ Í4Ü #” Í”# Í”% Í”) Í”* Í”1 Í%”3 Í'”4 Í(”5 Í)”6 Í*”7 Í+”8 Í,”9 Í-”= Í1”> Í2”ÌG Í;”ÌH Í<”ÌL ÍÌ@”ÌM ÍÌA”ÌT ÍÌH”ÌU ÍÌI”ÌV ÍÌJ”ÌW ÍÌK”ÌX ÍÌL”ÌY ÍÌM”Ìb ÍÌV”Ìc ÍÌW”Ìd ÍÌX”Ìf ÍÌZ”Ìi ÍÌ]”Ìj ÍÌ^”Ìk ÍÌ_”Ìl ÍÌ`”Ìm ÍÌa”Ìs ÍÌg’” Í” ÍŸ” Í
+” Í” Í”! Í”" Í”6 Í,”8 Í.”< Í2”= Í3”ÌF Í<”ÌG Í=”ÌS ÍÌI”ÌT ÍÌJ”ÌU ÍÌK”ÌV ÍÌLŸ” Í
+” Í” Í”# Í”$ Í”ÌL ÍÌB”ÌP ÍÌF”ÌQ ÍÌG”ÌZ ÍÌP”Ì[ ÍÌQ”Ìg ÍÌ]”Ìh ÍÌ^”Ìj ÍÌ`”Ìk ÍÌa”Ìl ÍÌb‘” Í 	‘” Í!”” Í!” Í!” Í!” Í!Ü ” Í"” Í"” Í"”! Í"”+ Í"#”7 Í"/”< Í"4”= Í"5”> Í"6”? Í"7”ÌI Í"ÌA”ÌJ Í"ÌB”ÌQ Í"ÌI”ÌR Í"ÌJ”ÌS Í"ÌK”ÌT Í"ÌL”ÌZ Í"ÌR”Ì[ Í"ÌS”Ìe Í"Ì]”Ìf Í"Ì^”Ìg Í"Ì_Ü ” Í#” Í#” Í#” Í#” Í#”, Í#$”. Í#&”4 Í#,”5 Í#-”> Í#6”? Í#7”Ì@ Í#8”ÌB Í#:”ÌF Í#>”ÌG Í#?”ÌH Í#Ì@”ÌI Í#ÌAš” Í$” Í$” Í$” Í$” Í$”' Í$”) Í$!”1 Í$)”2 Í$*”3 Í$+š” Í%” Í%” Í%” Í%”  Í%”3 Í%+”; Í%3”ÌM Í%ÌE”ÌN Í%ÌF”ÌO Í%ÌG‘” Í&‘”	 Í'”” Í'” Í'” Í'” Í'Ü ” Í(” Í(” Í(”! Í(”& Í( ”2 Í(,”7 Í(1”8 Í(2”9 Í(3”: Í(4”? Í(9”Ì@ Í(:”ÌG Í(ÌA”ÌH Í(ÌB”ÌI Í(ÌC”ÌJ Í(ÌD”ÌP Í(ÌJ”ÌQ Í(ÌK”ÌV Í(ÌP”ÌW Í(ÌQ”ÌX Í(ÌRš” Í)” Í)” Í)” Í)” Í)”) Í)#”+ Í)%”7 Í)1”8 Í)2”9 Í)3š” Í*” Í*” Í*” Í*” Í*”- Í*'”9 Í*3”; Í*5”< Í*6”= Í*7‘”	 Í+‘” Í+–” Í,” Í,” Í,” Í,”! Í,”" Í,‘”	 Í-’” Í.” Í.‘” Í0‘” Í2˜” Í3
+”	 Í3”
+ Í3” Í3$” Í4”& Í4”( Í5”/ Í5$œ” Í7” Í7” Í7” Í7” Í7”3 Í7/”5 Í71”< Í78”= Í79”ÌC Í7?”ÌD Í7Ì@”ÌE Í7ÌA’” Í8” Í8˜” Í9” Í9” Í9” Í9” Í9” Í9”  Í9”" Í9˜” Í:” Í:” Í:” Í:” Í:”& Í: ”' Í:!”( Í:"–” Í;” Í;” Í;” Í;” Í;” Í;˜” Í<” Í<” Í<” Í<” Í<”6 Í<0”7 Í<1”8 Í<2’” Í=” Í=‘”	 Í>’” Í@” Í@” ÍA” ÍA
+” ÍA” ÍA” ÍA” ÍA”# ÍA”$ ÍA ”+ ÍA'”, ÍA(”- ÍA)”. ÍA*”5 ÍA1˜” ÍB” ÍB
+” ÍB” ÍB” ÍB” ÍB” ÍB”, ÍB(Ü ” ÍC” ÍC” ÍC” ÍC” ÍC”  ÍC”" ÍC”' ÍC#”( ÍC$”. ÍC*”0 ÍC,”7 ÍC3”9 ÍC5”ÌB ÍC>”ÌC ÍC?”ÌD ÍCÌ@Ü ” ÍE” ÍE	” ÍE” ÍE” ÍE” ÍE” ÍE” ÍE” ÍE”! ÍE”" ÍE”( ÍE$”* ÍE&”+ ÍE'”/ ÍE+”8 ÍE4”: ÍE6Ü ” ÍF” ÍF” ÍF” ÍF” ÍF”  ÍF”% ÍF”& ÍF ”' ÍF!”) ÍF#”* ÍF$”- ÍF'”6 ÍF0”7 ÍF1”8 ÍF2”< ÍF6”= ÍF7”? ÍF9”Ì@ ÍF:”ÌA ÍF;Ü ” ÍG” ÍG” ÍG” ÍG” ÍG” ÍG”# ÍG”$ ÍG”) ÍG#”* ÍG$”+ ÍG%”. ÍG(”7 ÍG1”8 ÍG2”; ÍG5”< ÍG6”ÌE ÍG?”ÌG ÍGÌA”ÌL ÍGÌF”ÌM ÍGÌG”ÌS ÍGÌM”ÌT ÍGÌN”ÌU ÍGÌO–” ÍH” ÍH” ÍH” ÍH” ÍH” ÍH’” ÍI” ÍIš” ÍJ” ÍJ
+” ÍJ” ÍJ” ÍJ”  ÍJ”% ÍJ”& ÍJ ”, ÍJ&”. ÍJ(Ü ” ÍK” ÍK” ÍK”! ÍK”" ÍK ”# ÍK!”* ÍK4”, ÍK6”. ÍK8”/ ÍK9”9 ÍKÌC”: ÍKÌD”ÌA ÍKÌK”ÌC ÍKÌM”ÌE ÍKÌO”ÌF ÍKÌP”ÌG ÍKÌQ”ÌH ÍKÌR‘” ÍL‘”	 ÍM˜” ÍN” ÍN” ÍN” ÍN” ÍN”2 ÍN.”3 ÍN/”4 ÍN0’” ÍO” ÍO‘” ÍQ‘” ÍS”” ÍT
+”	 ÍT”
+ ÍT” ÍT–” ÍU” ÍU” ÍU” ÍU” ÍU” ÍUš” ÍV” ÍV
+” ÍV” ÍV”$ ÍV ”% ÍV!”& ÍV"”+ ÍV/”- ÍV1”/ ÍV3•” ÍW” ÍW” ÍW”! ÍW”" ÍW”” ÍX”	 ÍX”
+ ÍX” ÍX”” ÍY” ÍY” ÍY” ÍY’” ÍZ” ÍZ‘” Í\‘” Í^’” Í_” Í_•” Í`” Í`” Í`	”  Í`”# Í`‘” Ía”” Íb” Íb” Íb” Íb”” Íc” Íc” Íc”ÌR ÍcÌJ‘” Íd’”	 Íe”
+ Íe’” Íf” Íf‘” Íh‘” Íj’” Ík” Ík™” Íl” Íl” Íl” Íl” Íl” Íl”+ Íl'”, Íl(”- Íl)’” Ím” Ím‘” ÍnÔrH–§version¤file§sources®sourcesContent¥names¨mappingsÀ‘À‘ÀÜ ã‘”    ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”  	 ‘”  
+ ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”    ‘”  ! ‘”  " ‘”  # ‘”  $ ‘”  % ‘”  & ‘”  ' ‘”  ( ‘”  ) ‘”  * ‘”  + ‘”  , ‘”  - ‘”  . ‘”  / ‘”  0 ‘”  1 ‘”  2 ‘”  3 ‘”  4 ‘”  5 ‘”  6 ‘”  7 ‘”  8 ‘”  9 ‘”  : ‘”  ; ‘”  < ‘”  = ‘”  > ‘”  ? ‘”  Ì@ ‘”  ÌA ‘”  ÌB ‘”  ÌC ‘”  ÌD ‘”  ÌE ‘”  ÌF ‘”  ÌG ‘”  ÌH ‘”  ÌI ‘”  ÌJ ‘”  ÌK ‘”  ÌL ‘”  ÌM ‘”  ÌN ‘”  ÌO ‘”  ÌP ‘”  ÌQ ‘”  ÌR ‘”  ÌS ‘”  ÌT ‘”  ÌU ‘”  ÌV ‘”  ÌW ‘”  ÌX ‘”  ÌY ‘”  ÌZ ‘”  Ì[ ‘”  Ì\ ‘”  Ì] ‘”  Ì^ ‘”  Ì_ ‘”  Ì` ‘”  Ìa ‘”  Ìb ‘”  Ìc ‘”  Ìd ‘”  Ìe ‘”  Ìf ‘”  Ìg ‘”  Ìh ‘”  Ìi ‘”  Ìj ‘”  Ìk ‘”  Ìl ‘”  Ìm ‘”  Ìn ‘”  Ìo ‘”  Ìp ‘”  Ìq ‘”  Ìr ‘”  Ìs ‘”  Ìt ‘”  Ìu ‘”  Ìv ‘”  Ìw ‘”  Ìx ‘”  Ìy ‘”  Ìz ‘”  Ì{ ‘”  Ì| ‘”  Ì} ‘”  Ì~ ‘”  Ì ‘”  Ì€ ‘”  Ì ‘”  Ì‚ ‘”  Ìƒ ‘”  Ì„ ‘”  Ì… ‘”  Ì† ‘”  Ì‡ ‘”  Ìˆ ‘”  Ì‰ ‘”  ÌŠ ‘”  Ì‹ ‘”  ÌŒ ‘”  Ì ‘”  Ì ‘”  Ì ‘”  Ì ‘”  Ì‘ ‘”  Ì’ ‘”  Ì“ ‘”  Ì” ‘”  Ì• ‘”  Ì– ‘”  Ì— ‘”  Ì˜ ‘”  Ì™ ‘”  Ìš ‘”  Ì› ‘”  Ìœ ‘”  Ì ‘”  Ì ‘”  ÌŸ ‘”  Ì  ‘”  Ì¡ ‘”  Ì¢ ‘”  Ì£ ‘”  Ì¤ ‘”  Ì¥ ‘”  Ì¦ ‘”  Ì§ ‘”  Ì¨ ‘”  Ì© ‘”  Ìª ‘”  Ì« ‘”  Ì¬ ‘”  Ì­ ‘”  Ì® ‘”  Ì¯ ‘”  Ì° ‘”  Ì± ‘”  Ì² ‘”  Ì³ ‘”  Ì´ ‘”  Ìµ ‘”  Ì¶ ‘”  Ì· ‘”  Ì¸ ‘”  Ì¹ ‘”  Ìº ‘”  Ì» ‘”  Ì¼ ‘”  Ì½ ‘”  Ì¾ ‘”  Ì¿ ‘”  ÌÀ ‘”  ÌÁ ‘”  ÌÂ ‘”  ÌÃ ‘”  ÌÄ ‘”  ÌÅ ‘”  ÌÆ ‘”  ÌÇ ‘”  ÌÈ ‘”  ÌÉ ‘”  ÌÊ ‘”  ÌË ‘”  ÌÌ ‘”  ÌÍ ‘”  ÌÎ ‘”  ÌÏ ‘”  ÌĞ ‘”  ÌÑ ‘”  ÌÒ ‘”  ÌÓ ‘”  ÌÔ ‘”  ÌÕ ‘”  ÌÖ ‘”  Ì× ‘”  ÌØ ‘”  ÌÙ ‘”  ÌÚ ‘”  ÌÛ ‘”  ÌÜ ‘”  Ìİ ‘”  ÌŞ ‘”  Ìß ‘”  Ìà ‘”  Ìá ‘”  Ìâ ÔrI’§missing¦pluginÃ¦genAbcÂÔ  ÔrJ”²dynamicImportCache¹exportAllDeclarationCache»exportNamedDeclarationCache«importCache‘ÔrK–¤type¥start£end«declarationªspecifiers¦source¶ExportNamedDeclarationÌuÍ!GÔrL–¤type¥start£end¢idªsuperClass¤body°ClassDeclarationÌ|Í!GÔrM”¤type¥start£end¤nameªIdentifierÌ‚Ì«ChatServiceÀÔrN”¤type¥start£end¤body©ClassBodyÌÍ!G™ÔrO˜¤type¥start£end¦static¨computed£key¤kind¥value°MethodDefinitionÌ•Í:ÂÂMªIdentifierÌ•Ì «constructor«constructorÔrP™¤type¥start£end¢idªexpression©generator¥async¦params¤body²FunctionExpressionÌ Í:ÀÂÂÂN®BlockStatementÌ£Í:•ÔrQ”¤type¥start£endªexpression³ExpressionStatementÌ®ÌÓÔrR–¤type¥start£end¨operator¤left¥right´AssignmentExpressionÌ®ÌÒ¡=ÔrS—¤type¥start£end¦object¨property¨computed¨optional°MemberExpressionÌ®Ì¹ÔrT“¤type¥start£end®ThisExpressionÌ®Ì²MªIdentifierÌ³Ì¹¦apiKeyÂÂS°MemberExpressionÌ¼ÌÒMªIdentifierÌ¼ÌÅ©ConstantsMªIdentifierÌÆÌÒ¬MIMO_API_KEYÂÂQ³ExpressionStatementÌİÍR´AssignmentExpressionÌİÍ¡=S°MemberExpressionÌİÌéT®ThisExpressionÌİÌáMªIdentifierÌâÌé§baseUrlÂÂS°MemberExpressionÌìÍMªIdentifierÌìÌõ©ConstantsMªIdentifierÌöÍ¬MIMO_API_URLÂÂQ³ExpressionStatementÍÍ*R´AssignmentExpressionÍÍ)¡=S°MemberExpressionÍÍT®ThisExpressionÍÍMªIdentifierÍÍ¥modelÂÂÔrU•¤type¥start£end¥value£raw§LiteralÍÍ)­mimo-v2-flash¯'mimo-v2-flash'Q³ExpressionStatementÍ<ÍZR´AssignmentExpressionÍ<ÍY¡=S°MemberExpressionÍ<ÍTT®ThisExpressionÍ<Í@MªIdentifierÍAÍT³conversationHistoryÂÂÔrV”¤type¥start£end¨elements¯ArrayExpressionÍWÍYQ³ExpressionStatementÍxÍ3R´AssignmentExpressionÍxÍ2¡=S°MemberExpressionÍxÍT®ThisExpressionÍxÍ|MªIdentifierÍ}Í³conversationHistoryÂÂV¯ArrayExpressionÍ“Í2‘ÔrW”¤type¥start£endªproperties°ObjectExpressionÍ¢Í'’ÔrX™¤type¥start£end¦method©shorthand¨computed£key¥value¤kind¨PropertyÍµÍÃÂÂÂMªIdentifierÍµÍ¹¤roleU§LiteralÍ»ÍÃ¦system¨'system'¤initX¨PropertyÍÖÍÂÂÂMªIdentifierÍÖÍİ§contentU§LiteralÍßÍÙ¥ä½ æ˜¯è¾°åºåŠ©æ‰‹ï¼Œä¸€ä¸ªæ™ºèƒ½çš„ç”Ÿæ´»ç®¡ç†åŠ©æ‰‹ã€‚ä½ å¯ä»¥å¸®åŠ©ç”¨æˆ·ç®¡ç†ä»»åŠ¡ã€è®°è´¦ã€æä¾›å»ºè®®ç­‰ã€‚è¯·ç”¨å‹å¥½ã€ä¸“ä¸šçš„è¯­æ°”å›å¤ç”¨æˆ·ã€‚Ù§'ä½ æ˜¯è¾°åºåŠ©æ‰‹ï¼Œä¸€ä¸ªæ™ºèƒ½çš„ç”Ÿæ´»ç®¡ç†åŠ©æ‰‹ã€‚ä½ å¯ä»¥å¸®åŠ©ç”¨æˆ·ç®¡ç†ä»»åŠ¡ã€è®°è´¦ã€æä¾›å»ºè®®ç­‰ã€‚è¯·ç”¨å‹å¥½ã€ä¸“ä¸šçš„è¯­æ°”å›å¤ç”¨æˆ·ã€‚'¤initO°MethodDefinitionÍ@ÍëÃÂMªIdentifierÍGÍR«getInstance¦methodP²FunctionExpressionÍRÍëÀÂÂÂN®BlockStatementÍUÍë’ÔrY–¤type¥start£end¤testªconsequent©alternate«IfStatementÍ`Í¾ÔrZ–¤type¥start£end¨operator¦prefix¨argument¯UnaryExpressionÍdÍy¡!ÃS°MemberExpressionÍeÍyMªIdentifierÍeÍp«ChatServiceMªIdentifierÍqÍy¨instanceÂÂN®BlockStatementÍ{Í¾‘Q³ExpressionStatementÍŠÍ³R´AssignmentExpressionÍŠÍ²¡=S°MemberExpressionÍŠÍMªIdentifierÍŠÍ•«ChatServiceMªIdentifierÍ–Í¨instanceÂÂÔr[•¤type¥start£end¦callee©arguments­NewExpressionÍ¡Í²MªIdentifierÍ¥Í°«ChatServiceÀÔr\”¤type¥start£end¨argument¯ReturnStatementÍÈÍäS°MemberExpressionÍÏÍãMªIdentifierÍÏÍÚ«ChatServiceMªIdentifierÍÛÍã¨instanceÂÂO°MethodDefinitionÍÍãÂÂMªIdentifierÍ#Í4±sendMessageStream¦methodP²FunctionExpressionÍ4ÍãÀÂÂÃ’MªIdentifierÍ5Í@«userMessageMªIdentifierÍBÍI§onChunkN®BlockStatementÍKÍã”Y«IfStatementÍVÍ»Ôr]–¤type¥start£end¤left¨operator¥right±LogicalExpressionÍZÍ|Z¯UnaryExpressionÍZÍf¡!ÃS°MemberExpressionÍ[ÍfT®ThisExpressionÍ[Í_MªIdentifierÍ`Íf¦apiKeyÂÂ¢||]°BinaryExpressionÍjÍ|S°MemberExpressionÍjÍuT®ThisExpressionÍjÍnMªIdentifierÍoÍu¦apiKeyÂÂ£===U§LiteralÍzÍ| ¢''N®BlockStatementÍ~Í»‘\®ThrowStatementÍÍ°[­NewExpressionÍ“Í¯MªIdentifierÍ—Íœ¥Error‘U§LiteralÍÍ®µMIMO API Keyæœªè®¾ç½®·'MIMO API Keyæœªè®¾ç½®'ÀQ³ExpressionStatementÍİÍFÔr^–¤type¥start£end¦callee©arguments¨optional®CallExpressionÍİÍES°MemberExpressionÍİÍúS°MemberExpressionÍİÍõT®ThisExpressionÍİÍáMªIdentifierÍâÍõ³conversationHistoryÂÂMªIdentifierÍöÍú¤pushÂÂ‘W°ObjectExpressionÍûÍD’X¨PropertyÍ
+ÍÂÂÂMªIdentifierÍ
+Í¤roleU§LiteralÍÍ¤user¦'user'¤initX¨PropertyÍ%Í9ÂÂÂMªIdentifierÍ%Í,§contentMªIdentifierÍ.Í9«userMessage¤initÂÔr_•¤type¥start£end¬declarations¤kind³VariableDeclarationÍPÍf‘Ôr`•¤type¥start£end¢id¤init²VariableDeclaratorÍTÍeMªIdentifierÍTÍ`¬fullResponseU§LiteralÍcÍe ¢''£letÔra–¤type¥start£end¥block§handler©finalizer¬TryStatementÍpÍÜN®BlockStatementÍtÍğ“Q³ExpressionStatementÍ›Í\¯AwaitExpressionÍ›Í^®CallExpressionÍ¡ÍS°MemberExpressionÍ¡Í·T®ThisExpressionÍ¡Í¥MªIdentifierÍ¦Í·±callMimoAPIStreamÂÂ‘P·ArrowFunctionExpressionÍ¸ÍÀÂÂÂ‘MªIdentifierÍ¹Í¾¥chunkN®BlockStatementÍÃÍ’Q³ExpressionStatementÍÖÍìR´AssignmentExpressionÍÖÍë¢+=MªIdentifierÍÖÍâ¬fullResponseMªIdentifierÍæÍë¥chunkQ³ExpressionStatementÍşÍ^®CallExpressionÍşÍMªIdentifierÍşÍ§onChunk‘MªIdentifierÍÍ¥chunkÂÂQ³ExpressionStatementÍHÍÃ^®CallExpressionÍHÍÂS°MemberExpressionÍHÍeS°MemberExpressionÍHÍ`T®ThisExpressionÍHÍLMªIdentifierÍMÍ`³conversationHistoryÂÂMªIdentifierÍaÍe¤pushÂÂ‘W°ObjectExpressionÍfÍÁ’X¨PropertyÍyÍŠÂÂÂMªIdentifierÍyÍ}¤roleU§LiteralÍÍŠ©assistant«'assistant'¤initX¨PropertyÍÍ²ÂÂÂMªIdentifierÍÍ¤§contentMªIdentifierÍ¦Í²¬fullResponse¤initÂ\¯ReturnStatementÍÑÍåMªIdentifierÍØÍä¬fullResponseÔrb•¤type¥start£end¥param¤body«CatchClauseÍúÍÜMªIdentifierÍÍ¥errorN®BlockStatementÍÍÜ“_³VariableDeclarationÍÍc‘`²VariableDeclaratorÍÍbMªIdentifierÍÍ)¬errorMessageYµConditionalExpressionÍ,Íb]°BinaryExpressionÍ,ÍBMªIdentifierÍ,Í1¥errorªinstanceofMªIdentifierÍ=ÍB¥ErrorS°MemberExpressionÍEÍRMªIdentifierÍEÍJ¥errorMªIdentifierÍKÍR§messageÂÂ^®CallExpressionÍUÍbMªIdentifierÍUÍ[¦String‘MªIdentifierÍ\Ía¥errorÂ¥constQ³ExpressionStatementÍqÍ˜^®CallExpressionÍqÍ—S°MemberExpressionÍqÍ~MªIdentifierÍqÍx§consoleMªIdentifierÍyÍ~¥errorÂÂ’U§LiteralÍÍˆ³å‘é€æ¶ˆæ¯å¤±è´¥:µ'å‘é€æ¶ˆæ¯å¤±è´¥:'MªIdentifierÍŠÍ–¬errorMessageÂ\®ThrowStatementÍ¦ÍÑ[­NewExpressionÍ¬ÍĞMªIdentifierÍ°Íµ¥Error‘Ôrc•¤type¥start£end«expressions¦quasis¯TemplateLiteralÍ¶ÍÏ‘MªIdentifierÍÁÍÍ¬errorMessage’Ôrd•¤type¥start£end¥value¤tail¯TemplateElementÍ·Í¿Ôre’£raw¦cooked´å‘é€æ¶ˆæ¯å¤±è´¥: ´å‘é€æ¶ˆæ¯å¤±è´¥: Âd¯TemplateElementÍÎÍÎe  ÃÀO°MethodDefinitionÍÍìÂÂMªIdentifierÍÍ'«sendMessage¦methodP²FunctionExpressionÍ'ÍìÀÂÂÃ‘MªIdentifierÍ(Í3«userMessageN®BlockStatementÍ5Íì“_³VariableDeclarationÍ@ÍV‘`²VariableDeclaratorÍDÍUMªIdentifierÍDÍP¬fullResponseU§LiteralÍSÍU ¢''£letQ³ExpressionStatementÍ`ÍÇ\¯AwaitExpressionÍ`ÍÆ^®CallExpressionÍfÍÆS°MemberExpressionÍfÍ|T®ThisExpressionÍfÍjMªIdentifierÍkÍ|±sendMessageStreamÂÂ’MªIdentifierÍ}Íˆ«userMessageP·ArrowFunctionExpressionÍŠÍÅÀÂÂÂ‘MªIdentifierÍ‹Í¥chunkN®BlockStatementÍ•ÍÅ‘Q³ExpressionStatementÍ¤ÍºR´AssignmentExpressionÍ¤Í¹¢+=MªIdentifierÍ¤Í°¬fullResponseMªIdentifierÍ´Í¹¥chunkÂ\¯ReturnStatementÍÑÍåMªIdentifierÍØÍä¬fullResponseO°MethodDefinitionÍVÍ²ÂÂMªIdentifierÍ\Ím±callMimoAPIStream¦methodP²FunctionExpressionÍmÍ²ÀÂÂÃ‘MªIdentifierÍnÍu§onChunkN®BlockStatementÍwÍ²•_³VariableDeclarationÍ—Í«‘`²VariableDeclaratorÍÍªMªIdentifierÍÍ¥¨messagesV¯ArrayExpressionÍ¨Íª¥constÔrf—¤type¥start£end¥await¤left¥right¤body®ForOfStatementÍµÍ	bÂ_³VariableDeclarationÍºÍÃ‘`²VariableDeclaratorÍÀÍÃMªIdentifierÍÀÍÃ£msgÀ¥constS°MemberExpressionÍÇÍßT®ThisExpressionÍÇÍËMªIdentifierÍÌÍß³conversationHistoryÂÂN®BlockStatementÍáÍ	b‘Q³ExpressionStatementÍğÍ	W^®CallExpressionÍğÍ	VS°MemberExpressionÍğÍıMªIdentifierÍğÍø¨messagesMªIdentifierÍùÍı¤pushÂÂ‘W°ObjectExpressionÍşÍ	U’X¨PropertyÍ	Í	ÂÂÂMªIdentifierÍ	Í	¤roleS°MemberExpressionÍ	Í	MªIdentifierÍ	Í	£msgMªIdentifierÍ	Í	¤roleÂÂ¤initX¨PropertyÍ	2Í	FÂÂÂMªIdentifierÍ	2Í	9§contentS°MemberExpressionÍ	;Í	FMªIdentifierÍ	;Í	>£msgMªIdentifierÍ	?Í	F§contentÂÂ¤initÂ_³VariableDeclarationÍ	…Í
+7‘`²VariableDeclaratorÍ	‹Í
+6MªIdentifierÍ	‹Í	–«requestDataW°ObjectExpressionÍ	™Í
+6“X¨PropertyÍ	¨Í	¹ÂÂÂMªIdentifierÍ	¨Í	­¥modelS°MemberExpressionÍ	¯Í	¹T®ThisExpressionÍ	¯Í	³MªIdentifierÍ	´Í	¹¥modelÂÂ¤initX¨PropertyÍ	ÈÍ	ÚÂÂÂMªIdentifierÍ	ÈÍ	Ğ¨messagesMªIdentifierÍ	ÒÍ	Ú¨messages¤initX¨PropertyÍ	éÍ	ùÂÂÂMªIdentifierÍ	éÍ	ô«temperatureU§LiteralÍ	öÍ	ùË?æffffff£0.7¤init¥const_³VariableDeclarationÍ
+AÍ
+g‘`²VariableDeclaratorÍ
+GÍ
+fMªIdentifierÍ
+GÍ
+R«httpRequest^®CallExpressionÍ
+UÍ
+fS°MemberExpressionÍ
+UÍ
+dMªIdentifierÍ
+UÍ
+Y¤httpMªIdentifierÍ
+ZÍ
+dªcreateHttpÂÂÂ¥consta¬TryStatementÍ
+qÍ«N®BlockStatementÍ
+uÍq–_³VariableDeclarationÍ
+„Í‘`²VariableDeclaratorÍ
+ŠÍMªIdentifierÍ
+ŠÍ
+’¨response\¯AwaitExpressionÍ
+•Í^®CallExpressionÍ
+›ÍS°MemberExpressionÍ
+›Í
+®MªIdentifierÍ
+›Í
+¦«httpRequestMªIdentifierÍ
+§Í
+®§requestÂÂ’S°MemberExpressionÍ
+¯Í
+»T®ThisExpressionÍ
+¯Í
+³MªIdentifierÍ
+´Í
+»§baseUrlÂÂW°ObjectExpressionÍ
+½Í•X¨PropertyÍ
+ĞÍ
+ïÂÂÂMªIdentifierÍ
+ĞÍ
+Ö¦methodS°MemberExpressionÍ
+ØÍ
+ïS°MemberExpressionÍ
+ØÍ
+êMªIdentifierÍ
+ØÍ
+Ü¤httpMªIdentifierÍ
+İÍ
+ê­RequestMethodÂÂMªIdentifierÍ
+ëÍ
+ï¤POSTÂÂ¤initX¨PropertyÍÍƒÂÂÂMªIdentifierÍÍ¦headerW°ObjectExpressionÍ
+Íƒ’X¨PropertyÍ!Í7ÂÂÂU§LiteralÍ!Í*§api-key©'api-key'S°MemberExpressionÍ,Í7T®ThisExpressionÍ,Í0MªIdentifierÍ1Í7¦apiKeyÂÂ¤initX¨PropertyÍNÍpÂÂÂU§LiteralÍNÍ\¬Content-Type®'Content-Type'U§LiteralÍ^Íp°application/json²'application/json'¤init¤initX¨PropertyÍ–Í¼ÂÂÂMªIdentifierÍ–ÍŸ©extraData^®CallExpressionÍ¡Í¼S°MemberExpressionÍ¡Í¯MªIdentifierÍ¡Í¥¤JSONMªIdentifierÍ¦Í¯©stringifyÂÂ‘MªIdentifierÍ°Í»«requestDataÂ¤initX¨PropertyÍÏÍäÂÂÂMªIdentifierÍÏÍİ®connectTimeoutU§LiteralÍßÍäÍu0¥30000¤initX¨PropertyÍ÷Í	ÂÂÂMªIdentifierÍ÷Í«readTimeoutU§LiteralÍÍ	Íu0¥30000¤initÂ¥constY«IfStatementÍ(Í¼]°BinaryExpressionÍ,ÍIS°MemberExpressionÍ,ÍAMªIdentifierÍ,Í4¨responseMªIdentifierÍ5ÍA¬responseCodeÂÂ£!==U§LiteralÍFÍIÌÈ£200N®BlockStatementÍKÍ¼•_³VariableDeclarationÍ^Í‘‘`²VariableDeclaratorÍdÍMªIdentifierÍdÍm©errorText\¯AwaitExpressionÍpÍ^®CallExpressionÍvÍS°MemberExpressionÍvÍS°MemberExpressionÍvÍ…MªIdentifierÍvÍ~¨responseMªIdentifierÍÍ…¦resultÂÂMªIdentifierÍ†Í¨toStringÂÂÂ¥constQ³ExpressionStatementÍ£ÍÍ^®CallExpressionÍ£ÍÌS°MemberExpressionÍ£Í°MªIdentifierÍ£Íª§consoleMªIdentifierÍ«Í°¥errorÂÂ’U§LiteralÍ±ÍÀµMIMO APIé”™è¯¯å“åº”:·'MIMO APIé”™è¯¯å“åº”:'MªIdentifierÍÂÍË©errorTextÂQ³ExpressionStatementÍßÍ^®CallExpressionÍßÍS°MemberExpressionÍßÍìMªIdentifierÍßÍæ§consoleMªIdentifierÍçÍì¥errorÂÂ’U§LiteralÍíÍõªè¯·æ±‚URL:¬'è¯·æ±‚URL:'S°MemberExpressionÍ÷ÍT®ThisExpressionÍ÷ÍûMªIdentifierÍüÍ§baseUrlÂÂÂQ³ExpressionStatementÍÍJ^®CallExpressionÍÍIS°MemberExpressionÍÍ$MªIdentifierÍÍ§consoleMªIdentifierÍÍ$¥errorÂÂ’U§LiteralÍ%Í+ªè¯·æ±‚ä½“:¬'è¯·æ±‚ä½“:'^®CallExpressionÍ-ÍHS°MemberExpressionÍ-Í;MªIdentifierÍ-Í1¤JSONMªIdentifierÍ2Í;©stringifyÂÂ‘MªIdentifierÍ<ÍG«requestDataÂÂ\®ThrowStatementÍ\Í­[­NewExpressionÍbÍ¬MªIdentifierÍfÍk¥Error‘c¯TemplateLiteralÍlÍ«’S°MemberExpressionÍÍ–MªIdentifierÍÍ‰¨responseMªIdentifierÍŠÍ–¬responseCodeÂÂMªIdentifierÍ Í©©errorText“d¯TemplateElementÍmÍeÙ"MIMO APIè¯·æ±‚å¤±è´¥ï¼ŒçŠ¶æ€ç : Ù"MIMO APIè¯·æ±‚å¤±è´¥ï¼ŒçŠ¶æ€ç : Âd¯TemplateElementÍ—Íe±ï¼Œé”™è¯¯ä¿¡æ¯: ±ï¼Œé”™è¯¯ä¿¡æ¯: Âd¯TemplateElementÍªÍªe  ÃÀ_³VariableDeclarationÍÊÍú‘`²VariableDeclaratorÍĞÍùMªIdentifierÍĞÍÖ¦result\¯AwaitExpressionÍÙÍù^®CallExpressionÍßÍùS°MemberExpressionÍßÍ÷S°MemberExpressionÍßÍîMªIdentifierÍßÍç¨responseMªIdentifierÍèÍî¦resultÂÂMªIdentifierÍïÍ÷¨toStringÂÂÂ¥constQ³ExpressionStatementÍÍ>^®CallExpressionÍÍ=S°MemberExpressionÍÍMªIdentifierÍÍ§consoleMªIdentifierÍÍ¤infoÂÂ’U§LiteralÍÍ%¸MIMO APIå“åº”çŠ¶æ€ç :º'MIMO APIå“åº”çŠ¶æ€ç :'S°MemberExpressionÍ'Í<MªIdentifierÍ'Í/¨responseMªIdentifierÍ0Í<¬responseCodeÂÂÂQ³ExpressionStatementÍLÍ„^®CallExpressionÍLÍƒS°MemberExpressionÍLÍXMªIdentifierÍLÍS§consoleMªIdentifierÍTÍX¤infoÂÂ’U§LiteralÍYÍhµMIMO APIå“åº”å†…å®¹:·'MIMO APIå“åº”å†…å®¹:'^®CallExpressionÍjÍ‚S°MemberExpressionÍjÍzMªIdentifierÍjÍp¦resultMªIdentifierÍqÍz©substringÂÂ’U§LiteralÍ{Í| ¡0U§LiteralÍ~ÍÍô£500ÂÂa¬TryStatementÍ»ÍfN®BlockStatementÍ¿Íû”_³VariableDeclarationÍÒÍò‘`²VariableDeclaratorÍØÍñMªIdentifierÍØÍÜ¤data^®CallExpressionÍßÍñS°MemberExpressionÍßÍéMªIdentifierÍßÍã¤JSONMªIdentifierÍäÍé¥parseÂÂ‘MªIdentifierÍêÍğ¦resultÂ¥const_³VariableDeclarationÍÍ!‘`²VariableDeclaratorÍ
+Í MªIdentifierÍ
+Í©parseInfoW°ObjectExpressionÍÍ ”X¨PropertyÍ-ÍGÂÂÂMªIdentifierÍ-Í7ªhasChoicesZ¯UnaryExpressionÍ9ÍG¡!ÃZ¯UnaryExpressionÍ:ÍG¡!ÃS°MemberExpressionÍ;ÍGMªIdentifierÍ;Í?¤dataMªIdentifierÍ@ÍG§choicesÂÂ¤initX¨PropertyÍ^Í†ÂÂÂMªIdentifierÍ^Ík­choicesLength]±LogicalExpressionÍmÍ†Q¯ChainExpressionÍmÍS°MemberExpressionÍmÍS°MemberExpressionÍmÍyMªIdentifierÍmÍq¤dataMªIdentifierÍrÍy§choicesÂÂMªIdentifierÍ{Í¦lengthÂÃ¢||U§LiteralÍ…Í† ¡0¤initX¨PropertyÍÍÅÂÂÂMªIdentifierÍÍ§ªhasMessageZ¯UnaryExpressionÍ©ÍÅ¡!ÃZ¯UnaryExpressionÍªÍÅ¡!ÃQ¯ChainExpressionÍ«ÍÅS°MemberExpressionÍ«ÍÅS°MemberExpressionÍ«Í¼S°MemberExpressionÍ«Í·MªIdentifierÍ«Í¯¤dataMªIdentifierÍ°Í·§choicesÂÂU§LiteralÍºÍ» ¡0ÃÃMªIdentifierÍ¾ÍÅ§messageÂÃ¤initX¨PropertyÍÜÍÂÂÂMªIdentifierÍÜÍæªhasContentZ¯UnaryExpressionÍèÍ¡!ÃZ¯UnaryExpressionÍéÍ¡!ÃQ¯ChainExpressionÍêÍS°MemberExpressionÍêÍS°MemberExpressionÍêÍS°MemberExpressionÍêÍûS°MemberExpressionÍêÍöMªIdentifierÍêÍî¤dataMªIdentifierÍïÍö§choicesÂÂU§LiteralÍùÍú ¡0ÃÃMªIdentifierÍıÍ§messageÂÃMªIdentifierÍÍ§contentÂÃ¤init¥constQ³ExpressionStatementÍ3Íh^®CallExpressionÍ3ÍgS°MemberExpressionÍ3Í?MªIdentifierÍ3Í:§consoleMªIdentifierÍ;Í?¤infoÂÂ’U§LiteralÍ@ÍK¹è§£æå¾Œçš„æ•¸æ“šçµæ§‹:»'è§£æå¾Œçš„æ•¸æ“šçµæ§‹:'^®CallExpressionÍMÍfS°MemberExpressionÍMÍ[MªIdentifierÍMÍQ¤JSONMªIdentifierÍRÍ[©stringifyÂÂ‘MªIdentifierÍ\Íe©parseInfoÂÂY«IfStatementÍzÍì]±LogicalExpressionÍ~ÍÉ]±LogicalExpressionÍ~Í¥S°MemberExpressionÍ~ÍŠMªIdentifierÍ~Í‚¤dataMªIdentifierÍƒÍŠ§choicesÂÂ¢&&]°BinaryExpressionÍÍ¥S°MemberExpressionÍÍ¡S°MemberExpressionÍÍšMªIdentifierÍÍ’¤dataMªIdentifierÍ“Íš§choicesÂÂMªIdentifierÍ›Í¡¦lengthÂÂ¡>U§LiteralÍ¤Í¥ ¡0¢&&Q¯ChainExpressionÍ©ÍÉS°MemberExpressionÍ©ÍÉS°MemberExpressionÍ©ÍÀS°MemberExpressionÍ©Í¸S°MemberExpressionÍ©ÍµMªIdentifierÍ©Í­¤dataMªIdentifierÍ®Íµ§choicesÂÂU§LiteralÍ¶Í· ¡0ÃÂMªIdentifierÍ¹ÍÀ§messageÂÂMªIdentifierÍÂÍÉ§contentÂÃN®BlockStatementÍËÍ©–_³VariableDeclarationÍÍ5‘`²VariableDeclaratorÍÍ4MªIdentifierÍÍ«fullContentS°MemberExpressionÍÍ4S°MemberExpressionÍÍ,S°MemberExpressionÍÍ$S°MemberExpressionÍÍ!MªIdentifierÍÍ¤dataMªIdentifierÍÍ!§choicesÂÂU§LiteralÍ"Í# ¡0ÃÂMªIdentifierÍ%Í,§messageÂÂMªIdentifierÍ-Í4§contentÂÂ¥constQ³ExpressionStatementÍKÍ}^®CallExpressionÍKÍ|S°MemberExpressionÍKÍWMªIdentifierÍKÍR§consoleMªIdentifierÍSÍW¤infoÂÂ’U§LiteralÍXÍgÙ!è·å–åˆ°AIå“åº”ï¼Œå†…å®¹é•¿åº¦:Ù#'è·å–åˆ°AIå“åº”ï¼Œå†…å®¹é•¿åº¦:'S°MemberExpressionÍiÍ{MªIdentifierÍiÍt«fullContentMªIdentifierÍuÍ{¦lengthÂÂÂY«IfStatementÍ“Í]±LogicalExpressionÍ—ÍÀZ¯UnaryExpressionÍ—Í£¡!ÃMªIdentifierÍ˜Í£«fullContent¢||]°BinaryExpressionÍ§ÍÀ^®CallExpressionÍ§Í¹S°MemberExpressionÍ§Í·MªIdentifierÍ§Í²«fullContentMªIdentifierÍ³Í·¤trimÂÂÂ£===U§LiteralÍ¾ÍÀ ¢''N®BlockStatementÍÂÍ‘\®ThrowStatementÍİÍû[­NewExpressionÍãÍúMªIdentifierÍçÍì¥Error‘U§LiteralÍíÍù¸APIè¿”å›çš„å…§å®¹ç‚ºç©ºº'APIè¿”å›çš„å…§å®¹ç‚ºç©º'ÀQ³ExpressionStatementÍSÍ†^®CallExpressionÍSÍ…S°MemberExpressionÍSÍ_MªIdentifierÍSÍZ§consoleMªIdentifierÍ[Í_¤infoÂÂ’U§LiteralÍ`ÍpÙ(å‡†å¤‡å¼€å§‹æµå¼è¾“å‡ºï¼Œå†…å®¹é•¿åº¦:Ù*'å‡†å¤‡å¼€å§‹æµå¼è¾“å‡ºï¼Œå†…å®¹é•¿åº¦:'S°MemberExpressionÍrÍ„MªIdentifierÍrÍ}«fullContentMªIdentifierÍ~Í„¦lengthÂÂÂY«IfStatementÍœÍi]°BinaryExpressionÍ Í·S°MemberExpressionÍ Í²MªIdentifierÍ Í««fullContentMªIdentifierÍ¬Í²¦lengthÂÂ¡>U§LiteralÍµÍ·¢20N®BlockStatementÍ¹Í«–_³VariableDeclarationÍÔÍ‘`²VariableDeclaratorÍÚÍMªIdentifierÍÚÍäªfirstChunk^®CallExpressionÍçÍS°MemberExpressionÍçÍüMªIdentifierÍçÍò«fullContentMªIdentifierÍóÍü©substringÂÂ’U§LiteralÍıÍş ¡0U§LiteralÍ Í¢20Â¥constQ³ExpressionStatementÍÍM^®CallExpressionÍÍLS°MemberExpressionÍÍ*MªIdentifierÍÍ%§consoleMªIdentifierÍ&Í*¤infoÂÂ’U§LiteralÍ+Í8¿è¾“å‡ºç¬¬ä¸€æ‰¹å†…å®¹ï¼Œé•¿åº¦:Ù!'è¾“å‡ºç¬¬ä¸€æ‰¹å†…å®¹ï¼Œé•¿åº¦:'S°MemberExpressionÍ:ÍKMªIdentifierÍ:ÍDªfirstChunkMªIdentifierÍEÍK¦lengthÂÂÂQ³ExpressionStatementÍgÍ{^®CallExpressionÍgÍzMªIdentifierÍgÍn§onChunk‘MªIdentifierÍoÍyªfirstChunkÂ_³VariableDeclarationÍ¼Íï‘`²VariableDeclaratorÍÂÍîMªIdentifierÍÂÍÒ°remainingContent^®CallExpressionÍÕÍîS°MemberExpressionÍÕÍêMªIdentifierÍÕÍà«fullContentMªIdentifierÍáÍê©substringÂÂ‘U§LiteralÍëÍí¢20Â¥constQ³ExpressionStatementÍ	Í?^®CallExpressionÍ	Í>S°MemberExpressionÍ	ÍMªIdentifierÍ	Í§consoleMªIdentifierÍÍ¤infoÂÂ’U§LiteralÍÍ$Ù"å‡†å¤‡è¾“å‡ºå‰©ä½™å†…å®¹ï¼Œé•¿åº¦:Ù$'å‡†å¤‡è¾“å‡ºå‰©ä½™å†…å®¹ï¼Œé•¿åº¦:'S°MemberExpressionÍ&Í=MªIdentifierÍ&Í6°remainingContentMªIdentifierÍ7Í=¦lengthÂÂÂQ³ExpressionStatementÍYÍ”\¯AwaitExpressionÍYÍ“^®CallExpressionÍ_Í“S°MemberExpressionÍ_ÍxT®ThisExpressionÍ_ÍcMªIdentifierÍdÍx´simulateStreamOutputÂÂ’MªIdentifierÍyÍ‰°remainingContentMªIdentifierÍ‹Í’§onChunkÂN®BlockStatementÍÆÍi’Q³ExpressionStatementÍÍ#^®CallExpressionÍÍ"S°MemberExpressionÍÍMªIdentifierÍÍ§consoleMªIdentifierÍÍ¤infoÂÂ‘U§LiteralÍÍ!Ù!å†…å®¹è¾ƒçŸ­ï¼Œç›´æ¥è¾“å‡ºå…¨éƒ¨Ù#'å†…å®¹è¾ƒçŸ­ï¼Œç›´æ¥è¾“å‡ºå…¨éƒ¨'ÂQ³ExpressionStatementÍ=ÍR^®CallExpressionÍ=ÍQMªIdentifierÍ=ÍD§onChunk‘MªIdentifierÍEÍP«fullContentÂQ³ExpressionStatementÍÍ–^®CallExpressionÍÍ•S°MemberExpressionÍÍ‹MªIdentifierÍÍ†§consoleMªIdentifierÍ‡Í‹¤infoÂÂ‘U§LiteralÍŒÍ”²æµå¼è¾“å‡ºå®Œæˆ´'æµå¼è¾“å‡ºå®Œæˆ'ÂN®BlockStatementÍÀÍì“_³VariableDeclarationÍøÍ‘`²VariableDeclaratorÍşÍMªIdentifierÍşÍ
+¬errorDetailsW°ObjectExpressionÍÍ“X¨PropertyÍ(ÍBÂÂÂMªIdentifierÍ(Í2ªhasChoicesZ¯UnaryExpressionÍ4ÍB¡!ÃZ¯UnaryExpressionÍ5ÍB¡!ÃS°MemberExpressionÍ6ÍBMªIdentifierÍ6Í:¤dataMªIdentifierÍ;ÍB§choicesÂÂ¤initX¨PropertyÍ]Í…ÂÂÂMªIdentifierÍ]Íj­choicesLength]±LogicalExpressionÍlÍ…Q¯ChainExpressionÍlÍ€S°MemberExpressionÍlÍ€S°MemberExpressionÍlÍxMªIdentifierÍlÍp¤dataMªIdentifierÍqÍx§choicesÂÂMªIdentifierÍzÍ€¦lengthÂÃ¢||U§LiteralÍ„Í… ¡0¤initX¨PropertyÍ ÍûÂÂÂMªIdentifierÍ Í««firstChoiceYµConditionalExpressionÍ­ÍûQ¯ChainExpressionÍ­Í¾S°MemberExpressionÍ­Í¾S°MemberExpressionÍ­Í¹MªIdentifierÍ­Í±¤dataMªIdentifierÍ²Í¹§choicesÂÂU§LiteralÍ¼Í½ ¡0ÃÃ^®CallExpressionÍÁÍòS°MemberExpressionÍÁÍê^®CallExpressionÍÁÍàS°MemberExpressionÍÁÍÏMªIdentifierÍÁÍÅ¤JSONMªIdentifierÍÆÍÏ©stringifyÂÂ‘S°MemberExpressionÍĞÍßS°MemberExpressionÍĞÍÜMªIdentifierÍĞÍÔ¤dataMªIdentifierÍÕÍÜ§choicesÂÂU§LiteralÍİÍŞ ¡0ÃÂÂMªIdentifierÍáÍê©substringÂÂ’U§LiteralÍëÍì ¡0U§LiteralÍîÍñÌÈ£200ÂU§LiteralÍõÍû¤null¦'null'¤init¥constQ³ExpressionStatementÍ)Ík^®CallExpressionÍ)ÍjS°MemberExpressionÍ)Í6MªIdentifierÍ)Í0§consoleMªIdentifierÍ1Í6¥errorÂÂ’U§LiteralÍ7ÍKÙ$MIMO APIè¿”å›æ ¼å¼éŒ¯èª¤ï¼Œè©³æƒ…:Ù&'MIMO APIè¿”å›æ ¼å¼éŒ¯èª¤ï¼Œè©³æƒ…:'^®CallExpressionÍMÍiS°MemberExpressionÍMÍ[MªIdentifierÍMÍQ¤JSONMªIdentifierÍRÍ[©stringifyÂÂ‘MªIdentifierÍ\Íh¬errorDetailsÂÂ\®ThrowStatementÍÍÙ[­NewExpressionÍ‡ÍØMªIdentifierÍ‹Í¥Error‘c¯TemplateLiteralÍ‘Í×‘^®CallExpressionÍ¹ÍÕS°MemberExpressionÍ¹ÍÇMªIdentifierÍ¹Í½¤JSONMªIdentifierÍ¾ÍÇ©stringifyÂÂ‘MªIdentifierÍÈÍÔ¬errorDetailsÂ’d¯TemplateElementÍ’Í·eÙMMIMO APIè¿”å›æ ¼å¼é”™è¯¯ï¼šchoicesä¸ºç©ºæˆ–æ ¼å¼ä¸æ­£ç¡®ã€‚éŸ¿æ‡‰æ•¸æ“š: ÙMMIMO APIè¿”å›æ ¼å¼é”™è¯¯ï¼šchoicesä¸ºç©ºæˆ–æ ¼å¼ä¸æ­£ç¡®ã€‚éŸ¿æ‡‰æ•¸æ“š: Âd¯TemplateElementÍÖÍÖe  Ãb«CatchClauseÍ	ÍfMªIdentifierÍÍªparseErrorN®BlockStatementÍÍf”_³VariableDeclarationÍ/Í†‘`²VariableDeclaratorÍ5Í…MªIdentifierÍ5Í=¨errorMsgYµConditionalExpressionÍ@Í…]°BinaryExpressionÍ@Í[MªIdentifierÍ@ÍJªparseErrorªinstanceofMªIdentifierÍVÍ[¥ErrorS°MemberExpressionÍ^ÍpMªIdentifierÍ^ÍhªparseErrorMªIdentifierÍiÍp§messageÂÂ^®CallExpressionÍsÍ…MªIdentifierÍsÍy¦String‘MªIdentifierÍzÍ„ªparseErrorÂ¥constQ³ExpressionStatementÍ˜ÍÑ^®CallExpressionÍ˜ÍĞS°MemberExpressionÍ˜Í¥MªIdentifierÍ˜ÍŸ§consoleMªIdentifierÍ Í¥¥errorÂÂ’U§LiteralÍ¦Í´Ù"è§£æéŸ¿æ‡‰å¤±æ•—ï¼ŒåŸå§‹éŸ¿æ‡‰:Ù$'è§£æéŸ¿æ‡‰å¤±æ•—ï¼ŒåŸå§‹éŸ¿æ‡‰:'^®CallExpressionÍ¶ÍÏS°MemberExpressionÍ¶ÍÆMªIdentifierÍ¶Í¼¦resultMªIdentifierÍ½ÍÆ©substringÂÂ’U§LiteralÍÇÍÈ ¡0U§LiteralÍÊÍÎÍè¤1000ÂÂQ³ExpressionStatementÍãÍ^®CallExpressionÍãÍS°MemberExpressionÍãÍğMªIdentifierÍãÍê§consoleMªIdentifierÍëÍğ¥errorÂÂ’U§LiteralÍñÍú³è§£æéŒ¯èª¤è©³æƒ…:µ'è§£æéŒ¯èª¤è©³æƒ…:'MªIdentifierÍüÍ¨errorMsgÂ\®ThrowStatementÍÍW[­NewExpressionÍÍVMªIdentifierÍ"Í'¥Error‘c¯TemplateLiteralÍ(ÍU‘MªIdentifierÍ;ÍC¨errorMsg’d¯TemplateElementÍ)Í9e¼è§£æMIMO APIå“åº”å¤±è´¥: ¼è§£æMIMO APIå“åº”å¤±è´¥: Âd¯TemplateElementÍDÍTeÙ*ã€‚è«‹æª¢æŸ¥APIéŸ¿æ‡‰æ ¼å¼æ˜¯å¦æ­£ç¢ºã€‚Ù*ã€‚è«‹æª¢æŸ¥APIéŸ¿æ‡‰æ ¼å¼æ˜¯å¦æ­£ç¢ºã€‚ÃÀb«CatchClauseÍ{ÍiMªIdentifierÍ‚Í‡¥errorN®BlockStatementÍ‰Íi“_³VariableDeclarationÍ˜Íä‘`²VariableDeclaratorÍÍãMªIdentifierÍÍª¬errorMessageYµConditionalExpressionÍ­Íã]°BinaryExpressionÍ­ÍÃMªIdentifierÍ­Í²¥errorªinstanceofMªIdentifierÍ¾ÍÃ¥ErrorS°MemberExpressionÍÆÍÓMªIdentifierÍÆÍË¥errorMªIdentifierÍÌÍÓ§messageÂÂ^®CallExpressionÍÖÍãMªIdentifierÍÖÍÜ¦String‘MªIdentifierÍİÍâ¥errorÂ¥constQ³ExpressionStatementÍòÍ^®CallExpressionÍòÍS°MemberExpressionÍòÍÿMªIdentifierÍòÍù§consoleMªIdentifierÍúÍÿ¥errorÂÂ’U§LiteralÍ Íµè°ƒç”¨MIMO APIå¤±è´¥:·'è°ƒç”¨MIMO APIå¤±è´¥:'MªIdentifierÍÍ¬errorMessageÂ\®ThrowStatementÍ-Í^[­NewExpressionÍ3Í]MªIdentifierÍ7Í<¥Error‘c¯TemplateLiteralÍ=Í\‘MªIdentifierÍNÍZ¬errorMessage’d¯TemplateElementÍ>ÍLe¶MIMO APIè°ƒç”¨å¤±è´¥: ¶MIMO APIè°ƒç”¨å¤±è´¥: Âd¯TemplateElementÍ[Í[e  ÃN®BlockStatementÍ{Í«‘Q³ExpressionStatementÍŠÍ ^®CallExpressionÍŠÍŸS°MemberExpressionÍŠÍMªIdentifierÍŠÍ•«httpRequestMªIdentifierÍ–Í§destroyÂÂÂO°MethodDefinitionÍäÍâÂÂMªIdentifierÍêÍş´simulateStreamOutput¦methodP²FunctionExpressionÍşÍâÀÂÂÃ’MªIdentifierÍÿÍ§contentMªIdentifierÍÍ§onChunkN®BlockStatementÍÍâ—Q³ExpressionStatementÍÍY^®CallExpressionÍÍXS°MemberExpressionÍÍ(MªIdentifierÍÍ#§consoleMªIdentifierÍ$Í(¤infoÂÂ’U§LiteralÍ)ÍGÙ*simulateStreamOutputå¼€å§‹ï¼Œå†…å®¹é•¿åº¦:Ù,'simulateStreamOutputå¼€å§‹ï¼Œå†…å®¹é•¿åº¦:'S°MemberExpressionÍIÍWMªIdentifierÍIÍP§contentMªIdentifierÍQÍW¦lengthÂÂÂY«IfStatementÍ~Í<]°BinaryExpressionÍ‚Í–S°MemberExpressionÍ‚ÍMªIdentifierÍ‚Í‰§contentMªIdentifierÍŠÍ¦lengthÂÂ¢<=U§LiteralÍ”Í–2¢50N®BlockStatementÍ˜Í<”Q³ExpressionStatementÍ§ÍÃ^®CallExpressionÍ§ÍÂS°MemberExpressionÍ§Í³MªIdentifierÍ§Í®§consoleMªIdentifierÍ¯Í³¤infoÂÂ‘U§LiteralÍ´ÍÁÙ!å†…å®¹è¾ƒçŸ­ï¼Œç›´æ¥è¾“å‡ºå…¨éƒ¨Ù#'å†…å®¹è¾ƒçŸ­ï¼Œç›´æ¥è¾“å‡ºå…¨éƒ¨'ÂQ³ExpressionStatementÍÑÍâ^®CallExpressionÍÑÍáMªIdentifierÍÑÍØ§onChunk‘MªIdentifierÍÙÍà§contentÂQ³ExpressionStatementÍğÍ^®CallExpressionÍğÍS°MemberExpressionÍğÍüMªIdentifierÍğÍ÷§consoleMªIdentifierÍøÍü¤infoÂÂ‘U§LiteralÍıÍÙ)simulateStreamOutputå®Œæˆï¼ˆçŸ­å†…å®¹ï¼‰Ù+'simulateStreamOutputå®Œæˆï¼ˆçŸ­å†…å®¹ï¼‰'Â\¯ReturnStatementÍ*Í1ÀÀ_³VariableDeclarationÍ_Í„‘`²VariableDeclaratorÍeÍƒMªIdentifierÍeÍj¥words^®CallExpressionÍmÍƒS°MemberExpressionÍmÍzMªIdentifierÍmÍt§contentMªIdentifierÍuÍz¥splitÂÂ‘Ôrg–¤type¥start£end¥value£raw¥regex§LiteralÍ{Í‚’¥(\s+) §/(\s+)/Ôrh’§pattern¥flags¥(\s+) Â¥const_³VariableDeclarationÍ–Íª‘`²VariableDeclaratorÍœÍ©MªIdentifierÍœÍ¥©chunkSizeU§LiteralÍ¨Í©¡5¥constQ³ExpressionStatementÍÄÍ ^®CallExpressionÍÄÍÿS°MemberExpressionÍÄÍĞMªIdentifierÍÄÍË§consoleMªIdentifierÍÌÍĞ¤infoÂÂ”U§LiteralÍÑÍÜ¹åˆ†è¯å®Œæˆï¼Œæ€»è¯æ•°:»'åˆ†è¯å®Œæˆï¼Œæ€»è¯æ•°:'S°MemberExpressionÍŞÍêMªIdentifierÍŞÍã¥wordsMªIdentifierÍäÍê¦lengthÂÂU§LiteralÍìÍó­æ¯æ‰¹å¤§å°:¯'æ¯æ‰¹å¤§å°:'MªIdentifierÍõÍş©chunkSizeÂÔri—¤type¥start£end¤init¤test¦update¤body¬ForStatementÍ
+Í¥_³VariableDeclarationÍÍ‘`²VariableDeclaratorÍÍMªIdentifierÍÍ¡iU§LiteralÍÍ ¡0£let]°BinaryExpressionÍÍ*MªIdentifierÍÍ¡i¡<S°MemberExpressionÍÍ*MªIdentifierÍÍ#¥wordsMªIdentifierÍ$Í*¦lengthÂÂR´AssignmentExpressionÍ,Í:¢+=MªIdentifierÍ,Í-¡iMªIdentifierÍ1Í:©chunkSizeN®BlockStatementÍ<Í¥”_³VariableDeclarationÍKÍ€‘`²VariableDeclaratorÍQÍMªIdentifierÍQÍV¥chunk^®CallExpressionÍYÍS°MemberExpressionÍYÍ{^®CallExpressionÍYÍvS°MemberExpressionÍYÍdMªIdentifierÍYÍ^¥wordsMªIdentifierÍ_Íd¥sliceÂÂ’MªIdentifierÍeÍf¡i]°BinaryExpressionÍhÍuMªIdentifierÍhÍi¡i¡+MªIdentifierÍlÍu©chunkSizeÂMªIdentifierÍwÍ{¤joinÂÂ‘U§LiteralÍ|Í~ ¢''Â¥constQ³ExpressionStatementÍÍ×^®CallExpressionÍÍÖS°MemberExpressionÍÍšMªIdentifierÍÍ•§consoleMªIdentifierÍ–Íš¤infoÂÂ’c¯TemplateLiteralÍ›ÍÇ‘]°BinaryExpressionÍ¡Í¾^®CallExpressionÍ¡ÍºS°MemberExpressionÍ¡Í«MªIdentifierÍ¡Í¥¤MathMªIdentifierÍ¦Í«¥floorÂÂ‘]°BinaryExpressionÍ¬Í¹MªIdentifierÍ¬Í­¡i¡/MªIdentifierÍ°Í¹©chunkSizeÂ¡+U§LiteralÍ½Í¾¡1’d¯TemplateElementÍœÍŸe©è¾“å‡ºç¬¬©è¾“å‡ºç¬¬Âd¯TemplateElementÍ¿ÍÆe³æ‰¹å†…å®¹ï¼Œé•¿åº¦:³æ‰¹å†…å®¹ï¼Œé•¿åº¦:ÃS°MemberExpressionÍÉÍÕMªIdentifierÍÉÍÎ¥chunkMªIdentifierÍÏÍÕ¦lengthÂÂÂQ³ExpressionStatementÍåÍô^®CallExpressionÍåÍóMªIdentifierÍåÍì§onChunk‘MªIdentifierÍíÍò¥chunkÂY«IfStatementÍÍš]°BinaryExpressionÍ"Í>]°BinaryExpressionÍ"Í/MªIdentifierÍ"Í#¡i¡+MªIdentifierÍ&Í/©chunkSize¡<S°MemberExpressionÍ2Í>MªIdentifierÍ2Í7¥wordsMªIdentifierÍ8Í>¦lengthÂÂN®BlockStatementÍ@Íš‘Q³ExpressionStatementÍSÍ‹\¯AwaitExpressionÍSÍŠ[­NewExpressionÍYÍŠMªIdentifierÍ]Íd§Promise‘P·ArrowFunctionExpressionÍeÍ‰ÀÃÂÂ‘MªIdentifierÍfÍm§resolve^®CallExpressionÍrÍ‰MªIdentifierÍrÍ|ªsetTimeout’MªIdentifierÍ}Í„§resolveU§LiteralÍ†Íˆ¢20ÂÀQ³ExpressionStatementÍ¯ÍÛ^®CallExpressionÍ¯ÍÚS°MemberExpressionÍ¯Í»MªIdentifierÍ¯Í¶§consoleMªIdentifierÍ·Í»¤infoÂÂ‘U§LiteralÍ¼ÍÙÙ)simulateStreamOutputå®Œæˆï¼ˆé•¿å†…å®¹ï¼‰Ù+'simulateStreamOutputå®Œæˆï¼ˆé•¿å†…å®¹ï¼‰'ÂO°MethodDefinitionÍÍÖÂÂMªIdentifierÍÍ)«callMimoAPI¦methodP²FunctionExpressionÍ)ÍÖÀÂÂÃN®BlockStatementÍ,ÍÖ“_³VariableDeclarationÍ7ÍM‘`²VariableDeclaratorÍ;ÍLMªIdentifierÍ;ÍG¬fullResponseU§LiteralÍJÍL ¢''£letQ³ExpressionStatementÍWÍ±\¯AwaitExpressionÍWÍ°^®CallExpressionÍ]Í°S°MemberExpressionÍ]ÍsT®ThisExpressionÍ]ÍaMªIdentifierÍbÍs±callMimoAPIStreamÂÂ‘P·ArrowFunctionExpressionÍtÍ¯ÀÂÂÂ‘MªIdentifierÍuÍz¥chunkN®BlockStatementÍÍ¯‘Q³ExpressionStatementÍÍ¤R´AssignmentExpressionÍÍ£¢+=MªIdentifierÍÍš¬fullResponseMªIdentifierÍÍ£¥chunkÂ\¯ReturnStatementÍ»ÍÏMªIdentifierÍÂÍÎ¬fullResponseO°MethodDefinitionÍıÍ ÙÂÂMªIdentifierÍıÍ 	¬clearHistory¦methodP²FunctionExpressionÍ 	Í ÙÀÂÂÂN®BlockStatementÍ Í Ù‘Q³ExpressionStatementÍ Í ÒR´AssignmentExpressionÍ Í Ñ¡=S°MemberExpressionÍ Í /T®ThisExpressionÍ Í MªIdentifierÍ Í /³conversationHistoryÂÂV¯ArrayExpressionÍ 2Í Ñ‘W°ObjectExpressionÍ AÍ Æ’X¨PropertyÍ TÍ bÂÂÂMªIdentifierÍ TÍ X¤roleU§LiteralÍ ZÍ b¦system¨'system'¤initX¨PropertyÍ uÍ ·ÂÂÂMªIdentifierÍ uÍ |§contentU§LiteralÍ ~Í ·Ù¥ä½ æ˜¯è¾°åºåŠ©æ‰‹ï¼Œä¸€ä¸ªæ™ºèƒ½çš„ç”Ÿæ´»ç®¡ç†åŠ©æ‰‹ã€‚ä½ å¯ä»¥å¸®åŠ©ç”¨æˆ·ç®¡ç†ä»»åŠ¡ã€è®°è´¦ã€æä¾›å»ºè®®ç­‰ã€‚è¯·ç”¨å‹å¥½ã€ä¸“ä¸šçš„è¯­æ°”å›å¤ç”¨æˆ·ã€‚Ù§'ä½ æ˜¯è¾°åºåŠ©æ‰‹ï¼Œä¸€ä¸ªæ™ºèƒ½çš„ç”Ÿæ´»ç®¡ç†åŠ©æ‰‹ã€‚ä½ å¯ä»¥å¸®åŠ©ç”¨æˆ·ç®¡ç†ä»»åŠ¡ã€è®°è´¦ã€æä¾›å»ºè®®ç­‰ã€‚è¯·ç”¨å‹å¥½ã€ä¸“ä¸šçš„è¯­æ°”å›å¤ç”¨æˆ·ã€‚'¤initO°MethodDefinitionÍ! Í!DÂÂMªIdentifierÍ! Í!
+ªgetHistory¦methodP²FunctionExpressionÍ!
+Í!DÀÂÂÂN®BlockStatementÍ!Í!D‘\¯ReturnStatementÍ!Í!=V¯ArrayExpressionÍ!Í!<‘\­SpreadElementÍ! Í!;S°MemberExpressionÍ!#Í!;T®ThisExpressionÍ!#Í!'MªIdentifierÍ!(Í!;³conversationHistoryÂÂÀ’Ôrj•¤type¥start£endªspecifiers¦source±ImportDeclaration "‘Ôrk”¤type¥start£end¥local¶ImportDefaultSpecifierMªIdentifier¤httpU§Literal!®@ohos.net.http°"@ohos.net.http"j±ImportDeclaration$ÌT‘Ôrl•¤type¥start£end¨imported¥local¯ImportSpecifier-6MªIdentifier-6©ConstantsMªIdentifier-6©ConstantsU§Literal>ÌS³../common/Constantsµ'../common/Constants'

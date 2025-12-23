@@ -1,0 +1,623 @@
+Ôr@Ÿªassertions¤code´customTransformCache¬dependencies¢id¤meta±moduleSideEffects¬originalCode±originalSourcemap«resolvedIds®sourcemapChainµsyntheticNamedExportsµtransformDependencies®transformFiles¨cacheAstÔrAÚ"¯import { Holiday, HolidayType } from '../model/Holiday';
+import http from "@ohos.net.http";
+import { Constants } from '../common/Constants';
+/**
+ * èŠ‚å‡æ—¥æœåŠ¡ç±» - è°ƒç”¨å¤©è¡ŒAPIè·å–èŠ‚å‡æ—¥ä¿¡æ¯
+ */
+export class HolidayService {
+    constructor() {
+        this.apiKey = Constants.TIANAPI_KEY;
+        this.baseUrl = Constants.TIANAPI_HOLIDAY_URL;
+        this.holidaysCache = new Map();
+    }
+    static getInstance() {
+        if (!HolidayService.instance) {
+            HolidayService.instance = new HolidayService();
+        }
+        return HolidayService.instance;
+    }
+    /**
+     * è·å–æŒ‡å®šæ—¥æœŸçš„èŠ‚å‡æ—¥
+     * @param date æŸ¥è¯¢æ—¥æœŸ
+     */
+    async getHolidaysByDate(date) {
+        const dateKey = this.getDateKey(date);
+        // æ£€æŸ¥ç¼“å­˜
+        if (this.holidaysCache.has(dateKey)) {
+            const cached = this.holidaysCache.get(dateKey);
+            console.info(`ä»ç¼“å­˜è·å–æ—¥æœŸ ${dateKey} çš„èŠ‚å‡æ—¥:`, cached.length);
+            return cached;
+        }
+        try {
+            const dateStr = this.formatDateForAPI(date); // YYYY-MM-DD
+            // æ„å»ºè¯·æ±‚URLï¼štype=0è¡¨ç¤ºæ‰¹é‡æŸ¥è¯¢å•æ—¥
+            const url = `${this.baseUrl}?key=${this.apiKey}&date=${dateStr}&type=0`;
+            console.info('è¯·æ±‚èŠ‚å‡æ—¥API:', url);
+            const httpRequest = http.createHttp();
+            const response = await httpRequest.request(url, {
+                method: http.RequestMethod.GET
+            });
+            const result = await response.result.toString();
+            console.info('APIåŸå§‹å“åº”:', result);
+            const apiResponse = JSON.parse(result);
+            // æ£€æŸ¥APIå“åº”çŠ¶æ€
+            if (apiResponse.code !== 200) {
+                console.error(`å¤©è¡ŒAPIè¿”å›é”™è¯¯: code=${apiResponse.code}, msg=${apiResponse.msg}`);
+                return [];
+            }
+            const holidays = this.parseHolidays(apiResponse, date);
+            // è°ƒè¯•ï¼šæ‰“å°è§£æç»“æœ
+            console.info(`æ—¥æœŸ ${dateStr} çš„èŠ‚å‡æ—¥æ•°é‡:`, holidays.length);
+            if (holidays.length > 0) {
+                console.info('èŠ‚å‡æ—¥åç§°:', holidays.map(h => h.name).join(', '));
+            }
+            // ç¼“å­˜ç»“æœ
+            this.holidaysCache.set(dateKey, holidays);
+            return holidays;
+        }
+        catch (error) {
+            console.error('è·å–èŠ‚å‡æ—¥å¤±è´¥:', error);
+            const errorMsg = error instanceof Error ? error.message : String(error);
+            console.error('é”™è¯¯è¯¦æƒ…:', errorMsg);
+            return [];
+        }
+    }
+    /**
+     * è·å–æŒ‡å®šæ—¥æœŸèŒƒå›´çš„èŠ‚å‡æ—¥ï¼ˆä½¿ç”¨èŒƒå›´æŸ¥è¯¢ï¼Œtype=3ï¼‰
+     * @param startDate å¼€å§‹æ—¥æœŸ
+     * @param endDate ç»“æŸæ—¥æœŸ
+     */
+    async getHolidaysByDateRange(startDate, endDate) {
+        try {
+            const startStr = this.formatDateForAPI(startDate); // YYYY-MM-DD
+            const endStr = this.formatDateForAPI(endDate);
+            const dateRange = `${startStr},${endStr}`;
+            // type=3 è¡¨ç¤ºèŒƒå›´æŸ¥è¯¢
+            const url = `${this.baseUrl}?key=${this.apiKey}&date=${dateRange}&type=3`;
+            console.info('è¯·æ±‚èŠ‚å‡æ—¥èŒƒå›´æŸ¥è¯¢API:', url);
+            const httpRequest = http.createHttp();
+            const response = await httpRequest.request(url, {
+                method: http.RequestMethod.GET
+            });
+            const result = await response.result.toString();
+            const apiResponse = JSON.parse(result);
+            if (apiResponse.code !== 200) {
+                console.error(`å¤©è¡ŒAPIè¿”å›é”™è¯¯: code=${apiResponse.code}, msg=${apiResponse.msg}`);
+                return [];
+            }
+            // èŒƒå›´æŸ¥è¯¢å¯èƒ½è¿”å›æ•°ç»„ï¼Œéœ€è¦éå†è§£æ
+            const holidays = [];
+            if (apiResponse.result) {
+                // å¦‚æœæ˜¯å•æ¡ç»“æœ
+                const holiday = this.parseHolidayResult(apiResponse.result, startDate);
+                if (holiday) {
+                    holidays.push(holiday);
+                }
+            }
+            return holidays;
+        }
+        catch (error) {
+            console.error('è·å–èŠ‚å‡æ—¥èŒƒå›´å¤±è´¥:', error);
+            // é™çº§ä¸ºé€æ—¥æŸ¥è¯¢
+            return await this.getHolidaysByDateRangeFallback(startDate, endDate);
+        }
+    }
+    /**
+     * é€æ—¥æŸ¥è¯¢èŠ‚å‡æ—¥ï¼ˆæŒ‰æœˆæŸ¥è¯¢çš„ä¸»è¦å®ç°æ–¹å¼ï¼‰
+     */
+    async getHolidaysByDateRangeFallback(startDate, endDate) {
+        const allHolidays = [];
+        const currentDate = new Date(startDate);
+        let totalDays = 0;
+        let holidayCount = 0;
+        while (currentDate <= endDate) {
+            totalDays++;
+            const holidays = await this.getHolidaysByDate(new Date(currentDate));
+            if (holidays.length > 0) {
+                allHolidays.push(...holidays);
+                holidayCount += holidays.length;
+            }
+            currentDate.setDate(currentDate.getDate() + 1);
+            // æ·»åŠ å»¶è¿Ÿä»¥é¿å…APIè°ƒç”¨é¢‘ç‡è¿‡é«˜ï¼ˆæ¯10ä¸ªè¯·æ±‚å»¶è¿Ÿ100msï¼‰
+            if (totalDays % 10 === 0) {
+                await new Promise((resolve) => {
+                    setTimeout(resolve, 100);
+                });
+            }
+        }
+        console.info(`é€æ—¥æŸ¥è¯¢å®Œæˆï¼šæŸ¥è¯¢${totalDays}å¤©ï¼Œæ‰¾åˆ°${holidayCount}ä¸ªèŠ‚å‡æ—¥`);
+        return allHolidays;
+    }
+    /**
+     * è·å–æŒ‡å®šæœˆä»½çš„èŠ‚å‡æ—¥
+     * @param year å¹´ä»½
+     * @param month æœˆä»½ï¼ˆ0-11ï¼‰
+     * æ³¨æ„ï¼šç›´æ¥ä½¿ç”¨é€æ—¥æŸ¥è¯¢æ–¹å¼ï¼Œå› ä¸ºæŒ‰æœˆæŸ¥è¯¢APIå¯èƒ½è¿”å›æ ¼å¼ä¸å®Œæ•´
+     */
+    async getHolidaysByMonth(year, month) {
+        const startDate = new Date(year, month, 1);
+        const endDate = new Date(year, month + 1, 0);
+        console.info(`è·å–${year}å¹´${month + 1}æœˆçš„èŠ‚å‡æ—¥ï¼Œæ—¥æœŸèŒƒå›´: ${this.formatDateForAPI(startDate)} è‡³ ${this.formatDateForAPI(endDate)}`);
+        return await this.getHolidaysByDateRangeFallback(startDate, endDate);
+    }
+    /**
+     * ä»APIå“åº”è§£æèŠ‚å‡æ—¥
+     */
+    parseHolidays(apiResponse, date) {
+        const holidays = [];
+        if (apiResponse.result) {
+            const holiday = this.parseHolidayResult(apiResponse.result, date);
+            if (holiday) {
+                holidays.push(holiday);
+            }
+        }
+        return holidays;
+    }
+    /**
+     * è§£æå•ä¸ªèŠ‚å‡æ—¥ç»“æœ
+     */
+    parseHolidayResult(result, defaultDate) {
+        // ä½¿ç”¨result.dateæˆ–é»˜è®¤æ—¥æœŸ
+        const dateStr = result.date ?? this.formatDateForAPI(defaultDate);
+        // è·å–æ—¥æœŸç±»å‹
+        const daycode = result.daycode ?? 0;
+        const isnotwork = result.isnotwork ?? 0;
+        // å¦‚æœæ˜¯å·¥ä½œæ—¥(daycode=0)ï¼Œä¸åˆ›å»ºHolidayå¯¹è±¡
+        if (daycode === 0) {
+            return null;
+        }
+        // æ ¹æ®daycodeç¡®å®šç±»å‹
+        let holidayType;
+        if (daycode === 1) {
+            holidayType = HolidayType.HOLIDAY;
+        }
+        else if (daycode === 2) {
+            holidayType = HolidayType.WEEKEND;
+        }
+        else if (daycode === 3) {
+            holidayType = HolidayType.WORK_SHIFT;
+        }
+        else {
+            // æœªçŸ¥ç±»å‹ï¼Œä¸åˆ›å»º
+            return null;
+        }
+        // è·å–èŠ‚å‡æ—¥åç§°
+        let name = result.name ?? '';
+        // å¦‚æœnameä¸ºç©ºï¼Œæ ¹æ®ç±»å‹è®¾ç½®é»˜è®¤åç§°
+        if (!name || name.length === 0) {
+            if (daycode === 1) {
+                name = result.info ?? 'èŠ‚å‡æ—¥';
+            }
+            else if (daycode === 2) {
+                name = 'å‘¨æœ«';
+            }
+            else if (daycode === 3) {
+                name = result.info ?? 'è°ƒä¼‘';
+            }
+        }
+        return new Holiday({
+            name: name,
+            date: dateStr,
+            type: holidayType,
+            daycode: daycode,
+            isnotwork: isnotwork,
+            info: result.info ?? ''
+        });
+    }
+    /**
+     * æ ¼å¼åŒ–æ—¥æœŸä¸ºAPIéœ€è¦çš„æ ¼å¼ (YYYY-MM-DD)
+     */
+    formatDateForAPI(date) {
+        const year = date.getFullYear();
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+        const day = date.getDate().toString().padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+    /**
+     * è·å–æ—¥æœŸé”®ï¼ˆç”¨äºç¼“å­˜ï¼‰
+     */
+    getDateKey(date) {
+        const year = date.getFullYear();
+        const month = date.getMonth() + 1;
+        const day = date.getDate();
+        return `${year}-${month}-${day}`;
+    }
+    /**
+     * æ¸…ç©ºç¼“å­˜
+     */
+    clearCache() {
+        this.holidaysCache.clear();
+    }
+}
+//# sourceMappingURL=HolidayService.js.mapÂ“Ù<E:\CODE\Chronos\Chronos\entry\src\main\ets\model\Holiday.etsÙe hvigor_ignore_D:_My_Study_A_deveco_DevEco Studio_sdk_default_openharmony_ets_api_@ohos.net.http.d.tsÙ?E:\CODE\Chronos\Chronos\entry\src\main\ets\common\Constants.etsÙEE:\CODE\Chronos\Chronos\entry\src\main\ets\service\HolidayService.etsÔrBœªmoduleName±isLocalDependency¯isNodeEntryFile§pkgPath±belongProjectPath§pkgNameªpkgVersion±dependencyPkgInfo¯hostModulesInfo°belongModulePath§checker¬shouldEmitJs¥entryÃÂ½E:\CODE\Chronos\Chronos\entry·E:\CODE\Chronos\Chronos¥entry¥1.0.0Ô  ‘ÔrC’²hostDependencyName®hostModuleName¹../service/HolidayService¥entry½E:\CODE\Chronos\Chronos\entryÔrDÜ ®¬getNodeCount²getIdentifierCount®getSymbolCount¬getTypeCountµgetInstantiationCountµgetRelationCacheSizes±isUndefinedSymbol±isArgumentsSymbol¯isUnknownSymbol¯getMergedSymbol®getDiagnostics´getGlobalDiagnostics´getRecursionIdentity¶getUnmatchedProperties¹getTypeOfSymbolAtLocation¯getTypeOfSymbolÙ(getSymbolsOfParameterPropertyDeclaration·getDeclaredTypeOfSymbol³getPropertiesOfType±getPropertyOfTypeÙ"getPrivateIdentifierPropertyOfType·getTypeOfPropertyOfType²getIndexInfoOfType³getIndexInfosOfTypeºgetIndexInfosOfIndexSymbol³getSignaturesOfType²getIndexTypeOfType¬getIndexType¬getBaseTypes¸getBaseTypeOfLiteralType®getWidenedType³getTypeFromTypeNode°getParameterTypeÙ$getParameterIdentifierNameAtPosition¸getPromisedTypeOfPromise®getAwaitedType¸getReturnTypeOfSignature®isNullableType¯getNullableType²getNonNullableType²getNonOptionalType°getTypeArguments®typeToTypeNodeÙ$indexInfoToIndexSignatureDeclaration¿signatureToSignatureDeclaration²symbolToEntityName²symbolToExpression¬symbolToNodeÙ!symbolToTypeParameterDeclarations¼symbolToParameterDeclarationºtypeParameterToDeclaration±getSymbolsInScope³getSymbolAtLocation·getIndexInfosAtLocationÙ!getShorthandAssignmentValueSymbolÙ#getExportSpecifierLocalTargetSymbol·getExportSymbolOfSymbol±getTypeAtLocationÙ tryGetTypeAtLocationWithoutCheckºgetTypeOfAssignmentPatternÙ*getPropertySymbolOfDestructuringAssignment±signatureToString¬typeToString®symbolToStringµtypePredicateToString®writeSignature©writeType«writeSymbol²writeTypePredicate¼getAugmentedPropertiesOfType®getRootSymbols²getSymbolOfExpando±getContextualTypeÙ(getContextualTypeForObjectLiteralElementÙ#getContextualTypeForArgumentAtIndexÙ getContextualTypeForJsxAttribute²isContextSensitiveÙ!getTypeOfPropertyOfContextualTypeµgetFullyQualifiedNameÙ#tryGetResolvedSignatureWithoutCheck´getResolvedSignatureÙ/getResolvedSignatureForStringLiteralCompletionsÙ$getResolvedSignatureForSignatureHelpµgetExpandedParameters¹hasEffectiveRestParameterºcontainsArgumentsReference°getConstantValueµisValidPropertyAccessÙ#isValidPropertyAccessForCompletions»getSignatureFromDeclarationºisImplementationOfOverload¹getImmediateAliasedSymbol°getAliasedSymbol¯getEmitResolver²getExportsOfModule¿getExportsAndPropertiesOfModuleÙ forEachExportAndPropertyOfModule¯getSymbolWalker±getAmbientModules¹getJsxIntrinsicTagNamesAt³isOptionalParameter»tryGetMemberInModuleExportsÙ(tryGetMemberInModuleExportsAndProperties´tryFindAmbientModuleÙ(tryFindAmbientModuleWithoutAugmentations¯getApparentType¬getUnionType²isTypeAssignableTo³createAnonymousType¯createSignature¬createSymbol¯createIndexInfoªgetAnyType­getStringType­getNumberType±createPromiseType¯createArrayType¹getElementTypeOfArrayType®getBooleanType¬getFalseType«getTrueType«getVoidType°getUndefinedType«getNullType¯getESSymbolType¬getNeverType¯getOptionalType®getPromiseType²getPromiseLikeType´getAsyncIterableType²isSymbolAccessible«isArrayType«isTupleType¯isArrayLikeTypeÙ#isTypeInvalidDueToUnionDiscriminantºgetExactOptionalProperties¿getAllPossiblePropertiesOfTypesÙ(getSuggestedSymbolForNonexistentPropertyÙ#getSuggestionForNonexistentPropertyÙ,getSuggestedSymbolForNonexistentJSXAttributeÙ&getSuggestedSymbolForNonexistentSymbolÙ!getSuggestionForNonexistentSymbolÙ&getSuggestedSymbolForNonexistentModuleÙ!getSuggestionForNonexistentExportÙ+getSuggestedSymbolForNonexistentClassMember·getBaseConstraintOfType»getDefaultFromTypeParameter«resolveName¯getJsxNamespaceµgetJsxFragmentFactory¸getAccessibleSymbolChain»getTypePredicateOfSignature¹resolveExternalModuleName»resolveExternalModuleSymbol°tryGetThisTypeAt¹getTypeArgumentConstraint¸getSuggestionDiagnostics¸runWithCancellationTokenÙ3getLocalTypeParametersOfClassOrInterfaceOrTypeAlias´isDeclarationVisible´isPropertyAccessible»getTypeOnlyAliasDeclaration¿getMemberOverrideModifierStatusÙ!isTypeParameterPossiblyReferenced²getConstEnumRelate´clearConstEnumRelateµdeleteConstEnumRelateÙ$getTypeArgumentsForResolvedSignatureµgetCheckedSourceFilesÙ"collectHaveTsNoCheckFilesForLinter·clearQualifiedNameCache®isStaticRecord²isStaticSourceFile³createIntrinsicTypeÔ  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  ÃÃÚ!‘import { Holiday, HolidayType, TianApiResponse, TianApiHolidayResult } from '../model/Holiday';
+import { http } from '@kit.NetworkKit';
+import { BusinessError } from '@kit.BasicServicesKit';
+import { Constants } from '../common/Constants';
+
+/**
+ * èŠ‚å‡æ—¥æœåŠ¡ç±» - è°ƒç”¨å¤©è¡ŒAPIè·å–èŠ‚å‡æ—¥ä¿¡æ¯
+ */
+export class HolidayService {
+  private static instance: HolidayService;
+  private apiKey: string = Constants.TIANAPI_KEY;
+  private baseUrl: string = Constants.TIANAPI_HOLIDAY_URL;
+  private holidaysCache: Map<string, Holiday[]> = new Map();
+
+  private constructor() {}
+
+  static getInstance(): HolidayService {
+    if (!HolidayService.instance) {
+      HolidayService.instance = new HolidayService();
+    }
+    return HolidayService.instance;
+  }
+
+  /**
+   * è·å–æŒ‡å®šæ—¥æœŸçš„èŠ‚å‡æ—¥
+   * @param date æŸ¥è¯¢æ—¥æœŸ
+   */
+  async getHolidaysByDate(date: Date): Promise<Holiday[]> {
+    const dateKey = this.getDateKey(date);
+    
+    // æ£€æŸ¥ç¼“å­˜
+    if (this.holidaysCache.has(dateKey)) {
+      const cached = this.holidaysCache.get(dateKey) as Holiday[];
+      console.info(`ä»ç¼“å­˜è·å–æ—¥æœŸ ${dateKey} çš„èŠ‚å‡æ—¥:`, cached.length);
+      return cached;
+    }
+
+    try {
+      const dateStr = this.formatDateForAPI(date); // YYYY-MM-DD
+      
+      // æ„å»ºè¯·æ±‚URLï¼štype=0è¡¨ç¤ºæ‰¹é‡æŸ¥è¯¢å•æ—¥
+      const url = `${this.baseUrl}?key=${this.apiKey}&date=${dateStr}&type=0`;
+      
+      console.info('è¯·æ±‚èŠ‚å‡æ—¥API:', url);
+      
+      const httpRequest = http.createHttp();
+      const response = await httpRequest.request(url, {
+        method: http.RequestMethod.GET
+      });
+
+      const result = await response.result.toString();
+      console.info('APIåŸå§‹å“åº”:', result);
+      
+      const apiResponse: TianApiResponse = JSON.parse(result) as TianApiResponse;
+
+      // æ£€æŸ¥APIå“åº”çŠ¶æ€
+      if (apiResponse.code !== 200) {
+        console.error(`å¤©è¡ŒAPIè¿”å›é”™è¯¯: code=${apiResponse.code}, msg=${apiResponse.msg}`);
+        return [];
+      }
+
+      const holidays: Holiday[] = this.parseHolidays(apiResponse, date);
+      
+      // è°ƒè¯•ï¼šæ‰“å°è§£æç»“æœ
+      console.info(`æ—¥æœŸ ${dateStr} çš„èŠ‚å‡æ—¥æ•°é‡:`, holidays.length);
+      if (holidays.length > 0) {
+        console.info('èŠ‚å‡æ—¥åç§°:', holidays.map(h => h.name).join(', '));
+      }
+      
+      // ç¼“å­˜ç»“æœ
+      this.holidaysCache.set(dateKey, holidays);
+      
+      return holidays;
+    } catch (error) {
+      console.error('è·å–èŠ‚å‡æ—¥å¤±è´¥:', error);
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      console.error('é”™è¯¯è¯¦æƒ…:', errorMsg);
+      return [];
+    }
+  }
+
+  /**
+   * è·å–æŒ‡å®šæ—¥æœŸèŒƒå›´çš„èŠ‚å‡æ—¥ï¼ˆä½¿ç”¨èŒƒå›´æŸ¥è¯¢ï¼Œtype=3ï¼‰
+   * @param startDate å¼€å§‹æ—¥æœŸ
+   * @param endDate ç»“æŸæ—¥æœŸ
+   */
+  async getHolidaysByDateRange(startDate: Date, endDate: Date): Promise<Holiday[]> {
+    try {
+      const startStr = this.formatDateForAPI(startDate); // YYYY-MM-DD
+      const endStr = this.formatDateForAPI(endDate);
+      const dateRange = `${startStr},${endStr}`;
+      
+      // type=3 è¡¨ç¤ºèŒƒå›´æŸ¥è¯¢
+      const url = `${this.baseUrl}?key=${this.apiKey}&date=${dateRange}&type=3`;
+      
+      console.info('è¯·æ±‚èŠ‚å‡æ—¥èŒƒå›´æŸ¥è¯¢API:', url);
+      
+      const httpRequest = http.createHttp();
+      const response = await httpRequest.request(url, {
+        method: http.RequestMethod.GET
+      });
+
+      const result = await response.result.toString();
+      const apiResponse: TianApiResponse = JSON.parse(result) as TianApiResponse;
+
+      if (apiResponse.code !== 200) {
+        console.error(`å¤©è¡ŒAPIè¿”å›é”™è¯¯: code=${apiResponse.code}, msg=${apiResponse.msg}`);
+        return [];
+      }
+
+      // èŒƒå›´æŸ¥è¯¢å¯èƒ½è¿”å›æ•°ç»„ï¼Œéœ€è¦éå†è§£æ
+      const holidays: Holiday[] = [];
+      if (apiResponse.result) {
+        // å¦‚æœæ˜¯å•æ¡ç»“æœ
+        const holiday = this.parseHolidayResult(apiResponse.result, startDate);
+        if (holiday) {
+          holidays.push(holiday);
+        }
+      }
+      
+      return holidays;
+    } catch (error) {
+      console.error('è·å–èŠ‚å‡æ—¥èŒƒå›´å¤±è´¥:', error);
+      // é™çº§ä¸ºé€æ—¥æŸ¥è¯¢
+      return await this.getHolidaysByDateRangeFallback(startDate, endDate);
+    }
+  }
+
+  /**
+   * é€æ—¥æŸ¥è¯¢èŠ‚å‡æ—¥ï¼ˆæŒ‰æœˆæŸ¥è¯¢çš„ä¸»è¦å®ç°æ–¹å¼ï¼‰
+   */
+  private async getHolidaysByDateRangeFallback(startDate: Date, endDate: Date): Promise<Holiday[]> {
+    const allHolidays: Holiday[] = [];
+    const currentDate = new Date(startDate);
+    let totalDays = 0;
+    let holidayCount = 0;
+    
+    while (currentDate <= endDate) {
+      totalDays++;
+      const holidays = await this.getHolidaysByDate(new Date(currentDate));
+      if (holidays.length > 0) {
+        allHolidays.push(...holidays);
+        holidayCount += holidays.length;
+      }
+      currentDate.setDate(currentDate.getDate() + 1);
+      
+      // æ·»åŠ å»¶è¿Ÿä»¥é¿å…APIè°ƒç”¨é¢‘ç‡è¿‡é«˜ï¼ˆæ¯10ä¸ªè¯·æ±‚å»¶è¿Ÿ100msï¼‰
+      if (totalDays % 10 === 0) {
+        await new Promise<void>((resolve: () => void) => {
+          setTimeout(resolve, 100);
+        });
+      }
+    }
+    
+    console.info(`é€æ—¥æŸ¥è¯¢å®Œæˆï¼šæŸ¥è¯¢${totalDays}å¤©ï¼Œæ‰¾åˆ°${holidayCount}ä¸ªèŠ‚å‡æ—¥`);
+    return allHolidays;
+  }
+
+  /**
+   * è·å–æŒ‡å®šæœˆä»½çš„èŠ‚å‡æ—¥
+   * @param year å¹´ä»½
+   * @param month æœˆä»½ï¼ˆ0-11ï¼‰
+   * æ³¨æ„ï¼šç›´æ¥ä½¿ç”¨é€æ—¥æŸ¥è¯¢æ–¹å¼ï¼Œå› ä¸ºæŒ‰æœˆæŸ¥è¯¢APIå¯èƒ½è¿”å›æ ¼å¼ä¸å®Œæ•´
+   */
+  async getHolidaysByMonth(year: number, month: number): Promise<Holiday[]> {
+    const startDate = new Date(year, month, 1);
+    const endDate = new Date(year, month + 1, 0);
+    console.info(`è·å–${year}å¹´${month + 1}æœˆçš„èŠ‚å‡æ—¥ï¼Œæ—¥æœŸèŒƒå›´: ${this.formatDateForAPI(startDate)} è‡³ ${this.formatDateForAPI(endDate)}`);
+    return await this.getHolidaysByDateRangeFallback(startDate, endDate);
+  }
+
+  /**
+   * ä»APIå“åº”è§£æèŠ‚å‡æ—¥
+   */
+  private parseHolidays(apiResponse: TianApiResponse, date: Date): Holiday[] {
+    const holidays: Holiday[] = [];
+    
+    if (apiResponse.result) {
+      const holiday = this.parseHolidayResult(apiResponse.result, date);
+      if (holiday) {
+        holidays.push(holiday);
+      }
+    }
+    
+    return holidays;
+  }
+
+  /**
+   * è§£æå•ä¸ªèŠ‚å‡æ—¥ç»“æœ
+   */
+  private parseHolidayResult(result: TianApiHolidayResult, defaultDate: Date): Holiday | null {
+    // ä½¿ç”¨result.dateæˆ–é»˜è®¤æ—¥æœŸ
+    const dateStr = result.date ?? this.formatDateForAPI(defaultDate);
+    
+    // è·å–æ—¥æœŸç±»å‹
+    const daycode = result.daycode ?? 0;
+    const isnotwork = result.isnotwork ?? 0;
+
+    // å¦‚æœæ˜¯å·¥ä½œæ—¥(daycode=0)ï¼Œä¸åˆ›å»ºHolidayå¯¹è±¡
+    if (daycode === 0) {
+      return null;
+    }
+
+    // æ ¹æ®daycodeç¡®å®šç±»å‹
+    let holidayType: HolidayType;
+    if (daycode === 1) {
+      holidayType = HolidayType.HOLIDAY;
+    } else if (daycode === 2) {
+      holidayType = HolidayType.WEEKEND;
+    } else if (daycode === 3) {
+      holidayType = HolidayType.WORK_SHIFT;
+    } else {
+      // æœªçŸ¥ç±»å‹ï¼Œä¸åˆ›å»º
+      return null;
+    }
+
+    // è·å–èŠ‚å‡æ—¥åç§°
+    let name = result.name ?? '';
+    // å¦‚æœnameä¸ºç©ºï¼Œæ ¹æ®ç±»å‹è®¾ç½®é»˜è®¤åç§°
+    if (!name || name.length === 0) {
+      if (daycode === 1) {
+        name = result.info ?? 'èŠ‚å‡æ—¥';
+      } else if (daycode === 2) {
+        name = 'å‘¨æœ«';
+      } else if (daycode === 3) {
+        name = result.info ?? 'è°ƒä¼‘';
+      }
+    }
+
+    return new Holiday({
+      name: name,
+      date: dateStr,
+      type: holidayType,
+      daycode: daycode,
+      isnotwork: isnotwork,
+      info: result.info ?? ''
+    });
+  }
+
+  /**
+   * æ ¼å¼åŒ–æ—¥æœŸä¸ºAPIéœ€è¦çš„æ ¼å¼ (YYYY-MM-DD)
+   */
+  private formatDateForAPI(date: Date): string {
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  /**
+   * è·å–æ—¥æœŸé”®ï¼ˆç”¨äºç¼“å­˜ï¼‰
+   */
+  private getDateKey(date: Date): string {
+    const year = date.getFullYear();
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    return `${year}-${month}-${day}`;
+  }
+
+  /**
+   * æ¸…ç©ºç¼“å­˜
+   */
+  clearCache(): void {
+    this.holidaysCache.clear();
+  }
+}
+ÀÔrE“®@ohos.net.http³../common/Constants°../model/HolidayÔrF—ªassertions¨external¢id¤meta±moduleSideEffectsªresolvedByµsyntheticNamedExportsAÃÙe hvigor_ignore_D:_My_Study_A_deveco_DevEco Studio_sdk_default_openharmony_ets_api_@ohos.net.http.d.tsÔrG‘¯hostModulesInfoÜ C®@ohos.net.http¥entryC®@ohos.net.http¥entryC®@ohos.net.http¥entryC®@ohos.net.http¥entryC®@ohos.net.http¥entryC®@ohos.net.http¥entryC®@ohos.net.http¥entryC®@ohos.net.http¥entryC®@ohos.net.http¥entryC®@ohos.net.http¥entryC®@ohos.net.http¥entryC®@ohos.net.http¥entryC®@ohos.net.http¥entryC®@ohos.net.http¥entryC®@ohos.net.http¥entryC®@ohos.net.http¥entryC®@ohos.net.http¥entryC®@ohos.net.http¥entryC®@ohos.net.http¥entryC®@ohos.net.http¥entryÃªoh-resolveÂFAÂÙ?E:\CODE\Chronos\Chronos\entry\src\main\ets\common\Constants.etsAÃªoh-resolveÂFAÂÙ<E:\CODE\Chronos\Chronos\entry\src\main\ets\model\Holiday.etsAÃªoh-resolveÂ“ÔrH–§version¤fileªsourceRoot§sources¥names¨mappings±HolidayService.js ‘²HolidayService.etsÜ çš”    ”  ”	  	”  ”  ”  ”  ÌF”%  ÌL”7  Ì^”8  Ì_–”   ” 	” ” ”! &”" '˜”   ” ”	 	” ” ” ”/ /”0 0‘”   ‘” ””   ” ” ” ‘” —” 
+
+” 
+” 
+” 
+$”  
+%”+ 
+0”, 
+1—” 
+” ” ”  %”! &”4 9”5 :—” 
+” ” 2”! 6”$ 9”& ;”' <’” ” ”” ”
+ ” 	” —” ” ” 	” ” ”$  ”& "™” ” ” ”# ”&  ”* $”8 2”: 4”; 5‘”	 –” ” ” ” ”& "”' #’” ” ‘” ‘” –” ”	 ”
+ ” ” ”  $›” ” 
+” ” ” ” ”' #”( $”, (”- )”. *’” ” ›” ” ” ” ” ” ”" ”# ”* &”+ '”- )”  ”  ”  ”  ”  ”   ”-  '”.  (”1  +”2  ,”9  3”:  ÌA”;  ÌB” !” !” !” !” !”$ !”+ !%”3 !-”5 !/”; !5”< !6”ÌB !<”ÌC !=”ÌD !>”” "” "” "” "‘”	 #’” %” %” &” &” &” &”  &”! &”1 &+”2 &,”6 &0”7 &1”8 &2”9 &3”ÌF &Ì@’” (”% (Ü ” )” )” )” )” )” )”  )”' )!”/ ))”3 )-”4 ).”: )4”ÌC )=”ÌJ )ÌD”ÌS )ÌM”ÌT )ÌNš” +” +” +” +” +”$ +”& + ”) +#”* +$”+ +%™” -” -” -”  -”$ -”% -”/ -)”1 -+”2 -,›” .” .” .” .”# .”. .(”/ .)”6 .0”7 .1”: .4”< .6˜” /” /” /” /” /”* /"”+ /#”. /&“” 0” 0” 0	œ” 2” 2” 2” 2”! 2”) 2#”* 2$”0 2*”1 2+”9 23”; 25”< 26š” 3” 3” 3” 3” 3”# 3”% 3”+ 3%”, 3&”- 3'›” 5” 5” 5”  5+”$ 5/”% 50”* 55”+ 56”1 5<”2 5ÌP”3 5ÌQ’” 7” 7˜” 8” 8
+” 8” 8”  8”% 8”( 8"”* 8$Ü ” 9” 9” 9” 9” 9”1 9)”< 94”= 95”ÌA 99”ÌJ 9ÌB”ÌU 9ÌM”ÌV 9ÌN”ÌY 9ÌQ”Ì[ 9ÌS”Ì\ 9ÌT”Ì] 9ÌU”” :” :” :” :‘” ;” =” =” =” ="”! =&”" ='”/ =4”0 =5”; =Ì@”= =ÌB”ÌA =ÌF”ÌB =ÌG”ÌC =ÌH’” ?” ?” Ì@” Ì@” Ì@” Ì@” Ì@” Ì@”& Ì@ ”0 Ì@*”2 Ì@,”: Ì@4”; Ì@5”ÌA Ì@;”ÌB Ì@<”ÌC Ì@=˜” ÌA” ÌA
+” ÌA” ÌA” ÌA”" ÌA”# ÌA”% ÌAÜ ” ÌB” ÌB” ÌB” ÌB” ÌB”% ÌB”' ÌB”/ ÌB'”0 ÌB(”3 ÌB+”4 ÌB,”5 ÌB-”6 ÌB.”8 ÌB0”9 ÌB1”: ÌB2”; ÌB3”? ÌB7”Ì@ ÌB8”ÌA ÌB9”ÌE ÌB=”ÌF ÌB>”ÌJ ÌBÌB”ÌK ÌBÌC”ÌL ÌBÌD”ÌM ÌBÌE‘” ÌC’” ÌE” ÌEœ” ÌF” ÌF
+” ÌF” ÌF” ÌF”" ÌF”# ÌF”* ÌF$”, ÌF&”4 ÌF.”5 ÌF/”6 ÌF0”” ÌH” ÌH” ÌH” ÌH‘”	 ÌI”” ÌI” ÌI” ÌI” ÌIš” ÌJ” ÌJ” ÌJ” ÌJ” ÌJ”$ ÌJ”& ÌJ ”+ ÌJ%”, ÌJ&”- ÌJ'Ü ” ÌK” ÌK” ÌK” ÌK”" ÌK”. ÌK(”3 ÌK-”4 ÌK.”5 ÌK/”6 ÌK0”; ÌK5”< ÌK6”ÌC ÌK=”ÌD ÌK>”ÌE ÌK?”ÌF ÌKÌ@”ÌL ÌKÌF”ÌM ÌKÌG”ÌR ÌKÌL”ÌS ÌKÌM”ÌT ÌKÌNš” ÌL” ÌL” ÌL” ÌL” ÌL”! ÌL”# ÌL”+ ÌL%”, ÌL&”- ÌL'”” ÌM” ÌM” ÌM” ÌM‘”	 ÌN’” ÌO” ÌO‘” ÌQ‘” ÌU˜” ÌV”	 ÌV”
+ ÌV”  ÌV”! ÌV”* ÌV.”, ÌV0”3 ÌV=’” ÌW” ÌW” ÌX” ÌX” ÌX” ÌX”! ÌX”" ÌX”2 ÌX,”3 ÌX-”< ÌX6”= ÌX7”> ÌX8”? ÌX9”ÌL ÌXÌF›” ÌY” ÌY” ÌY” ÌY” ÌY”  ÌY”0 ÌY*”1 ÌY+”8 ÌY2”9 ÌY3”: ÌY4š” ÌZ” ÌZ” ÌZ” ÌZ”! ÌZ”) ÌZ#”- ÌZ'”3 ÌZ-”5 ÌZ/”6 ÌZ0’” Ì\” Ì\Ü ” Ì]” Ì]” Ì]” Ì]” Ì]” Ì]”  Ì]”' Ì]!”/ Ì])”3 Ì]-”4 Ì].”: Ì]4”ÌC Ì]=”ÌL Ì]ÌF”ÌU Ì]ÌO”ÌV Ì]ÌPš” Ì_” Ì_” Ì_” Ì_” Ì_”( Ì_"”* Ì_$”- Ì_'”. Ì_(”/ Ì_)™” Ìa” Ìa” Ìa”  Ìa”$ Ìa”% Ìa”/ Ìa)”1 Ìa+”2 Ìa,›” Ìb” Ìb” Ìb” Ìb”# Ìb”. Ìb(”/ Ìb)”6 Ìb0”7 Ìb1”: Ìb4”< Ìb6˜” Ìc” Ìc” Ìc” Ìc” Ìc”* Ìc"”+ Ìc#”. Ìc&“” Ìd” Ìd” Ìd	œ” Ìf” Ìf” Ìf” Ìf”! Ìf”) Ìf#”* Ìf$”0 Ìf*”1 Ìf+”9 Ìf3”; Ìf5”< Ìf6›” Ìg” Ìg” Ìg”  Ìg+”$ Ìg/”% Ìg0”* Ìg5”+ Ìg6”1 Ìg<”2 ÌgÌP”3 ÌgÌQ˜” Ìi” Ìi
+” Ìi” Ìi”  Ìi”% Ìi”( Ìi"”* Ìi$Ü ” Ìj” Ìj” Ìj” Ìj” Ìj”1 Ìj)”< Ìj4”= Ìj5”ÌA Ìj9”ÌJ ÌjÌB”ÌU ÌjÌM”ÌV ÌjÌN”ÌY ÌjÌQ”Ì[ ÌjÌS”Ì\ ÌjÌT”Ì] ÌjÌU”” Ìk” Ìk” Ìk” Ìk‘” Ìl’” Ìn”  Ìn–” Ìo” Ìo” Ìo” Ìo"” Ìo$”  Ìo%–” Ìp” Ìp
+” Ìp” Ìp”" Ìp”$ Ìp’” Ìq” ÌqŸ” Ìr” Ìr” Ìr”  Ìr”$ Ìr”% Ìr”7 Ìr/”8 Ìr0”ÌC Ìr;”ÌD Ìr<”ÌJ ÌrÌB”ÌL ÌrÌD”ÌU ÌrÌM”ÌV ÌrÌN”ÌW ÌrÌO”” Ìs” Ìs” Ìs” Ìs˜” Ìt
+” Ìt” Ìt”! Ìt”" Ìt”) Ìt”* Ìt ”+ Ìt!‘” Ìu	‘” Ìv”” Ìx” Ìx” Ìx” Ìx‘”	 Ìy”” Ìy” Ìy” Ìy” Ìyš” Ìz” Ìz” Ìz” Ìz” Ìz”& Ìz ”( Ìz"”- Ìz'”. Ìz(”/ Ìz)’” Ì{” Ì{œ” Ì|” Ì|” Ì|” Ì|” Ì|”< Ì|6”= Ì|7”ÌF Ì|Ì@”ÌH Ì|ÌB”ÌO Ì|ÌI”ÌP Ì|ÌJ”ÌQ Ì|ÌK‘”	 Ì}’” Ì~” Ì~‘” Ì€‘” Ì‚˜” Ìƒ
+”	 Ìƒ”
+ Ìƒ”( Ìƒ.”) Ìƒ/”2 Ìƒ>”4 ÌƒÌ@”; ÌƒÌM–” Ì„” Ì„
+” Ì„” Ì„#” Ì„%” Ì„&š” Ì…” Ì…
+” Ì…” Ì…”  Ì…”$ Ì… ”% Ì…!”. Ì…*”/ Ì…+”0 Ì…,–” Ì†” Ì†” Ì†” Ì†” Ì†” Ì†–” Ì‡” Ì‡” Ì‡” Ì‡” Ì‡” Ì‡–” Ì‰” Ì‰” Ì‰” Ì‰”% Ì‰!”' Ì‰#”” ÌŠ” ÌŠ” ÌŠ” ÌŠÜ ” Ì‹” Ì‹” Ì‹” Ì‹”# Ì‹”' Ì‹!”( Ì‹"”9 Ì‹3”: Ì‹4”> Ì‹8”ÌB Ì‹<”ÌC Ì‹=”ÌN Ì‹ÌH”ÌO Ì‹ÌI”ÌP Ì‹ÌJ”ÌQ Ì‹ÌK˜” ÌŒ” ÌŒ
+” ÌŒ” ÌŒ” ÌŒ”" ÌŒ”# ÌŒ”% ÌŒ™” Ì” Ì” Ì”  Ì”! Ì”$ Ì”, Ì$”- Ì%”. Ì&—” Ì” Ì”  Ì”( Ì ”) Ì!”/ Ì'”0 Ì(‘” Ì” Ì” Ì” Ì” Ì”  Ì”+ Ì%”, Ì&”3 Ì-”5 Ì/”8 Ì2”9 Ì3”: Ì4”; Ì5’” Ì’”. Ì’(˜” Ì“” Ì“
+” Ì“” Ì“” Ì“”# Ì“”$ Ì“”& Ì“ ™” Ì”” Ì”” Ì””! Ì””" Ì” ”# Ì”!”* Ì”4”, Ì”6”. Ì”8˜” Ì•
+” Ì•” Ì•”& Ì•”( Ì•”+ Ì•!”, Ì•"”- Ì•#”” Ì–” Ì–	” Ì–
+” Ì–‘” Ì—‘”	 Ì˜œ” Ìš” Ìš” Ìš” Ìš” Ìš”! Ìš”* Ìš&”1 Ìš-”= Ìš9”ÌC Ìš?”ÌD ÌšÌ@”ÌE ÌšÌA”” Ì›” Ì›” Ì›” Ì›’” Ìœ” Ìœ‘” Ì‘” Ì£˜” Ì¤”	 Ì¤”
+ Ì¤” Ì¤” Ì¤”! Ì¤'”# Ì¤)”( Ì¤6” Ì¥” Ì¥
+” Ì¥” Ì¥” Ì¥”" Ì¥”# Ì¥”' Ì¥#”) Ì¥%”. Ì¥*”0 Ì¥,”1 Ì¥-”2 Ì¥.”3 Ì¥/Ü ” Ì¦” Ì¦
+” Ì¦” Ì¦” Ì¦”  Ì¦”! Ì¦”% Ì¦!”' Ì¦#”, Ì¦(”/ Ì¦+”0 Ì¦,”2 Ì¦.”3 Ì¦/”4 Ì¦0”5 Ì¦1Ü ” Ì§” Ì§” Ì§” Ì§” Ì§” Ì§” Ì§”" Ì§”' Ì§#”* Ì§&”+ Ì§'”: Ì§6”> Ì§:”? Ì§;”ÌO Ì§ÌK”ÌP Ì§ÌL”ÌY Ì§ÌU”ÌZ Ì§ÌV”Ì` Ì§Ì\”Ìd Ì§Ì`”Ìe Ì§Ìa”Ìu Ì§Ìq”Ìv Ì§Ìr”Ì} Ì§Ìy”Ì~ Ì§Ìz”Ì€ Ì§Ì|”Ì Ì§Ì}”Ì‚ Ì§Ì~œ” Ì¨” Ì¨” Ì¨” Ì¨” Ì¨”8 Ì¨4”9 Ì¨5”ÌB Ì¨>”ÌD Ì¨Ì@”ÌK Ì¨ÌG”ÌL Ì¨ÌH”ÌM Ì¨ÌI’” Ì©” Ì©‘” Ì«‘” Ì­–” Ì®
+” Ì®” Ì®” Ì®4” Ì®6”# Ì®Ì@–” Ì¯” Ì¯
+” Ì¯” Ì¯ ” Ì¯"” Ì¯#–” Ì±” Ì±” Ì±” Ì±” Ì±”  Ì±Ÿ” Ì²” Ì²” Ì²” Ì²”  Ì²”! Ì²”3 Ì²-”4 Ì².”? Ì²9”Ì@ Ì²:”ÌF Ì²Ì@”ÌH Ì²ÌB”ÌL Ì²ÌF”ÌM Ì²ÌG”ÌN Ì²ÌH”” Ì³” Ì³
+” Ì³” Ì³˜” Ì´” Ì´” Ì´” Ì´” Ì´”% Ì´”& Ì´”' Ì´‘” Ìµ‘”	 Ì¶”” Ì¸” Ì¸” Ì¸” Ì¸’” Ì¹” Ì¹‘” Ì»‘” Ì½–” Ì¾
+” Ì¾” Ì¾” Ì¾9” Ì¾;”* Ì¾ÌL’” Ì¿” Ì¿Ÿ” ÌÀ” ÌÀ
+” ÌÀ” ÌÀ” ÌÀ” ÌÀ”# ÌÀ”' ÌÀ#”+ ÌÀ'”, ÌÀ(”< ÌÀ8”= ÌÀ9”ÌH ÌÀÌD”ÌI ÌÀÌE”ÌJ ÌÀÌF’” ÌÂ” ÌÂš” ÌÃ” ÌÃ
+” ÌÃ” ÌÃ” ÌÃ” ÌÃ”& ÌÃ"”* ÌÃ&”+ ÌÃ'”, ÌÃ(š” ÌÄ” ÌÄ
+” ÌÄ” ÌÄ”  ÌÄ”! ÌÄ”* ÌÄ&”. ÌÄ*”/ ÌÄ+”0 ÌÄ,’” ÌÆ”) ÌÆ%–” ÌÇ” ÌÇ” ÌÇ” ÌÇ” ÌÇ” ÌÇ”” ÌÈ” ÌÈ” ÌÈ” ÌÈ‘”	 ÌÉ’” ÌË” ÌË”” ÌÌ” ÌÌ” ÌÌ ” ÌÌ!–” ÌÍ” ÌÍ” ÌÍ” ÌÍ” ÌÍ” ÌÍ—” ÌÎ” ÌÎ” ÌÎ”% ÌÎ”& ÌÎ ”- ÌÎ'”. ÌÎ(‘”	 ÌÏ–” ÌÏ” ÌÏ” ÌÏ” ÌÏ” ÌÏ”  ÌÏ—” ÌĞ” ÌĞ” ÌĞ”% ÌĞ”& ÌĞ ”- ÌĞ'”. ÌĞ(‘”	 ÌÑ–” ÌÑ” ÌÑ” ÌÑ” ÌÑ” ÌÑ”  ÌÑ—” ÌÒ” ÌÒ” ÌÒ”% ÌÒ”& ÌÒ ”0 ÌÒ*”1 ÌÒ+‘”	 ÌÓ‘” ÌÓ’” ÌÔ” ÌÔ”” ÌÕ” ÌÕ” ÌÕ” ÌÕ‘”	 ÌÖ’” ÌØ” ÌØš” ÌÙ” ÌÙ” ÌÙ” ÌÙ” ÌÙ” ÌÙ” ÌÙ”" ÌÙ”$ ÌÙ ”% ÌÙ!’” ÌÚ” ÌÚ›” ÌÛ” ÌÛ” ÌÛ	” ÌÛ” ÌÛ” ÌÛ” ÌÛ”  ÌÛ”% ÌÛ!”& ÌÛ"”( ÌÛ$–” ÌÜ” ÌÜ
+” ÌÜ” ÌÜ” ÌÜ” ÌÜ™” Ìİ” Ìİ” Ìİ” Ìİ” Ìİ”" Ìİ”& Ìİ”+ Ìİ#”, Ìİ$‘” ÌŞ–” ÌŞ” ÌŞ” ÌŞ”! ÌŞ”" ÌŞ”$ ÌŞ •” Ìß” Ìß” Ìß” Ìß” Ìß‘” Ìà–” Ìà” Ìà” Ìà”! Ìà”" Ìà”$ Ìà ™” Ìá” Ìá” Ìá” Ìá” Ìá”" Ìá”& Ìá”* Ìá"”+ Ìá#‘” Ìâ‘”	 Ìã•” Ìå” Ìå” Ìå” Ìå” Ìå”” Ìæ” Ìæ
+” Ìæ” Ìæ”” Ìç” Ìç
+” Ìç” Ìç”” Ìè” Ìè
+” Ìè” Ìè”” Ìé” Ìé” Ìé” Ìé”” Ìê” Ìê” Ìê”  Ìê˜” Ìë” Ìë
+” Ìë” Ìë” Ìë” Ìë”! Ìë”# Ìë“”	 Ìì”
+ Ìì” Ìì’” Ìí” Ìí‘” Ìï‘” Ìñ”” Ìò
+” Ìò” Ìò” Ìò%™” Ìó” Ìó
+” Ìó” Ìó” Ìó” Ìó”% Ìó!”' Ìó#”( Ìó$Ü ” Ìô” Ìô
+” Ìô” Ìô” Ìô” Ìô” Ìô”$ Ìô ”& Ìô"”) Ìô%”* Ìô&”+ Ìô'”, Ìô(”4 Ìô0”6 Ìô2”7 Ìô3”? Ìô;”Ì@ Ìô<”ÌA Ìô=”ÌC Ìô?”ÌF ÌôÌB”ÌG ÌôÌC”ÌH ÌôÌDÜ ” Ìõ” Ìõ
+” Ìõ” Ìõ” Ìõ” Ìõ”  Ìõ”" Ìõ”# Ìõ”+ Ìõ'”- Ìõ)”. Ìõ*”6 Ìõ2”7 Ìõ3”8 Ìõ4”: Ìõ6”= Ìõ9”> Ìõ:”? Ìõ;š” Ìö” Ìö” Ìö” Ìö” Ìö” Ìö”# Ìö”& Ìö"”( Ìö$”) Ìö%’” Ì÷” Ì÷‘” Ìù‘” Ìû”” Ìü
+” Ìü” Ìü” Ìü™” Ìı” Ìı
+” Ìı” Ìı” Ìı” Ìı”% Ìı!”' Ìı#”( Ìı$›” Ìş” Ìş
+” Ìş” Ìş” Ìş” Ìş”# Ìş”% Ìş!”( Ìş$”) Ìş%”* Ìş&™” Ìÿ” Ìÿ
+” Ìÿ” Ìÿ” Ìÿ” Ìÿ”  Ìÿ”" Ìÿ”# Ìÿš” Í ” Í ” Í ” Í ” Í ” Í ”# Í ”& Í "”( Í $”) Í %’” Í” Í‘” Í‘” Í’” Í” Í˜” Í” Í” Í	” Í” Í”  Í”" Í”# Í’” Í” Í‘” Í	ÔrI–§version¤file§sources®sourcesContent¥names¨mappingsÀ‘À‘ÀÜ è‘”    ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”  	 ‘”  
+ ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”    ‘”  ! ‘”  " ‘”  # ‘”  $ ‘”  % ‘”  & ‘”  ' ‘”  ( ‘”  ) ‘”  * ‘”  + ‘”  , ‘”  - ‘”  . ‘”  / ‘”  0 ‘”  1 ‘”  2 ‘”  3 ‘”  4 ‘”  5 ‘”  6 ‘”  7 ‘”  8 ‘”  9 ‘”  : ‘”  ; ‘”  < ‘”  = ‘”  > ‘”  ? ‘”  Ì@ ‘”  ÌA ‘”  ÌB ‘”  ÌC ‘”  ÌD ‘”  ÌE ‘”  ÌF ‘”  ÌG ‘”  ÌH ‘”  ÌI ‘”  ÌJ ‘”  ÌK ‘”  ÌL ‘”  ÌM ‘”  ÌN ‘”  ÌO ‘”  ÌP ‘”  ÌQ ‘”  ÌR ‘”  ÌS ‘”  ÌT ‘”  ÌU ‘”  ÌV ‘”  ÌW ‘”  ÌX ‘”  ÌY ‘”  ÌZ ‘”  Ì[ ‘”  Ì\ ‘”  Ì] ‘”  Ì^ ‘”  Ì_ ‘”  Ì` ‘”  Ìa ‘”  Ìb ‘”  Ìc ‘”  Ìd ‘”  Ìe ‘”  Ìf ‘”  Ìg ‘”  Ìh ‘”  Ìi ‘”  Ìj ‘”  Ìk ‘”  Ìl ‘”  Ìm ‘”  Ìn ‘”  Ìo ‘”  Ìp ‘”  Ìq ‘”  Ìr ‘”  Ìs ‘”  Ìt ‘”  Ìu ‘”  Ìv ‘”  Ìw ‘”  Ìx ‘”  Ìy ‘”  Ìz ‘”  Ì{ ‘”  Ì| ‘”  Ì} ‘”  Ì~ ‘”  Ì ‘”  Ì€ ‘”  Ì ‘”  Ì‚ ‘”  Ìƒ ‘”  Ì„ ‘”  Ì… ‘”  Ì† ‘”  Ì‡ ‘”  Ìˆ ‘”  Ì‰ ‘”  ÌŠ ‘”  Ì‹ ‘”  ÌŒ ‘”  Ì ‘”  Ì ‘”  Ì ‘”  Ì ‘”  Ì‘ ‘”  Ì’ ‘”  Ì“ ‘”  Ì” ‘”  Ì• ‘”  Ì– ‘”  Ì— ‘”  Ì˜ ‘”  Ì™ ‘”  Ìš ‘”  Ì› ‘”  Ìœ ‘”  Ì ‘”  Ì ‘”  ÌŸ ‘”  Ì  ‘”  Ì¡ ‘”  Ì¢ ‘”  Ì£ ‘”  Ì¤ ‘”  Ì¥ ‘”  Ì¦ ‘”  Ì§ ‘”  Ì¨ ‘”  Ì© ‘”  Ìª ‘”  Ì« ‘”  Ì¬ ‘”  Ì­ ‘”  Ì® ‘”  Ì¯ ‘”  Ì° ‘”  Ì± ‘”  Ì² ‘”  Ì³ ‘”  Ì´ ‘”  Ìµ ‘”  Ì¶ ‘”  Ì· ‘”  Ì¸ ‘”  Ì¹ ‘”  Ìº ‘”  Ì» ‘”  Ì¼ ‘”  Ì½ ‘”  Ì¾ ‘”  Ì¿ ‘”  ÌÀ ‘”  ÌÁ ‘”  ÌÂ ‘”  ÌÃ ‘”  ÌÄ ‘”  ÌÅ ‘”  ÌÆ ‘”  ÌÇ ‘”  ÌÈ ‘”  ÌÉ ‘”  ÌÊ ‘”  ÌË ‘”  ÌÌ ‘”  ÌÍ ‘”  ÌÎ ‘”  ÌÏ ‘”  ÌĞ ‘”  ÌÑ ‘”  ÌÒ ‘”  ÌÓ ‘”  ÌÔ ‘”  ÌÕ ‘”  ÌÖ ‘”  Ì× ‘”  ÌØ ‘”  ÌÙ ‘”  ÌÚ ‘”  ÌÛ ‘”  ÌÜ ‘”  Ìİ ‘”  ÌŞ ‘”  Ìß ‘”  Ìà ‘”  Ìá ‘”  Ìâ ‘”  Ìã ‘”  Ìä ‘”  Ìå ‘”  Ìæ ‘”  Ìç ÔrJ’§missing¦pluginÃ¦genAbcÂÔ  ÔrK”²dynamicImportCache¹exportAllDeclarationCache»exportNamedDeclarationCache«importCache‘ÔrL–¤type¥start£end«declarationªspecifiers¦source¶ExportNamedDeclarationÌ¶ÍÔrM–¤type¥start£end¢idªsuperClass¤body°ClassDeclarationÌ½ÍÔrN”¤type¥start£end¤nameªIdentifierÌÃÌÑ®HolidayServiceÀÔrO”¤type¥start£end¤body©ClassBodyÌÒÍ›ÔrP˜¤type¥start£end¦static¨computed£key¤kind¥value°MethodDefinitionÌÙÍ}ÂÂNªIdentifierÌÙÌä«constructor«constructorÔrQ™¤type¥start£end¢idªexpression©generator¥async¦params¤body²FunctionExpressionÌäÍ}ÀÂÂÂO®BlockStatementÌçÍ}“ÔrR”¤type¥start£endªexpression³ExpressionStatementÌòÍÔrS–¤type¥start£end¨operator¤left¥right´AssignmentExpressionÌòÍ¡=ÔrT—¤type¥start£end¦object¨property¨computed¨optional°MemberExpressionÌòÌıÔrU“¤type¥start£end®ThisExpressionÌòÌöNªIdentifierÌ÷Ìı¦apiKeyÂÂT°MemberExpressionÍ ÍNªIdentifierÍ Í	©ConstantsNªIdentifierÍ
+Í«TIANAPI_KEYÂÂR³ExpressionStatementÍ ÍMS´AssignmentExpressionÍ ÍL¡=T°MemberExpressionÍ Í,U®ThisExpressionÍ Í$NªIdentifierÍ%Í,§baseUrlÂÂT°MemberExpressionÍ/ÍLNªIdentifierÍ/Í8©ConstantsNªIdentifierÍ9ÍL³TIANAPI_HOLIDAY_URLÂÂR³ExpressionStatementÍWÍvS´AssignmentExpressionÍWÍu¡=T°MemberExpressionÍWÍiU®ThisExpressionÍWÍ[NªIdentifierÍ\Íi­holidaysCacheÂÂÔrV•¤type¥start£end¦callee©arguments­NewExpressionÍlÍuNªIdentifierÍpÍs£MapP°MethodDefinitionÍƒÍ:ÃÂNªIdentifierÍŠÍ•«getInstance¦methodQ²FunctionExpressionÍ•Í:ÀÂÂÂO®BlockStatementÍ˜Í:’ÔrW–¤type¥start£end¤testªconsequent©alternate«IfStatementÍ£Í
+ÔrX–¤type¥start£end¨operator¦prefix¨argument¯UnaryExpressionÍ§Í¿¡!ÃT°MemberExpressionÍ¨Í¿NªIdentifierÍ¨Í¶®HolidayServiceNªIdentifierÍ·Í¿¨instanceÂÂO®BlockStatementÍÁÍ
+‘R³ExpressionStatementÍĞÍÿS´AssignmentExpressionÍĞÍş¡=T°MemberExpressionÍĞÍçNªIdentifierÍĞÍŞ®HolidayServiceNªIdentifierÍßÍç¨instanceÂÂV­NewExpressionÍêÍşNªIdentifierÍîÍü®HolidayServiceÀÔrY”¤type¥start£end¨argument¯ReturnStatementÍÍ3T°MemberExpressionÍÍ2NªIdentifierÍÍ)®HolidayServiceNªIdentifierÍ*Í2¨instanceÂÂP°MethodDefinitionÍ~Í	wÂÂNªIdentifierÍ„Í•±getHolidaysByDate¦methodQ²FunctionExpressionÍ•Í	wÀÂÂÃ‘NªIdentifierÍ–Íš¤dateO®BlockStatementÍœÍ	w“ÔrZ•¤type¥start£end¬declarations¤kind³VariableDeclarationÍ§ÍÍ‘Ôr[•¤type¥start£end¢id¤init²VariableDeclaratorÍ­ÍÌNªIdentifierÍ­Í´§dateKeyÔr\–¤type¥start£end¦callee©arguments¨optional®CallExpressionÍ·ÍÌT°MemberExpressionÍ·ÍÆU®ThisExpressionÍ·Í»NªIdentifierÍ¼ÍÆªgetDateKeyÂÂ‘NªIdentifierÍÇÍË¤dateÂ¥constW«IfStatementÍèÍ¸\®CallExpressionÍìÍT°MemberExpressionÍìÍT°MemberExpressionÍìÍşU®ThisExpressionÍìÍğNªIdentifierÍñÍş­holidaysCacheÂÂNªIdentifierÍÿÍ£hasÂÂ‘NªIdentifierÍÍ
+§dateKeyÂO®BlockStatementÍÍ¸“Z³VariableDeclarationÍÍK‘[²VariableDeclaratorÍ"ÍJNªIdentifierÍ"Í(¦cached\®CallExpressionÍ+ÍJT°MemberExpressionÍ+ÍAT°MemberExpressionÍ+Í=U®ThisExpressionÍ+Í/NªIdentifierÍ0Í=­holidaysCacheÂÂNªIdentifierÍ>ÍA£getÂÂ‘NªIdentifierÍBÍI§dateKeyÂ¥constR³ExpressionStatementÍYÍ‘\®CallExpressionÍYÍT°MemberExpressionÍYÍeNªIdentifierÍYÍ`§consoleNªIdentifierÍaÍe¤infoÂÂ’Ôr]•¤type¥start£end«expressions¦quasis¯TemplateLiteralÍfÍ€‘NªIdentifierÍqÍx§dateKey’Ôr^•¤type¥start£end¥value¤tail¯TemplateElementÍgÍoÔr_’£raw¦cooked¶ä»ç¼“å­˜è·å–æ—¥æœŸ ¶ä»ç¼“å­˜è·å–æ—¥æœŸ Â^¯TemplateElementÍyÍ_® çš„èŠ‚å‡æ—¥:® çš„èŠ‚å‡æ—¥:ÃT°MemberExpressionÍ‚ÍNªIdentifierÍ‚Íˆ¦cachedNªIdentifierÍ‰Í¦lengthÂÂÂY¯ReturnStatementÍŸÍ­NªIdentifierÍ¦Í¬¦cachedÀÔr`–¤type¥start£end¥block§handler©finalizer¬TryStatementÍÂÍ	pO®BlockStatementÍÆÍ€Z³VariableDeclarationÍÕÍ‘[²VariableDeclaratorÍÛÍ NªIdentifierÍÛÍâ§dateStr\®CallExpressionÍåÍ T°MemberExpressionÍåÍúU®ThisExpressionÍåÍéNªIdentifierÍêÍú°formatDateForAPIÂÂ‘NªIdentifierÍûÍÿ¤dateÂ¥constZ³VariableDeclarationÍDÍŒ‘[²VariableDeclaratorÍJÍ‹NªIdentifierÍJÍM£url]¯TemplateLiteralÍPÍ‹“T°MemberExpressionÍSÍ_U®ThisExpressionÍSÍWNªIdentifierÍXÍ_§baseUrlÂÂT°MemberExpressionÍgÍrU®ThisExpressionÍgÍkNªIdentifierÍlÍr¦apiKeyÂÂNªIdentifierÍ{Í‚§dateStr”^¯TemplateElementÍQÍQ_  Â^¯TemplateElementÍ`Íe_¥?key=¥?key=Â^¯TemplateElementÍsÍy_¦&date=¦&date=Â^¯TemplateElementÍƒÍŠ_§&type=0§&type=0Ã¥constR³ExpressionStatementÍšÍ¹\®CallExpressionÍšÍ¸T°MemberExpressionÍšÍ¦NªIdentifierÍšÍ¡§consoleNªIdentifierÍ¢Í¦¤infoÂÂ’Ôra•¤type¥start£end¥value£raw§LiteralÍ§Í²³è¯·æ±‚èŠ‚å‡æ—¥API:µ'è¯·æ±‚èŠ‚å‡æ—¥API:'NªIdentifierÍ´Í·£urlÂZ³VariableDeclarationÍÇÍí‘[²VariableDeclaratorÍÍÍìNªIdentifierÍÍÍØ«httpRequest\®CallExpressionÍÛÍìT°MemberExpressionÍÛÍêNªIdentifierÍÛÍß¤httpNªIdentifierÍàÍêªcreateHttpÂÂÂ¥constZ³VariableDeclarationÍûÍm‘[²VariableDeclaratorÍÍlNªIdentifierÍÍ	¨responseY¯AwaitExpressionÍÍl\®CallExpressionÍÍlT°MemberExpressionÍÍ%NªIdentifierÍÍ«httpRequestNªIdentifierÍÍ%§requestÂÂ’NªIdentifierÍ&Í)£urlÔrb”¤type¥start£endªproperties°ObjectExpressionÍ+Ík‘Ôrc™¤type¥start£end¦method©shorthand¨computed£key¥value¤kind¨PropertyÍ>Í\ÂÂÂNªIdentifierÍ>ÍD¦methodT°MemberExpressionÍFÍ\T°MemberExpressionÍFÍXNªIdentifierÍFÍJ¤httpNªIdentifierÍKÍX­RequestMethodÂÂNªIdentifierÍYÍ\£GETÂÂ¤initÂ¥constZ³VariableDeclarationÍ{Í«‘[²VariableDeclaratorÍÍªNªIdentifierÍÍ‡¦resultY¯AwaitExpressionÍŠÍª\®CallExpressionÍÍªT°MemberExpressionÍÍ¨T°MemberExpressionÍÍŸNªIdentifierÍÍ˜¨responseNªIdentifierÍ™ÍŸ¦resultÂÂNªIdentifierÍ Í¨¨toStringÂÂÂ¥constR³ExpressionStatementÍ¹ÍÚ\®CallExpressionÍ¹ÍÙT°MemberExpressionÍ¹ÍÅNªIdentifierÍ¹ÍÀ§consoleNªIdentifierÍÁÍÅ¤infoÂÂ’a§LiteralÍÆÍĞ°APIåŸå§‹å“åº”:²'APIåŸå§‹å“åº”:'NªIdentifierÍÒÍØ¦resultÂZ³VariableDeclarationÍèÍ‘[²VariableDeclaratorÍîÍNªIdentifierÍîÍù«apiResponse\®CallExpressionÍüÍT°MemberExpressionÍüÍNªIdentifierÍüÍ ¤JSONNªIdentifierÍÍ¥parseÂÂ‘NªIdentifierÍÍ¦resultÂ¥constW«IfStatementÍ7ÍàÔrd–¤type¥start£end¤left¨operator¥right°BinaryExpressionÍ;ÍST°MemberExpressionÍ;ÍKNªIdentifierÍ;ÍF«apiResponseNªIdentifierÍGÍK¤codeÂÂ£!==a§LiteralÍPÍSÌÈ£200O®BlockStatementÍUÍà’R³ExpressionStatementÍhÍµ\®CallExpressionÍhÍ´T°MemberExpressionÍhÍuNªIdentifierÍhÍo§consoleNªIdentifierÍpÍu¥errorÂÂ‘]¯TemplateLiteralÍvÍ³’T°MemberExpressionÍ‰Í™NªIdentifierÍ‰Í”«apiResponseNªIdentifierÍ•Í™¤codeÂÂT°MemberExpressionÍ¢Í±NªIdentifierÍ¢Í­«apiResponseNªIdentifierÍ®Í±£msgÂÂ“^¯TemplateElementÍwÍ‡_¼å¤©è¡ŒAPIè¿”å›é”™è¯¯: code=¼å¤©è¡ŒAPIè¿”å›é”™è¯¯: code=Â^¯TemplateElementÍšÍ _¦, msg=¦, msg=Â^¯TemplateElementÍ²Í²_  ÃÂY¯ReturnStatementÍÇÍÑÔre”¤type¥start£end¨elements¯ArrayExpressionÍÎÍĞÀZ³VariableDeclarationÍîÍ%‘[²VariableDeclaratorÍôÍ$NªIdentifierÍôÍü¨holidays\®CallExpressionÍÿÍ$T°MemberExpressionÍÿÍU®ThisExpressionÍÿÍNªIdentifierÍÍ­parseHolidaysÂÂ’NªIdentifierÍÍ«apiResponseNªIdentifierÍÍ#¤dateÂ¥constR³ExpressionStatementÍMÍ„\®CallExpressionÍMÍƒT°MemberExpressionÍMÍYNªIdentifierÍMÍT§consoleNªIdentifierÍUÍY¤infoÂÂ’]¯TemplateLiteralÍZÍq‘NªIdentifierÍ`Íg§dateStr’^¯TemplateElementÍ[Í^_§æ—¥æœŸ §æ—¥æœŸ Â^¯TemplateElementÍhÍp_´ çš„èŠ‚å‡æ—¥æ•°é‡:´ çš„èŠ‚å‡æ—¥æ•°é‡:ÃT°MemberExpressionÍsÍ‚NªIdentifierÍsÍ{¨holidaysNªIdentifierÍ|Í‚¦lengthÂÂÂW«IfStatementÍ’Í
+d°BinaryExpressionÍ–Í©T°MemberExpressionÍ–Í¥NªIdentifierÍ–Í¨holidaysNªIdentifierÍŸÍ¥¦lengthÂÂ¡>a§LiteralÍ¨Í© ¡0O®BlockStatementÍ«Í
+‘R³ExpressionStatementÍ¾Íû\®CallExpressionÍ¾ÍúT°MemberExpressionÍ¾ÍÊNªIdentifierÍ¾ÍÅ§consoleNªIdentifierÍÆÍÊ¤infoÂÂ’a§LiteralÍËÍÓ°èŠ‚å‡æ—¥åç§°:²'èŠ‚å‡æ—¥åç§°:'\®CallExpressionÍÕÍùT°MemberExpressionÍÕÍó\®CallExpressionÍÕÍîT°MemberExpressionÍÕÍáNªIdentifierÍÕÍİ¨holidaysNªIdentifierÍŞÍá£mapÂÂ‘Q·ArrowFunctionExpressionÍâÍíÀÃÂÂ‘NªIdentifierÍâÍã¡hT°MemberExpressionÍçÍíNªIdentifierÍçÍè¡hNªIdentifierÍéÍí¤nameÂÂÂNªIdentifierÍïÍó¤joinÂÂ‘a§LiteralÍôÍø¢, ¤', 'ÂÂÀR³ExpressionStatementÍ-ÍW\®CallExpressionÍ-ÍVT°MemberExpressionÍ-ÍCT°MemberExpressionÍ-Í?U®ThisExpressionÍ-Í1NªIdentifierÍ2Í?­holidaysCacheÂÂNªIdentifierÍ@ÍC£setÂÂ’NªIdentifierÍDÍK§dateKeyNªIdentifierÍMÍU¨holidaysÂY¯ReturnStatementÍeÍuNªIdentifierÍlÍt¨holidaysÔrf•¤type¥start£end¥param¤body«CatchClauseÍŠÍ	pNªIdentifierÍ‘Í–¥errorO®BlockStatementÍ˜Í	p”R³ExpressionStatementÍ§ÍÈ\®CallExpressionÍ§ÍÇT°MemberExpressionÍ§Í´NªIdentifierÍ§Í®§consoleNªIdentifierÍ¯Í´¥errorÂÂ’a§LiteralÍµÍ¿¶è·å–èŠ‚å‡æ—¥å¤±è´¥:¸'è·å–èŠ‚å‡æ—¥å¤±è´¥:'NªIdentifierÍÁÍÆ¥errorÂZ³VariableDeclarationÍÖÍ	‘[²VariableDeclaratorÍÜÍ	NªIdentifierÍÜÍä¨errorMsgWµConditionalExpressionÍçÍ	d°BinaryExpressionÍçÍıNªIdentifierÍçÍì¥errorªinstanceofNªIdentifierÍøÍı¥ErrorT°MemberExpressionÍ	 Í	NªIdentifierÍ	 Í	¥errorNªIdentifierÍ	Í	§messageÂÂ\®CallExpressionÍ	Í	NªIdentifierÍ	Í	¦String‘NªIdentifierÍ	Í	¥errorÂ¥constR³ExpressionStatementÍ	,Í	M\®CallExpressionÍ	,Í	LT°MemberExpressionÍ	,Í	9NªIdentifierÍ	,Í	3§consoleNªIdentifierÍ	4Í	9¥errorÂÂ’a§LiteralÍ	:Í	A­é”™è¯¯è¯¦æƒ…:¯'é”™è¯¯è¯¦æƒ…:'NªIdentifierÍ	CÍ	K¨errorMsgÂY¯ReturnStatementÍ	[Í	ee¯ArrayExpressionÍ	bÍ	dÀP°MethodDefinitionÍ	íÍ´ÂÂNªIdentifierÍ	óÍ
+	¶getHolidaysByDateRange¦methodQ²FunctionExpressionÍ
+	Í´ÀÂÂÃ’NªIdentifierÍ
+
+Í
+©startDateNªIdentifierÍ
+Í
+§endDateO®BlockStatementÍ
+Í´‘`¬TryStatementÍ
+)Í­O®BlockStatementÍ
+-ÍíZ³VariableDeclarationÍ
+<Í
+n‘[²VariableDeclaratorÍ
+BÍ
+mNªIdentifierÍ
+BÍ
+J¨startStr\®CallExpressionÍ
+MÍ
+mT°MemberExpressionÍ
+MÍ
+bU®ThisExpressionÍ
+MÍ
+QNªIdentifierÍ
+RÍ
+b°formatDateForAPIÂÂ‘NªIdentifierÍ
+cÍ
+l©startDateÂ¥constZ³VariableDeclarationÍ
+ŠÍ
+¸‘[²VariableDeclaratorÍ
+Í
+·NªIdentifierÍ
+Í
+–¦endStr\®CallExpressionÍ
+™Í
+·T°MemberExpressionÍ
+™Í
+®U®ThisExpressionÍ
+™Í
+NªIdentifierÍ
+Í
+®°formatDateForAPIÂÂ‘NªIdentifierÍ
+¯Í
+¶§endDateÂ¥constZ³VariableDeclarationÍ
+ÆÍ
+ğ‘[²VariableDeclaratorÍ
+ÌÍ
+ïNªIdentifierÍ
+ÌÍ
+Õ©dateRange]¯TemplateLiteralÍ
+ØÍ
+ï’NªIdentifierÍ
+ÛÍ
+ã¨startStrNªIdentifierÍ
+çÍ
+í¦endStr“^¯TemplateElementÍ
+ÙÍ
+Ù_  Â^¯TemplateElementÍ
+äÍ
+å_¡,¡,Â^¯TemplateElementÍ
+îÍ
+î_  Ã¥constZ³VariableDeclarationÍÍf‘[²VariableDeclaratorÍ"ÍeNªIdentifierÍ"Í%£url]¯TemplateLiteralÍ(Íe“T°MemberExpressionÍ+Í7U®ThisExpressionÍ+Í/NªIdentifierÍ0Í7§baseUrlÂÂT°MemberExpressionÍ?ÍJU®ThisExpressionÍ?ÍCNªIdentifierÍDÍJ¦apiKeyÂÂNªIdentifierÍSÍ\©dateRange”^¯TemplateElementÍ)Í)_  Â^¯TemplateElementÍ8Í=_¥?key=¥?key=Â^¯TemplateElementÍKÍQ_¦&date=¦&date=Â^¯TemplateElementÍ]Íd_§&type=3§&type=3Ã¥constR³ExpressionStatementÍtÍ—\®CallExpressionÍtÍ–T°MemberExpressionÍtÍ€NªIdentifierÍtÍ{§consoleNªIdentifierÍ|Í€¤infoÂÂ’a§LiteralÍÍ¿è¯·æ±‚èŠ‚å‡æ—¥èŒƒå›´æŸ¥è¯¢API:Ù!'è¯·æ±‚èŠ‚å‡æ—¥èŒƒå›´æŸ¥è¯¢API:'NªIdentifierÍ’Í•£urlÂZ³VariableDeclarationÍ¥ÍË‘[²VariableDeclaratorÍ«ÍÊNªIdentifierÍ«Í¶«httpRequest\®CallExpressionÍ¹ÍÊT°MemberExpressionÍ¹ÍÈNªIdentifierÍ¹Í½¤httpNªIdentifierÍ¾ÍÈªcreateHttpÂÂÂ¥constZ³VariableDeclarationÍÙÍK‘[²VariableDeclaratorÍßÍJNªIdentifierÍßÍç¨responseY¯AwaitExpressionÍêÍJ\®CallExpressionÍğÍJT°MemberExpressionÍğÍNªIdentifierÍğÍû«httpRequestNªIdentifierÍüÍ§requestÂÂ’NªIdentifierÍÍ£urlb°ObjectExpressionÍ	ÍI‘c¨PropertyÍÍ:ÂÂÂNªIdentifierÍÍ"¦methodT°MemberExpressionÍ$Í:T°MemberExpressionÍ$Í6NªIdentifierÍ$Í(¤httpNªIdentifierÍ)Í6­RequestMethodÂÂNªIdentifierÍ7Í:£GETÂÂ¤initÂ¥constZ³VariableDeclarationÍYÍ‰‘[²VariableDeclaratorÍ_ÍˆNªIdentifierÍ_Íe¦resultY¯AwaitExpressionÍhÍˆ\®CallExpressionÍnÍˆT°MemberExpressionÍnÍ†T°MemberExpressionÍnÍ}NªIdentifierÍnÍv¨responseNªIdentifierÍwÍ}¦resultÂÂNªIdentifierÍ~Í†¨toStringÂÂÂ¥constZ³VariableDeclarationÍ—Í¾‘[²VariableDeclaratorÍÍ½NªIdentifierÍÍ¨«apiResponse\®CallExpressionÍ«Í½T°MemberExpressionÍ«ÍµNªIdentifierÍ«Í¯¤JSONNªIdentifierÍ°Íµ¥parseÂÂ‘NªIdentifierÍ¶Í¼¦resultÂ¥constW«IfStatementÍÌÍud°BinaryExpressionÍĞÍèT°MemberExpressionÍĞÍàNªIdentifierÍĞÍÛ«apiResponseNªIdentifierÍÜÍà¤codeÂÂ£!==a§LiteralÍåÍèÌÈ£200O®BlockStatementÍêÍu’R³ExpressionStatementÍıÍJ\®CallExpressionÍıÍIT°MemberExpressionÍıÍ
+NªIdentifierÍıÍ§consoleNªIdentifierÍÍ
+¥errorÂÂ‘]¯TemplateLiteralÍÍH’T°MemberExpressionÍÍ.NªIdentifierÍÍ)«apiResponseNªIdentifierÍ*Í.¤codeÂÂT°MemberExpressionÍ7ÍFNªIdentifierÍ7ÍB«apiResponseNªIdentifierÍCÍF£msgÂÂ“^¯TemplateElementÍÍ_¼å¤©è¡ŒAPIè¿”å›é”™è¯¯: code=¼å¤©è¡ŒAPIè¿”å›é”™è¯¯: code=Â^¯TemplateElementÍ/Í5_¦, msg=¦, msg=Â^¯TemplateElementÍGÍG_  ÃÂY¯ReturnStatementÍ\Ífe¯ArrayExpressionÍcÍeÀZ³VariableDeclarationÍ¥Í¹‘[²VariableDeclaratorÍ«Í¸NªIdentifierÍ«Í³¨holidayse¯ArrayExpressionÍ¶Í¸¥constW«IfStatementÍÇÍÄT°MemberExpressionÍËÍİNªIdentifierÍËÍÖ«apiResponseNªIdentifierÍ×Íİ¦resultÂÂO®BlockStatementÍßÍÄ’Z³VariableDeclarationÍÍU‘[²VariableDeclaratorÍÍTNªIdentifierÍÍ§holiday\®CallExpressionÍÍTT°MemberExpressionÍÍ5U®ThisExpressionÍÍ"NªIdentifierÍ#Í5²parseHolidayResultÂÂ’T°MemberExpressionÍ6ÍHNªIdentifierÍ6ÍA«apiResponseNªIdentifierÍBÍH¦resultÂÂNªIdentifierÍJÍS©startDateÂ¥constW«IfStatementÍgÍµNªIdentifierÍkÍr§holidayO®BlockStatementÍtÍµ‘R³ExpressionStatementÍ‹Í¢\®CallExpressionÍ‹Í¡T°MemberExpressionÍ‹Í˜NªIdentifierÍ‹Í“¨holidaysNªIdentifierÍ”Í˜¤pushÂÂ‘NªIdentifierÍ™Í §holidayÂÀÀY¯ReturnStatementÍÒÍâNªIdentifierÍÙÍá¨holidaysf«CatchClauseÍ÷Í­NªIdentifierÍşÍ¥errorO®BlockStatementÍÍ­’R³ExpressionStatementÍÍ7\®CallExpressionÍÍ6T°MemberExpressionÍÍ!NªIdentifierÍÍ§consoleNªIdentifierÍÍ!¥errorÂÂ’a§LiteralÍ"Í.¼è·å–èŠ‚å‡æ—¥èŒƒå›´å¤±è´¥:¾'è·å–èŠ‚å‡æ—¥èŒƒå›´å¤±è´¥:'NªIdentifierÍ0Í5¥errorÂY¯ReturnStatementÍ]Í¢Y¯AwaitExpressionÍdÍ¡\®CallExpressionÍjÍ¡T°MemberExpressionÍjÍU®ThisExpressionÍjÍnNªIdentifierÍoÍ¾getHolidaysByDateRangeFallbackÂÂ’NªIdentifierÍÍ—©startDateNªIdentifierÍ™Í §endDateÂÀP°MethodDefinitionÍéÍrÂÂNªIdentifierÍïÍ¾getHolidaysByDateRangeFallback¦methodQ²FunctionExpressionÍÍrÀÂÂÃ’NªIdentifierÍÍ©startDateNªIdentifierÍÍ §endDateO®BlockStatementÍ"Ír—Z³VariableDeclarationÍ-ÍD‘[²VariableDeclaratorÍ3ÍCNªIdentifierÍ3Í>«allHolidayse¯ArrayExpressionÍAÍC¥constZ³VariableDeclarationÍNÍv‘[²VariableDeclaratorÍTÍuNªIdentifierÍTÍ_«currentDateV­NewExpressionÍbÍuNªIdentifierÍfÍj¤Date‘NªIdentifierÍkÍt©startDate¥constZ³VariableDeclarationÍ€Í’‘[²VariableDeclaratorÍ„Í‘NªIdentifierÍ„Í©totalDaysa§LiteralÍÍ‘ ¡0£letZ³VariableDeclarationÍœÍ±‘[²VariableDeclaratorÍ Í°NªIdentifierÍ Í¬¬holidayCounta§LiteralÍ¯Í° ¡0£letÔrg•¤type¥start£end¤test¤body®WhileStatementÍ»Íd°BinaryExpressionÍÂÍØNªIdentifierÍÂÍÍ«currentDate¢<=NªIdentifierÍÑÍØ§endDateO®BlockStatementÍÚÍ•R³ExpressionStatementÍéÍõX°UpdateExpressionÍéÍô¢++ÂNªIdentifierÍéÍò©totalDaysZ³VariableDeclarationÍÍH‘[²VariableDeclaratorÍ	ÍGNªIdentifierÍ	Í¨holidaysY¯AwaitExpressionÍÍG\®CallExpressionÍÍGT°MemberExpressionÍÍ0U®ThisExpressionÍÍNªIdentifierÍÍ0±getHolidaysByDateÂÂ‘V­NewExpressionÍ1ÍFNªIdentifierÍ5Í9¤Date‘NªIdentifierÍ:ÍE«currentDateÂ¥constW«IfStatementÍVÍád°BinaryExpressionÍZÍmT°MemberExpressionÍZÍiNªIdentifierÍZÍb¨holidaysNªIdentifierÍcÍi¦lengthÂÂ¡>a§LiteralÍlÍm ¡0O®BlockStatementÍoÍá’R³ExpressionStatementÍ‚Í \®CallExpressionÍ‚ÍŸT°MemberExpressionÍ‚Í’NªIdentifierÍ‚Í«allHolidaysNªIdentifierÍÍ’¤pushÂÂ‘Y­SpreadElementÍ“ÍNªIdentifierÍ–Í¨holidaysÂR³ExpressionStatementÍ²ÍÒS´AssignmentExpressionÍ²ÍÑ¢+=NªIdentifierÍ²Í¾¬holidayCountT°MemberExpressionÍÂÍÑNªIdentifierÍÂÍÊ¨holidaysNªIdentifierÍËÍÑ¦lengthÂÂÀR³ExpressionStatementÍïÍ\®CallExpressionÍïÍT°MemberExpressionÍïÍNªIdentifierÍïÍú«currentDateNªIdentifierÍûÍ§setDateÂÂ‘d°BinaryExpressionÍÍ\®CallExpressionÍÍT°MemberExpressionÍÍNªIdentifierÍÍ«currentDateNªIdentifierÍÍ§getDateÂÂÂ¡+a§LiteralÍÍ¡1ÂW«IfStatementÍ\Íüd°BinaryExpressionÍ`Ítd°BinaryExpressionÍ`ÍnNªIdentifierÍ`Íi©totalDays¡%a§LiteralÍlÍn
+¢10£===a§LiteralÍsÍt ¡0O®BlockStatementÍvÍü‘R³ExpressionStatementÍ‰ÍíY¯AwaitExpressionÍ‰ÍìV­NewExpressionÍÍìNªIdentifierÍ“Íš§Promise‘Q·ArrowFunctionExpressionÍ›ÍëÀÂÂÂ‘NªIdentifierÍœÍ£§resolveO®BlockStatementÍ¨Íë‘R³ExpressionStatementÍ¿ÍØ\®CallExpressionÍ¿Í×NªIdentifierÍ¿ÍÉªsetTimeout’NªIdentifierÍÊÍÑ§resolvea§LiteralÍÓÍÖÌd£100ÂÀR³ExpressionStatementÍÍN\®CallExpressionÍÍMT°MemberExpressionÍÍNªIdentifierÍÍ§consoleNªIdentifierÍÍ¤infoÂÂ‘]¯TemplateLiteralÍÍL’NªIdentifierÍ*Í3©totalDaysNªIdentifierÍ:ÍF¬holidayCount“^¯TemplateElementÍÍ(_»é€æ—¥æŸ¥è¯¢å®Œæˆï¼šæŸ¥è¯¢»é€æ—¥æŸ¥è¯¢å®Œæˆï¼šæŸ¥è¯¢Â^¯TemplateElementÍ4Í8_¬å¤©ï¼Œæ‰¾åˆ°¬å¤©ï¼Œæ‰¾åˆ°Â^¯TemplateElementÍGÍK_¬ä¸ªèŠ‚å‡æ—¥¬ä¸ªèŠ‚å‡æ—¥ÃÂY¯ReturnStatementÍXÍkNªIdentifierÍ_Íj«allHolidaysP°MethodDefinitionÍûÍhÂÂNªIdentifierÍÍ²getHolidaysByMonth¦methodQ²FunctionExpressionÍÍhÀÂÂÃ’NªIdentifierÍÍ¤yearNªIdentifierÍÍ¥monthO®BlockStatementÍ!Íh”Z³VariableDeclarationÍ,ÍW‘[²VariableDeclaratorÍ2ÍVNªIdentifierÍ2Í;©startDateV­NewExpressionÍ>ÍVNªIdentifierÍBÍF¤Date“NªIdentifierÍGÍK¤yearNªIdentifierÍMÍR¥montha§LiteralÍTÍU¡1¥constZ³VariableDeclarationÍaÍ‘[²VariableDeclaratorÍgÍNªIdentifierÍgÍn§endDateV­NewExpressionÍqÍNªIdentifierÍuÍy¤Date“NªIdentifierÍzÍ~¤yeard°BinaryExpressionÍ€Í‰NªIdentifierÍ€Í…¥month¡+a§LiteralÍˆÍ‰¡1a§LiteralÍ‹ÍŒ ¡0¥constR³ExpressionStatementÍ˜Í\®CallExpressionÍ˜ÍT°MemberExpressionÍ˜Í¤NªIdentifierÍ˜ÍŸ§consoleNªIdentifierÍ Í¤¤infoÂÂ‘]¯TemplateLiteralÍ¥Í”NªIdentifierÍªÍ®¤yeard°BinaryExpressionÍ²Í»NªIdentifierÍ²Í·¥month¡+a§LiteralÍºÍ»¡1\®CallExpressionÍÊÍêT°MemberExpressionÍÊÍßU®ThisExpressionÍÊÍÎNªIdentifierÍÏÍß°formatDateForAPIÂÂ‘NªIdentifierÍàÍé©startDateÂ\®CallExpressionÍğÍT°MemberExpressionÍğÍU®ThisExpressionÍğÍôNªIdentifierÍõÍ°formatDateForAPIÂÂ‘NªIdentifierÍÍ§endDateÂ•^¯TemplateElementÍ¦Í¨_¦è·å–¦è·å–Â^¯TemplateElementÍ¯Í°_£å¹´£å¹´Â^¯TemplateElementÍ¼ÍÈ_Ù æœˆçš„èŠ‚å‡æ—¥ï¼Œæ—¥æœŸèŒƒå›´: Ù æœˆçš„èŠ‚å‡æ—¥ï¼Œæ—¥æœŸèŒƒå›´: Â^¯TemplateElementÍëÍî_¥ è‡³ ¥ è‡³ Â^¯TemplateElementÍÍ_  ÃÂY¯ReturnStatementÍÍaY¯AwaitExpressionÍ#Í`\®CallExpressionÍ)Í`T°MemberExpressionÍ)ÍLU®ThisExpressionÍ)Í-NªIdentifierÍ.ÍL¾getHolidaysByDateRangeFallbackÂÂ’NªIdentifierÍMÍV©startDateNªIdentifierÍXÍ_§endDateÂP°MethodDefinitionÍ”ÍÇÂÂNªIdentifierÍ”Í¡­parseHolidays¦methodQ²FunctionExpressionÍ¡ÍÇÀÂÂÂ’NªIdentifierÍ¢Í­«apiResponseNªIdentifierÍ¯Í³¤dateO®BlockStatementÍµÍÇ“Z³VariableDeclarationÍÀÍÔ‘[²VariableDeclaratorÍÆÍÓNªIdentifierÍÆÍÎ¨holidayse¯ArrayExpressionÍÑÍÓ¥constW«IfStatementÍŞÍ¦T°MemberExpressionÍâÍôNªIdentifierÍâÍí«apiResponseNªIdentifierÍîÍô¦resultÂÂO®BlockStatementÍöÍ¦’Z³VariableDeclarationÍÍG‘[²VariableDeclaratorÍÍFNªIdentifierÍÍ§holiday\®CallExpressionÍÍFT°MemberExpressionÍÍ,U®ThisExpressionÍÍNªIdentifierÍÍ,²parseHolidayResultÂÂ’T°MemberExpressionÍ-Í?NªIdentifierÍ-Í8«apiResponseNªIdentifierÍ9Í?¦resultÂÂNªIdentifierÍAÍE¤dateÂ¥constW«IfStatementÍUÍ›NªIdentifierÍYÍ`§holidayO®BlockStatementÍbÍ›‘R³ExpressionStatementÍuÍŒ\®CallExpressionÍuÍ‹T°MemberExpressionÍuÍ‚NªIdentifierÍuÍ}¨holidaysNªIdentifierÍ~Í‚¤pushÂÂ‘NªIdentifierÍƒÍŠ§holidayÂÀÀY¯ReturnStatementÍ°ÍÀNªIdentifierÍ·Í¿¨holidaysP°MethodDefinitionÍñÍ•ÂÂNªIdentifierÍñÍ²parseHolidayResult¦methodQ²FunctionExpressionÍÍ•ÀÂÂÂ’NªIdentifierÍÍ
+¦resultNªIdentifierÍÍ«defaultDateO®BlockStatementÍÍ•™Z³VariableDeclarationÍCÍ…‘[²VariableDeclaratorÍIÍ„NªIdentifierÍIÍP§dateStrd±LogicalExpressionÍSÍ„T°MemberExpressionÍSÍ^NªIdentifierÍSÍY¦resultNªIdentifierÍZÍ^¤dateÂÂ¢??\®CallExpressionÍbÍ„T°MemberExpressionÍbÍwU®ThisExpressionÍbÍfNªIdentifierÍgÍw°formatDateForAPIÂÂ‘NªIdentifierÍxÍƒ«defaultDateÂ¥constZ³VariableDeclarationÍ¢ÍÆ‘[²VariableDeclaratorÍ¨ÍÅNªIdentifierÍ¨Í¯§daycoded±LogicalExpressionÍ²ÍÅT°MemberExpressionÍ²ÍÀNªIdentifierÍ²Í¸¦resultNªIdentifierÍ¹ÍÀ§daycodeÂÂ¢??a§LiteralÍÄÍÅ ¡0¥constZ³VariableDeclarationÍĞÍø‘[²VariableDeclaratorÍÖÍ÷NªIdentifierÍÖÍß©isnotworkd±LogicalExpressionÍâÍ÷T°MemberExpressionÍâÍòNªIdentifierÍâÍè¦resultNªIdentifierÍéÍò©isnotworkÂÂ¢??a§LiteralÍöÍ÷ ¡0¥constW«IfStatementÍ-Ífd°BinaryExpressionÍ1Í>NªIdentifierÍ1Í8§daycode£===a§LiteralÍ=Í> ¡0O®BlockStatementÍ@Íf‘Y¯ReturnStatementÍOÍ[a§LiteralÍVÍZÀ¤nullÀZ³VariableDeclarationÍŠÍš‘[²VariableDeclaratorÍÍ™NªIdentifierÍÍ™«holidayTypeÀ£letW«IfStatementÍ¤Í d°BinaryExpressionÍ¨ÍµNªIdentifierÍ¨Í¯§daycode£===a§LiteralÍ´Íµ¡1O®BlockStatementÍ·Íó‘R³ExpressionStatementÍÆÍèS´AssignmentExpressionÍÆÍç¡=NªIdentifierÍÆÍÑ«holidayTypeT°MemberExpressionÍÔÍçNªIdentifierÍÔÍß«HolidayTypeNªIdentifierÍàÍç§HOLIDAYÂÂW«IfStatementÍÍ d°BinaryExpressionÍÍNªIdentifierÍÍ§daycode£===a§LiteralÍÍ¡2O®BlockStatementÍÍQ‘R³ExpressionStatementÍ$ÍFS´AssignmentExpressionÍ$ÍE¡=NªIdentifierÍ$Í/«holidayTypeT°MemberExpressionÍ2ÍENªIdentifierÍ2Í=«HolidayTypeNªIdentifierÍ>ÍE§WEEKENDÂÂW«IfStatementÍ`Í d°BinaryExpressionÍdÍqNªIdentifierÍdÍk§daycode£===a§LiteralÍpÍq¡3O®BlockStatementÍsÍ²‘R³ExpressionStatementÍ‚Í§S´AssignmentExpressionÍ‚Í¦¡=NªIdentifierÍ‚Í«holidayTypeT°MemberExpressionÍÍ¦NªIdentifierÍÍ›«HolidayTypeNªIdentifierÍœÍ¦ªWORK_SHIFTÂÂO®BlockStatementÍÁÍ ‘Y¯ReturnStatementÍéÍõa§LiteralÍğÍôÀ¤nullZ³VariableDeclarationÍÍ;‘[²VariableDeclaratorÍ"Í:NªIdentifierÍ"Í&¤named±LogicalExpressionÍ)Í:T°MemberExpressionÍ)Í4NªIdentifierÍ)Í/¦resultNªIdentifierÍ0Í4¤nameÂÂ¢??a§LiteralÍ8Í: ¢''£letW«IfStatementÍeÍ§d±LogicalExpressionÍiÍƒX¯UnaryExpressionÍiÍn¡!ÃNªIdentifierÍjÍn¤name¢||d°BinaryExpressionÍrÍƒT°MemberExpressionÍrÍ}NªIdentifierÍrÍv¤nameNªIdentifierÍwÍ}¦lengthÂÂ£===a§LiteralÍ‚Íƒ ¡0O®BlockStatementÍ…Í§‘W«IfStatementÍ”Íœd°BinaryExpressionÍ˜Í¥NªIdentifierÍ˜ÍŸ§daycode£===a§LiteralÍ¤Í¥¡1O®BlockStatementÍ§Íå‘R³ExpressionStatementÍºÍÖS´AssignmentExpressionÍºÍÕ¡=NªIdentifierÍºÍ¾¤named±LogicalExpressionÍÁÍÕT°MemberExpressionÍÁÍÌNªIdentifierÍÁÍÇ¦resultNªIdentifierÍÈÍÌ¤infoÂÂ¢??a§LiteralÍĞÍÕ©èŠ‚å‡æ—¥«'èŠ‚å‡æ—¥'W«IfStatementÍøÍœd°BinaryExpressionÍüÍ	NªIdentifierÍüÍ§daycode£===a§LiteralÍÍ	¡2O®BlockStatementÍÍ9‘R³ExpressionStatementÍÍ*S´AssignmentExpressionÍÍ)¡=NªIdentifierÍÍ"¤namea§LiteralÍ%Í)¦å‘¨æœ«¨'å‘¨æœ«'W«IfStatementÍLÍœd°BinaryExpressionÍPÍ]NªIdentifierÍPÍW§daycode£===a§LiteralÍ\Í]¡3O®BlockStatementÍ_Íœ‘R³ExpressionStatementÍrÍS´AssignmentExpressionÍrÍŒ¡=NªIdentifierÍrÍv¤named±LogicalExpressionÍyÍŒT°MemberExpressionÍyÍ„NªIdentifierÍyÍ¦resultNªIdentifierÍ€Í„¤infoÂÂ¢??a§LiteralÍˆÍŒ¦è°ƒä¼‘¨'è°ƒä¼‘'ÀÀY¯ReturnStatementÍ±ÍV­NewExpressionÍ¸ÍNªIdentifierÍ¼ÍÃ§Holiday‘b°ObjectExpressionÍÄÍŒ–c¨PropertyÍÓÍİÂÂÂNªIdentifierÍÓÍ×¤nameNªIdentifierÍÙÍİ¤name¤initc¨PropertyÍìÍùÂÂÂNªIdentifierÍìÍğ¤dateNªIdentifierÍòÍù§dateStr¤initc¨PropertyÍÍÂÂÂNªIdentifierÍÍ¤typeNªIdentifierÍÍ«holidayType¤initc¨PropertyÍ(Í8ÂÂÂNªIdentifierÍ(Í/§daycodeNªIdentifierÍ1Í8§daycode¤initc¨PropertyÍGÍ[ÂÂÂNªIdentifierÍGÍP©isnotworkNªIdentifierÍRÍ[©isnotwork¤initc¨PropertyÍjÍÂÂÂNªIdentifierÍjÍn¤infod±LogicalExpressionÍpÍT°MemberExpressionÍpÍ{NªIdentifierÍpÍv¦resultNªIdentifierÍwÍ{¤infoÂÂ¢??a§LiteralÍÍ ¢''¤initP°MethodDefinitionÍÑÍĞÂÂNªIdentifierÍÑÍá°formatDateForAPI¦methodQ²FunctionExpressionÍáÍĞÀÂÂÂ‘NªIdentifierÍâÍæ¤dateO®BlockStatementÍèÍĞ”Z³VariableDeclarationÍóÍ‘[²VariableDeclaratorÍùÍNªIdentifierÍùÍı¤year\®CallExpressionÍ ÍT°MemberExpressionÍ ÍNªIdentifierÍ Í¤dateNªIdentifierÍÍ«getFullYearÂÂÂ¥constZ³VariableDeclarationÍÍ]‘[²VariableDeclaratorÍ#Í\NªIdentifierÍ#Í(¥month\®CallExpressionÍ+Í\T°MemberExpressionÍ+ÍT\®CallExpressionÍ+ÍKT°MemberExpressionÍ+ÍId°BinaryExpressionÍ,Í?\®CallExpressionÍ,Í;T°MemberExpressionÍ,Í9NªIdentifierÍ,Í0¤dateNªIdentifierÍ1Í9¨getMonthÂÂÂ¡+a§LiteralÍ>Í?¡1NªIdentifierÍAÍI¨toStringÂÂÂNªIdentifierÍLÍT¨padStartÂÂ’a§LiteralÍUÍV¡2a§LiteralÍXÍ[¡0£'0'Â¥constZ³VariableDeclarationÍgÍ‘[²VariableDeclaratorÍmÍNªIdentifierÍmÍp£day\®CallExpressionÍsÍT°MemberExpressionÍsÍ•\®CallExpressionÍsÍŒT°MemberExpressionÍsÍŠ\®CallExpressionÍsÍT°MemberExpressionÍsÍNªIdentifierÍsÍw¤dateNªIdentifierÍxÍ§getDateÂÂÂNªIdentifierÍ‚ÍŠ¨toStringÂÂÂNªIdentifierÍÍ•¨padStartÂÂ’a§LiteralÍ–Í—¡2a§LiteralÍ™Íœ¡0£'0'Â¥constY¯ReturnStatementÍ¨ÍÉ]¯TemplateLiteralÍ¯ÍÈ“NªIdentifierÍ²Í¶¤yearNªIdentifierÍºÍ¿¥monthNªIdentifierÍÃÍÆ£day”^¯TemplateElementÍ°Í°_  Â^¯TemplateElementÍ·Í¸_¡-¡-Â^¯TemplateElementÍÀÍÁ_¡-¡-Â^¯TemplateElementÍÇÍÇ_  ÃP°MethodDefinitionÍüÍ»ÂÂNªIdentifierÍüÍªgetDateKey¦methodQ²FunctionExpressionÍÍ»ÀÂÂÂ‘NªIdentifierÍÍ¤dateO®BlockStatementÍÍ»”Z³VariableDeclarationÍÍ8‘[²VariableDeclaratorÍÍ7NªIdentifierÍÍ"¤year\®CallExpressionÍ%Í7T°MemberExpressionÍ%Í5NªIdentifierÍ%Í)¤dateNªIdentifierÍ*Í5«getFullYearÂÂÂ¥constZ³VariableDeclarationÍBÍd‘[²VariableDeclaratorÍHÍcNªIdentifierÍHÍM¥monthd°BinaryExpressionÍPÍc\®CallExpressionÍPÍ_T°MemberExpressionÍPÍ]NªIdentifierÍPÍT¤dateNªIdentifierÍUÍ]¨getMonthÂÂÂ¡+a§LiteralÍbÍc¡1¥constZ³VariableDeclarationÍnÍ‰‘[²VariableDeclaratorÍtÍˆNªIdentifierÍtÍw£day\®CallExpressionÍzÍˆT°MemberExpressionÍzÍ†NªIdentifierÍzÍ~¤dateNªIdentifierÍÍ†§getDateÂÂÂ¥constY¯ReturnStatementÍ“Í´]¯TemplateLiteralÍšÍ³“NªIdentifierÍÍ¡¤yearNªIdentifierÍ¥Íª¥monthNªIdentifierÍ®Í±£day”^¯TemplateElementÍ›Í›_  Â^¯TemplateElementÍ¢Í£_¡-¡-Â^¯TemplateElementÍ«Í¬_¡-¡-Â^¯TemplateElementÍ²Í²_  ÃP°MethodDefinitionÍàÍÂÂNªIdentifierÍàÍêªclearCache¦methodQ²FunctionExpressionÍêÍÀÂÂÂO®BlockStatementÍíÍ‘R³ExpressionStatementÍøÍ\®CallExpressionÍøÍT°MemberExpressionÍøÍT°MemberExpressionÍøÍ
+U®ThisExpressionÍøÍüNªIdentifierÍıÍ
+­holidaysCacheÂÂNªIdentifierÍÍ¥clearÂÂÂÀ“Ôrh•¤type¥start£endªspecifiers¦source±ImportDeclaration 8’Ôri•¤type¥start£end¨imported¥local¯ImportSpecifier	NªIdentifier	§HolidayNªIdentifier	§Holidayi¯ImportSpecifierNªIdentifier«HolidayTypeNªIdentifier«HolidayTypea§Literal%7°../model/Holiday²'../model/Holiday'h±ImportDeclaration:Ì\‘Ôrj”¤type¥start£end¥local¶ImportDefaultSpecifierÌAÌENªIdentifierÌAÌE¤httpa§LiteralÌKÌ[®@ohos.net.http°"@ohos.net.http"h±ImportDeclarationÌ^Ì‘i¯ImportSpecifierÌgÌpNªIdentifierÌgÌp©ConstantsNªIdentifierÌgÌp©Constantsa§LiteralÌxÌ³../common/Constantsµ'../common/Constants'

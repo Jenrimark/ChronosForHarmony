@@ -313,9 +313,7 @@ export class NormalMsgView extends ViewPU {
                     If.pop();
                 });
             }
-            else /**
-             * 构建格式化的内容（支持Markdown）
-             */ {
+            else {
                 this.ifElseBranchUpdateFunction(1, () => {
                 });
             }
@@ -368,10 +366,12 @@ export class NormalMsgView extends ViewPU {
                                 // 无序列表项
                                 Row.margin({ bottom: 6 });
                                 // 无序列表项
+                                Row.margin({ right: 8 });
+                                // 无序列表项
                                 Row.alignItems(VerticalAlign.Top);
                             }, Row);
                             this.observeComponentCreation2((elmtId, isInitialRender) => {
-                                Text.create('•');
+                                Text.create(' ');
                                 Text.debugLine("entry/src/main/ets/components/chat/NormalMsgView.ets(196:13)", "entry");
                                 Text.fontSize(16);
                                 Text.fontColor(Constants.COLOR_PRIMARY);
@@ -388,7 +388,7 @@ export class NormalMsgView extends ViewPU {
                             this.observeComponentCreation2((elmtId, isInitialRender) => {
                                 // 有序列表 - 固定序号宽度，确保文字对齐
                                 Row.create();
-                                Row.debugLine("entry/src/main/ets/components/chat/NormalMsgView.ets(207:11)", "entry");
+                                Row.debugLine("entry/src/main/ets/components/chat/NormalMsgView.ets(208:12)", "entry");
                                 // 有序列表 - 固定序号宽度，确保文字对齐
                                 Row.width('100%');
                                 // 有序列表 - 固定序号宽度，确保文字对齐
@@ -397,22 +397,34 @@ export class NormalMsgView extends ViewPU {
                                 Row.alignItems(VerticalAlign.Top);
                             }, Row);
                             this.observeComponentCreation2((elmtId, isInitialRender) => {
+                                // 显示列表序号（如：1. 2. 3.）
                                 Text.create(line.number);
-                                Text.debugLine("entry/src/main/ets/components/chat/NormalMsgView.ets(208:13)", "entry");
+                                Text.debugLine("entry/src/main/ets/components/chat/NormalMsgView.ets(210:14)", "entry");
+                                // 显示列表序号（如：1. 2. 3.）
                                 Text.fontSize(14);
+                                // 显示列表序号（如：1. 2. 3.）
                                 Text.fontColor(Constants.COLOR_PRIMARY);
+                                // 显示列表序号（如：1. 2. 3.）
                                 Text.fontWeight(FontWeight.Medium);
+                                // 显示列表序号（如：1. 2. 3.）
                                 Text.width(24);
+                                // 显示列表序号（如：1. 2. 3.）
                                 Text.textAlign(TextAlign.Start);
                             }, Text);
+                            // 显示列表序号（如：1. 2. 3.）
                             Text.pop();
                             this.observeComponentCreation2((elmtId, isInitialRender) => {
+                                // 包裹文字内容的列容器
                                 Column.create();
-                                Column.debugLine("entry/src/main/ets/components/chat/NormalMsgView.ets(214:13)", "entry");
+                                Column.debugLine("entry/src/main/ets/components/chat/NormalMsgView.ets(217:14)", "entry");
+                                // 包裹文字内容的列容器
                                 Column.layoutWeight(1);
+                                // 包裹文字内容的列容器
                                 Column.alignItems(HorizontalAlign.Start);
                             }, Column);
+                            // 构建格式化的文本内容（支持加粗等Markdown格式）
                             this.buildFormattedText.bind(this)(line.text);
+                            // 包裹文字内容的列容器
                             Column.pop();
                             // 有序列表 - 固定序号宽度，确保文字对齐
                             Row.pop();
@@ -423,7 +435,7 @@ export class NormalMsgView extends ViewPU {
                             this.observeComponentCreation2((elmtId, isInitialRender) => {
                                 // 普通文本
                                 Column.create();
-                                Column.debugLine("entry/src/main/ets/components/chat/NormalMsgView.ets(225:11)", "entry");
+                                Column.debugLine("entry/src/main/ets/components/chat/NormalMsgView.ets(229:11)", "entry");
                                 // 普通文本
                                 Column.width('100%');
                                 // 普通文本
@@ -525,7 +537,7 @@ export class NormalMsgView extends ViewPU {
                                 this.observeComponentCreation2((elmtId, isInitialRender) => {
                                     // 如果没有spans或spans为空，直接显示原文本
                                     Text.create(text);
-                                    Text.debugLine("entry/src/main/ets/components/chat/NormalMsgView.ets(315:9)", "entry");
+                                    Text.debugLine("entry/src/main/ets/components/chat/NormalMsgView.ets(319:9)", "entry");
                                     // 如果没有spans或spans为空，直接显示原文本
                                     Text.fontSize(14);
                                     // 如果没有spans或spans为空，直接显示原文本
@@ -541,7 +553,7 @@ export class NormalMsgView extends ViewPU {
                             this.ifElseBranchUpdateFunction(1, () => {
                                 this.observeComponentCreation2((elmtId, isInitialRender) => {
                                     Text.create();
-                                    Text.debugLine("entry/src/main/ets/components/chat/NormalMsgView.ets(320:9)", "entry");
+                                    Text.debugLine("entry/src/main/ets/components/chat/NormalMsgView.ets(324:9)", "entry");
                                     Text.fontSize(14);
                                     Text.fontColor(Constants.COLOR_TEXT_PRIMARY);
                                     Text.lineHeight(22);
@@ -556,7 +568,7 @@ export class NormalMsgView extends ViewPU {
                                                 this.ifElseBranchUpdateFunction(0, () => {
                                                     this.observeComponentCreation2((elmtId, isInitialRender) => {
                                                         Span.create(span.text);
-                                                        Span.debugLine("entry/src/main/ets/components/chat/NormalMsgView.ets(323:15)", "entry");
+                                                        Span.debugLine("entry/src/main/ets/components/chat/NormalMsgView.ets(327:15)", "entry");
                                                         Span.fontSize(14);
                                                         Span.fontColor(Constants.COLOR_TEXT_PRIMARY);
                                                         Span.fontWeight(span.bold ? FontWeight.Bold : FontWeight.Normal);
@@ -581,9 +593,7 @@ export class NormalMsgView extends ViewPU {
                     If.pop();
                 });
             }
-            else /**
-             * 解析Markdown文本为Span数组
-             */ {
+            else {
                 this.ifElseBranchUpdateFunction(1, () => {
                 });
             }

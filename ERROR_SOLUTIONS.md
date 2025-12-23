@@ -1247,6 +1247,7 @@ async getAllTasks(params?: TaskQueryParams): Promise<Task[]> {
    - 更新数组时**必须创建新引用**（`[...array]`、`array.map()` 等）
    - 对象属性更新需要创建新对象和新数组
    - 直接修改数组元素不会触发 UI 更新
+   - **ForEach 的 key 策略很重要**：key 应该包含会变化的属性，确保内容更新时 key 也会变化
 
 5. **Builder 限制**：`@Builder` 中只能写 UI 组件语法
    - 不能包含变量声明、计算逻辑、控制流语句（除 UI 条件渲染外）
@@ -1331,18 +1332,211 @@ Rollup 等打包工具对代码解析的影响：
 
 ---
 
+## 三十三、ForEach 的 key 策略导致 UI 不刷新
+
+### 问题描述
+在使用 `ForEach` 渲染动态列表时，虽然 `@State` 数组已经更新（日志显示状态已更新），但 UI 界面没有刷新，列表项内容没有更新。
+
+### 原因
+ForEach 使用 key 来识别列表项是否发生变化：
+- **如果 key 不变**，ForEach 认为这是同一个元素，**不会重新构建 UI**
+- **如果 key 变化**，ForEach 会重新构建该项的 UI
+
+当列表项的内容（如 `content` 属性）更新，但 key 仍然相同时，ForEach 会复用现有组件，导致 UI 不刷新。
+
+### 解决方案
+
+#### 问题代码示例
+```typescript
+// ❌ 错误 - key 只使用 id，内容更新时 key 不变
+@State messages: ChatMessage[] = [];
+
+ForEach(this.messages, (message: ChatMessage) => {
+  ListItem() {
+    this.buildMessageItem(message)
+  }
+}, (message: ChatMessage) => message.id.toString())  // 只使用 id 作为 key
+
+// 当 message.content 更新时，id 不变，key 也不变，UI 不会刷新
+```
+
+#### 正确做法
+
+**方案1：在 key 中包含会变化的属性**
+
+```typescript
+// ✅ 正确 - key 包含内容长度和 timestamp
+ForEach(this.messages, (message: ChatMessage) => {
+  ListItem() {
+    this.buildMessageItem(message)
+  }
+}, (message: ChatMessage) => `${message.id}-${message.content.length}-${message.timestamp.getTime()}`)
+```
+
+**关键点：**
+- 将 `content.length` 加入 key：内容变化时 key 会变化
+- 将 `timestamp.getTime()` 加入 key：每次更新 timestamp 时 key 也会变化
+- ForEach 检测到 key 变化，会重新渲染该项的 UI
+
+**方案2：在更新时同时更新 timestamp**
+
+```typescript
+// 更新消息时，同时更新 timestamp，确保对象引用变化
+const updatedMessages: ChatMessage[] = [
+  ...this.messages.slice(0, index),
+  {
+    id: currentMessage.id,
+    content: newContent,
+    isUser: currentMessage.isUser,
+    timestamp: new Date()  // 更新 timestamp 强制刷新
+  },
+  ...this.messages.slice(index + 1)
+];
+this.messages = updatedMessages;
+```
+
+#### 完整的流式更新示例
+
+```typescript
+async sendMessage(): Promise<void> {
+  const currentInput = this.inputText.trim();
+  this.inputText = '';
+  this.isSending = true;
+
+  // 添加用户消息
+  const userMessage: ChatMessage = {
+    id: this.messages.length + 1,
+    content: currentInput,
+    isUser: true,
+    timestamp: new Date()
+  };
+  this.messages = [...this.messages, userMessage];
+
+  // 添加加载中的AI消息占位
+  const loadingMessageId = this.messages.length + 1;
+  const loadingMessage: ChatMessage = {
+    id: loadingMessageId,
+    content: '',
+    isUser: false,
+    timestamp: new Date()
+  };
+  this.messages = [...this.messages, loadingMessage];
+
+  try {
+    // 使用局部变量累积内容
+    let accumulatedContent: string = '';
+    
+    await this.chatService.sendMessageStream(
+      currentInput,
+      (chunk: string) => {
+        // 累积内容
+        accumulatedContent += chunk;
+        
+        // 查找加载消息的索引
+        const loadingIndex = this.messages.findIndex((msg: ChatMessage) => msg.id === loadingMessageId);
+        if (loadingIndex < 0) return;
+        
+        const currentLoadingMsg = this.messages[loadingIndex];
+        
+        // 使用 slice 创建新数组，替换目标消息
+        // 更新 timestamp 确保对象引用变化
+        const updatedMessages: ChatMessage[] = [
+          ...this.messages.slice(0, loadingIndex),
+          {
+            id: currentLoadingMsg.id,
+            content: accumulatedContent,
+            isUser: currentLoadingMsg.isUser,
+            timestamp: new Date()  // 关键：更新 timestamp
+          },
+          ...this.messages.slice(loadingIndex + 1)
+        ];
+        
+        // 更新状态
+        this.messages = updatedMessages;
+      }
+    );
+  } catch (error) {
+    // 错误处理...
+  }
+}
+
+// ForEach 使用包含变化的 key
+ForEach(this.messages, (message: ChatMessage) => {
+  ListItem() {
+    this.buildMessageItem(message)
+  }
+}, (message: ChatMessage) => `${message.id}-${message.content.length}-${message.timestamp.getTime()}`)
+```
+
+### 关键原理
+
+#### ArkTS 的响应式更新机制
+
+1. **@State 变量更新**：会触发整个组件的 `build()` 重新执行
+2. **ForEach 内部机制**：使用 key 来识别列表项
+   - key 不变 → 复用现有组件，**不会重新构建**
+   - key 变化 → 创建新组件并重新构建
+
+#### 为什么需要修改 key
+
+即使通过 `this.messages = [...updatedMessages]` 创建了新的数组引用，`@State` 确实会触发 `build()` 重新执行，但 ForEach 在内部比较的是 key：
+
+```typescript
+// ForEach 内部的伪代码逻辑
+for (each item in newArray) {
+  const newKey = generateKey(item);
+  const existingComponent = componentMap.get(newKey);
+  
+  if (existingComponent && existingComponent.item === item) {
+    // key 相同，复用现有组件，不重新构建！
+    continue;
+  }
+  
+  // key 不同或不存在，创建新组件
+  createNewComponent(item);
+}
+```
+
+因此，即使数组引用变了，如果 key 不变，ForEach 也不会重新渲染该项。
+
+### 最佳实践
+
+1. **key 应该包含会变化的属性**：
+   - 对于内容会动态更新的列表项，key 应该包含内容相关的信息（如 `content.length`）
+   - 或者包含时间戳等会变化的属性
+
+2. **key 应该保持唯一性**：
+   - 确保不同列表项有不同的 key
+   - 可以使用组合 key（如 `${id}-${timestamp}`）
+
+3. **更新时创建新对象**：
+   - 更新列表项属性时，创建新的对象引用
+   - 更新 `timestamp` 等字段可以强制对象引用变化
+
+4. **考虑使用 LazyForEach**：
+   - 对于大型列表，考虑使用 `LazyForEach` 和 `IDataSource`
+   - `IDataSource` 有专门的通知机制（如 `notifyDataChange`）来触发 UI 更新
+
+### 常见场景
+- 聊天消息列表的内容流式更新
+- 任务列表的状态更新
+- 动态加载的数据列表
+- 实时更新的数据展示
+
+---
+
 **最后更新**：2024年12月
 
 ---
 
 ## 错误统计
 
-截至目前，文档共记录了 **32 个常见错误类型**，涵盖：
+截至目前，文档共记录了 **33 个常见错误类型**，涵盖：
 
 - **类型系统错误**（10 个）：类型推断、any/unknown、结构类型、联合类型等
 - **装饰器和组件错误**（6 个）：@Prop、@Param、@Builder、组件命名等
 - **API 使用错误**（5 个）：数据库 API、UI 组件 API、资源管理等
-- **响应式和状态管理错误**（3 个）：UI 刷新、状态更新等
+- **响应式和状态管理错误**（4 个）：UI 刷新、状态更新、ForEach key 策略等
 - **语法和工具错误**（5 个）：解构赋值、Object.assign、打包工具解析等
 - **其他错误**（3 个）：布局、配置、运行时错误等
 

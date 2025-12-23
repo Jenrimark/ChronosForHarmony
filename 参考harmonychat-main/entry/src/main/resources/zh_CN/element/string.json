@@ -1,0 +1,16 @@
+{
+  "string": [
+    {
+      "name": "module_desc",
+      "value": "A HarmonyChat project"
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "Ability of HarmonyChat"
+    },
+    {
+      "name": "EntryAbility_label",
+      "value": "HarmonyChat"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "commonjs",
+    "lib": ["ES2020"],
+    "checkJs": false
+  },
+  "include": [
+    "Chronos/**/*.ets",
+    "Chronos/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "oh_modules",
+    "build",
+    "参考*/**",
+    "Back/**",
+    "**.har",
+    "**.so"
+  ]
+}
+

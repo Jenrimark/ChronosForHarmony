@@ -1,5 +1,6 @@
 import { BillType, BillCategory } from "@normalized:N&&&entry/src/main/ets/model/Bill&";
 import http from "@ohos:net.http";
+import { Constants } from "@normalized:N&&&entry/src/main/ets/common/Constants&";
 /**
  * MIMO API请求消息接口
  */
@@ -8,12 +9,20 @@ interface MimoMessage {
     content: string;
 }
 /**
+ * MIMO API响应格式配置
+ */
+interface MimoResponseFormat {
+    type: string;
+}
+/**
  * MIMO API请求接口
  */
 interface MimoRequest {
     model: string;
     messages: MimoMessage[];
     temperature?: number;
+    response_format?: MimoResponseFormat;
+    max_completion_tokens?: number;
 }
 /**
  * MIMO API消息接口
@@ -48,12 +57,11 @@ export interface BillRecognitionResult {
  */
 export class MimoAIService {
     private static instance: MimoAIService;
-    private apiKey: string = ''; // 从环境变量或配置中获取
-    private baseUrl: string = 'https://api.xiaomimimo.com/v1/chat/completions';
+    private apiKey: string = Constants.MIMO_API_KEY;
+    private baseUrl: string = Constants.MIMO_API_URL;
     private model: string = 'mimo'; // 默认模型
     private constructor() {
-        // TODO: 从配置文件或环境变量读取API Key
-        // this.apiKey = 'your-api-key';
+        // API Key从Constants中读取
     }
     static getInstance(): MimoAIService {
         if (!MimoAIService.instance) {
@@ -102,37 +110,72 @@ export class MimoAIService {
 只返回JSON，不要其他文字。`;
     }
     /**
+     * 构建系统消息
+     */
+    private buildSystemMessage(): MimoMessage {
+        return {
+            role: 'system',
+            content: '你是一个专业的账单识别助手，能够从自然语言文本中提取账单信息，包括类型（收入/支出）、分类、金额和描述。请始终以JSON格式返回结果。'
+        };
+    }
+    /**
      * 调用MIMO API
      */
     private async callMimoAPI(prompt: string): Promise<string> {
-        if (!this.apiKey) {
+        if (!this.apiKey || this.apiKey === '') {
             throw new Error('MIMO API Key未设置');
         }
+        // 构建请求数据，移除可能不被支持的字段
         const requestData: MimoRequest = {
             model: this.model,
             messages: [
+                this.buildSystemMessage(),
                 {
                     role: 'user',
                     content: prompt
                 }
             ],
             temperature: 0.3
+            // 移除 response_format 和 max_completion_tokens，这些字段可能导致400错误
         };
         const httpRequest = http.createHttp();
-        const response = await httpRequest.request(this.baseUrl, {
-            method: http.RequestMethod.POST,
-            header: {
-                'api-key': this.apiKey,
-                'Content-Type': 'application/json'
-            },
-            extraData: JSON.stringify(requestData)
-        });
-        const result = await response.result.toString();
-        const data: MimoResponse = JSON.parse(result) as MimoResponse;
-        if (data.choices && data.choices.length > 0) {
-            return data.choices[0].message.content;
+        try {
+            const response = await httpRequest.request(this.baseUrl, {
+                method: http.RequestMethod.POST,
+                header: {
+                    'api-key': this.apiKey,
+                    'Content-Type': 'application/json'
+                },
+                extraData: JSON.stringify(requestData),
+                connectTimeout: 30000,
+                readTimeout: 30000
+            });
+            if (response.responseCode !== 200) {
+                const errorText = await response.result.toString();
+                console.error('MIMO API错误响应:', errorText);
+                console.error('请求URL:', this.baseUrl);
+                console.error('请求头:', JSON.stringify({
+                    'api-key': this.apiKey ? '已设置' : '未设置',
+                    'Content-Type': 'application/json'
+                }));
+                console.error('请求体:', JSON.stringify(requestData));
+                throw new Error(`MIMO API请求失败，状态码: ${response.responseCode}，错误信息: ${errorText}`);
+            }
+            const result = await response.result.toString();
+            const data: MimoResponse = JSON.parse(result) as MimoResponse;
+            if (data.choices && data.choices.length > 0 && data.choices[0].message) {
+                return data.choices[0].message.content;
+            }
+            throw new Error('MIMO API返回格式错误：choices为空或格式不正确');
         }
-        throw new Error('MIMO API返回格式错误');
+        catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            console.error('调用MIMO API失败:', errorMessage);
+            throw new Error(`MIMO API调用失败: ${errorMessage}`);
+        }
+        finally {
+            httpRequest.destroy();
+        }
     }
     /**
      * 解析API响应

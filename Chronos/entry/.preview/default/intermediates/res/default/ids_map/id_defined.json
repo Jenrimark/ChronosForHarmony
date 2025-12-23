@@ -87,5 +87,13 @@
 			"type":	"profile",
 			"name":	"main_pages",
 			"id":	"0x01000015"
+		}, {
+			"type":	"media",
+			"name":	"app_icon",
+			"id":	"0x01000016"
+		}, {
+			"type":	"media",
+			"name":	"1Chronos",
+			"id":	"0x01000017"
 		}]
 }

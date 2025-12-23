@@ -2,6 +2,8 @@
 
 一个基于 HarmonyOS Next 的时间管理和记账应用，采用前后端分离架构。
 
+**得分**=**lo**g**(**全场最高票**+**1**)**log**(**你的票数**+**1**)×**100
+
 sk-c98gx1dgjy6bpmu8ejq77l1zmvvied1f0fmtmgvie271iezj
 
 ## 项目概述

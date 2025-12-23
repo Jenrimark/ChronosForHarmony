@@ -58,6 +58,9 @@ export class Constants {
     // API配置
     static readonly API_BASE_URL: string = 'http://localhost:8080/api'; // 需要根据实际后端地址修改
     // MIMO AI配置
-    static readonly MIMO_API_KEY: string = ''; // 请设置你的MIMO API Key
+    static readonly MIMO_API_KEY: string = 'sk-c98gx1dgjy6bpmu8ejq77l1zmvvied1f0fmtmgvie271iezj';
     static readonly MIMO_API_URL: string = 'https://api.xiaomimimo.com/v1/chat/completions';
+    // 天行API配置（节假日接口）
+    static readonly TIANAPI_KEY: string = '946b76bdb2c6424342e01207eba8372f';
+    static readonly TIANAPI_HOLIDAY_URL: string = 'https://apis.tianapi.com/jiejiari/index';
 }

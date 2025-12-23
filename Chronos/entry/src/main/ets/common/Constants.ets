@@ -21,11 +21,9 @@ export class Constants {
   static readonly TASK_STATUS_COMPLETED: string = 'completed';
   static readonly TASK_STATUS_CANCELLED: string = 'cancelled';
 
-  // 任务优先级
-  static readonly PRIORITY_LOW: number = 1;
-  static readonly PRIORITY_MEDIUM: number = 2;
-  static readonly PRIORITY_HIGH: number = 3;
-  static readonly PRIORITY_URGENT: number = 4;
+  // 任务优先级（只有两种：普通和重要）
+  static readonly PRIORITY_NORMAL: number = 1;   // 普通优先级
+  static readonly PRIORITY_IMPORTANT: number = 2; // 重要优先级
 
   // 颜色主题 - 橙色系列（与图标颜色保持一致）
   // 主色调

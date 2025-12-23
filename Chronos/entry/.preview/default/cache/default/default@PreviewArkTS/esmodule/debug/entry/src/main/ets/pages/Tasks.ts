@@ -4,7 +4,9 @@ if (!("finalizeConstruction" in ViewPU.prototype)) {
 interface Tasks_Params {
     tasks?: Task[];
     allTasks?: Task[];
+    filteredTasks?: Task[];
     filterStatus?: string;
+    searchKeyword?: string;
     showAddDialog?: boolean;
     newTask?: Task;
     tapActionId?: number;
@@ -24,7 +26,9 @@ export class Tasks extends ViewPU {
         }
         this.__tasks = new ObservedPropertyObjectPU([], this, "tasks");
         this.__allTasks = new ObservedPropertyObjectPU([], this, "allTasks");
+        this.__filteredTasks = new ObservedPropertyObjectPU([], this, "filteredTasks");
         this.__filterStatus = new ObservedPropertySimplePU('all', this, "filterStatus");
+        this.__searchKeyword = new ObservedPropertySimplePU('', this, "searchKeyword");
         this.__showAddDialog = new ObservedPropertySimplePU(false, this, "showAddDialog");
         this.__newTask = new ObservedPropertyObjectPU(new Task(), this, "newTask");
         this.__tapActionId = new ObservedPropertySimplePU(0, this, "tapActionId");
@@ -41,8 +45,14 @@ export class Tasks extends ViewPU {
         if (params.allTasks !== undefined) {
             this.allTasks = params.allTasks;
         }
+        if (params.filteredTasks !== undefined) {
+            this.filteredTasks = params.filteredTasks;
+        }
         if (params.filterStatus !== undefined) {
             this.filterStatus = params.filterStatus;
+        }
+        if (params.searchKeyword !== undefined) {
+            this.searchKeyword = params.searchKeyword;
         }
         if (params.showAddDialog !== undefined) {
             this.showAddDialog = params.showAddDialog;
@@ -68,7 +78,9 @@ export class Tasks extends ViewPU {
     purgeVariableDependenciesOnElmtId(rmElmtId) {
         this.__tasks.purgeDependencyOnElmtId(rmElmtId);
         this.__allTasks.purgeDependencyOnElmtId(rmElmtId);
+        this.__filteredTasks.purgeDependencyOnElmtId(rmElmtId);
         this.__filterStatus.purgeDependencyOnElmtId(rmElmtId);
+        this.__searchKeyword.purgeDependencyOnElmtId(rmElmtId);
         this.__showAddDialog.purgeDependencyOnElmtId(rmElmtId);
         this.__newTask.purgeDependencyOnElmtId(rmElmtId);
         this.__tapActionId.purgeDependencyOnElmtId(rmElmtId);
@@ -78,7 +90,9 @@ export class Tasks extends ViewPU {
     aboutToBeDeleted() {
         this.__tasks.aboutToBeDeleted();
         this.__allTasks.aboutToBeDeleted();
+        this.__filteredTasks.aboutToBeDeleted();
         this.__filterStatus.aboutToBeDeleted();
+        this.__searchKeyword.aboutToBeDeleted();
         this.__showAddDialog.aboutToBeDeleted();
         this.__newTask.aboutToBeDeleted();
         this.__tapActionId.aboutToBeDeleted();
@@ -101,12 +115,26 @@ export class Tasks extends ViewPU {
     set allTasks(newValue: Task[]) {
         this.__allTasks.set(newValue);
     }
+    private __filteredTasks: ObservedPropertyObjectPU<Task[]>; // 过滤后的任务列表
+    get filteredTasks() {
+        return this.__filteredTasks.get();
+    }
+    set filteredTasks(newValue: Task[]) {
+        this.__filteredTasks.set(newValue);
+    }
     private __filterStatus: ObservedPropertySimplePU<string>; // all, pending, in_progress, completed
     get filterStatus() {
         return this.__filterStatus.get();
     }
     set filterStatus(newValue: string) {
         this.__filterStatus.set(newValue);
+    }
+    private __searchKeyword: ObservedPropertySimplePU<string>; // 搜索关键词
+    get searchKeyword() {
+        return this.__searchKeyword.get();
+    }
+    set searchKeyword(newValue: string) {
+        this.__searchKeyword.set(newValue);
     }
     private __showAddDialog: ObservedPropertySimplePU<boolean>;
     get showAddDialog() {
@@ -146,6 +174,8 @@ export class Tasks extends ViewPU {
     private taskService: TaskService;
     aboutToAppear() {
         this.loadTasks();
+        // 初始化过滤后的任务列表
+        this.filteredTasks = [];
     }
     /**
      * 加载任务
@@ -160,6 +190,28 @@ export class Tasks extends ViewPU {
         else {
             this.tasks = await this.taskService.getTasksByStatus(this.filterStatus);
         }
+        // 应用搜索过滤
+        this.applySearchFilter();
+    }
+    /**
+     * 应用搜索过滤
+     */
+    applySearchFilter(): void {
+        if (!this.searchKeyword || !this.searchKeyword.trim()) {
+            // 如果没有搜索关键词，直接使用当前筛选的任务列表
+            this.filteredTasks = this.tasks;
+            return;
+        }
+        // 根据关键词过滤任务标题
+        const keyword = this.searchKeyword.trim().toLowerCase();
+        this.filteredTasks = this.tasks.filter(task => task.title.toLowerCase().includes(keyword));
+    }
+    /**
+     * 搜索关键词变化
+     */
+    onSearchChange(keyword: string): void {
+        this.searchKeyword = keyword;
+        this.applySearchFilter();
     }
     /**
      * 获取已完成任务数量
@@ -179,6 +231,10 @@ export class Tasks extends ViewPU {
     onFilterChange(status: string): void {
         this.filterStatus = status;
         this.loadTasks();
+        // 筛选状态改变后，如果有关键词，重新应用搜索过滤
+        if (this.searchKeyword) {
+            this.applySearchFilter();
+        }
     }
     /**
      * 监听状态变化
@@ -237,29 +293,43 @@ export class Tasks extends ViewPU {
      */
     showAddTaskDialog(): void {
         this.newTask = new Task();
+        this.newTask.priority = Constants.PRIORITY_NORMAL; // 默认普通优先级
         this.showAddDialog = true;
     }
     /**
      * 添加任务
      */
     async addTask(): Promise<void> {
-        if (!this.newTask.title.trim()) {
+        // 验证任务标题不能为空
+        if (!this.newTask.title || !this.newTask.title.trim()) {
             return;
         }
-        await this.taskService.createTask(this.newTask);
-        this.showAddDialog = false;
-        await this.loadTasks();
+        try {
+            // 创建任务
+            await this.taskService.createTask(this.newTask);
+            // 关闭对话框
+            this.showAddDialog = false;
+            // 重新加载任务列表
+            await this.loadTasks();
+            // 重置新建任务对象
+            this.newTask = new Task();
+            this.newTask.priority = Constants.PRIORITY_NORMAL;
+        }
+        catch (error) {
+            console.error('添加任务失败:', error);
+            // 可以在这里添加错误提示
+        }
     }
     initialRender() {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Stack.create();
-            Stack.debugLine("entry/src/main/ets/pages/Tasks.ets(140:5)", "entry");
+            Stack.debugLine("entry/src/main/ets/pages/Tasks.ets(189:5)", "entry");
             Stack.width('100%');
             Stack.height('100%');
         }, Stack);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Column.create();
-            Column.debugLine("entry/src/main/ets/pages/Tasks.ets(141:7)", "entry");
+            Column.debugLine("entry/src/main/ets/pages/Tasks.ets(190:7)", "entry");
             Column.width('100%');
             Column.flexGrow(1);
             Column.backgroundColor(Constants.COLOR_BACKGROUND);
@@ -267,7 +337,7 @@ export class Tasks extends ViewPU {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             // 统计数据卡片
             Row.create();
-            Row.debugLine("entry/src/main/ets/pages/Tasks.ets(143:9)", "entry");
+            Row.debugLine("entry/src/main/ets/pages/Tasks.ets(192:9)", "entry");
             // 统计数据卡片
             Row.width('100%');
             // 统计数据卡片
@@ -281,9 +351,33 @@ export class Tasks extends ViewPU {
         // 统计数据卡片
         Row.pop();
         this.observeComponentCreation2((elmtId, isInitialRender) => {
+            // 搜索框
+            Row.create();
+            Row.debugLine("entry/src/main/ets/pages/Tasks.ets(202:9)", "entry");
+            // 搜索框
+            Row.width('100%');
+            // 搜索框
+            Row.padding({ left: 16, right: 16, top: 0, bottom: 12 });
+        }, Row);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            TextInput.create({ placeholder: '搜索任务...', text: this.searchKeyword });
+            TextInput.debugLine("entry/src/main/ets/pages/Tasks.ets(203:11)", "entry");
+            TextInput.layoutWeight(1);
+            TextInput.height(40);
+            TextInput.fontSize(14);
+            TextInput.backgroundColor(Constants.COLOR_CARD_BACKGROUND);
+            TextInput.borderRadius(20);
+            TextInput.padding({ left: 16, right: 16 });
+            TextInput.onChange((value: string) => {
+                this.onSearchChange(value);
+            });
+        }, TextInput);
+        // 搜索框
+        Row.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
             // 筛选标签栏
             Row.create();
-            Row.debugLine("entry/src/main/ets/pages/Tasks.ets(153:9)", "entry");
+            Row.debugLine("entry/src/main/ets/pages/Tasks.ets(218:9)", "entry");
             // 筛选标签栏
             Row.width('100%');
             // 筛选标签栏
@@ -300,18 +394,18 @@ export class Tasks extends ViewPU {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             If.create();
             // 任务列表
-            if (this.tasks.length === 0) {
+            if (this.filteredTasks.length === 0) {
                 this.ifElseBranchUpdateFunction(0, () => {
                     this.observeComponentCreation2((elmtId, isInitialRender) => {
                         Column.create();
-                        Column.debugLine("entry/src/main/ets/pages/Tasks.ets(165:11)", "entry");
+                        Column.debugLine("entry/src/main/ets/pages/Tasks.ets(230:11)", "entry");
                         Column.width('100%');
                         Column.layoutWeight(1);
                         Column.justifyContent(FlexAlign.Center);
                     }, Column);
                     this.observeComponentCreation2((elmtId, isInitialRender) => {
-                        Text.create('暂无任务');
-                        Text.debugLine("entry/src/main/ets/pages/Tasks.ets(166:13)", "entry");
+                        Text.create(this.searchKeyword ? '未找到匹配的任务' : '暂无任务');
+                        Text.debugLine("entry/src/main/ets/pages/Tasks.ets(231:13)", "entry");
                         Text.fontSize(16);
                         Text.fontColor(Constants.COLOR_TEXT_SECONDARY);
                     }, Text);
@@ -323,7 +417,7 @@ export class Tasks extends ViewPU {
                 this.ifElseBranchUpdateFunction(1, () => {
                     this.observeComponentCreation2((elmtId, isInitialRender) => {
                         List.create();
-                        List.debugLine("entry/src/main/ets/pages/Tasks.ets(174:11)", "entry");
+                        List.debugLine("entry/src/main/ets/pages/Tasks.ets(239:11)", "entry");
                         List.width('100%');
                         List.layoutWeight(1);
                         List.padding({ left: 16, right: 16 });
@@ -343,7 +437,7 @@ export class Tasks extends ViewPU {
                                 };
                                 const itemCreation2 = (elmtId, isInitialRender) => {
                                     ListItem.create(deepRenderFunction, true);
-                                    ListItem.debugLine("entry/src/main/ets/pages/Tasks.ets(176:15)", "entry");
+                                    ListItem.debugLine("entry/src/main/ets/pages/Tasks.ets(241:15)", "entry");
                                 };
                                 const deepRenderFunction = (elmtId, isInitialRender) => {
                                     itemCreation(elmtId, isInitialRender);
@@ -355,7 +449,7 @@ export class Tasks extends ViewPU {
                                                     onTapAction: this.__tapActionId,
                                                     onCompleteAction: this.__completeActionId,
                                                     onDeleteAction: this.__deleteActionId
-                                                }, undefined, elmtId, () => { }, { page: "entry/src/main/ets/pages/Tasks.ets", line: 177, col: 17 });
+                                                }, undefined, elmtId, () => { }, { page: "entry/src/main/ets/pages/Tasks.ets", line: 242, col: 17 });
                                                 ViewPU.create(componentCall);
                                                 let paramsLambda = () => {
                                                     return {
@@ -380,7 +474,7 @@ export class Tasks extends ViewPU {
                                 ListItem.pop();
                             }
                         };
-                        this.forEachUpdateFunction(elmtId, this.tasks, forEachItemGenFunction);
+                        this.forEachUpdateFunction(elmtId, this.filteredTasks, forEachItemGenFunction);
                     }, ForEach);
                     ForEach.pop();
                     List.pop();
@@ -391,7 +485,7 @@ export class Tasks extends ViewPU {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             // 添加按钮
             Button.createWithLabel('+');
-            Button.debugLine("entry/src/main/ets/pages/Tasks.ets(192:9)", "entry");
+            Button.debugLine("entry/src/main/ets/pages/Tasks.ets(257:9)", "entry");
             // 添加按钮
             Button.type(ButtonType.Circle);
             // 添加按钮
@@ -433,80 +527,181 @@ export class Tasks extends ViewPU {
     buildAddTaskDialog(parent = null) {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Column.create();
-            Column.debugLine("entry/src/main/ets/pages/Tasks.ets(218:5)", "entry");
+            Column.debugLine("entry/src/main/ets/pages/Tasks.ets(283:5)", "entry");
             Column.width('100%');
             Column.height('100%');
             Column.backgroundColor('rgba(0, 0, 0, 0.5)');
             Column.justifyContent(FlexAlign.Center);
             Column.onClick(() => {
+                // 点击背景区域关闭对话框
                 this.showAddDialog = false;
+                // 重置表单
+                this.newTask = new Task();
+                this.newTask.priority = Constants.PRIORITY_NORMAL;
             });
         }, Column);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Column.create();
-            Column.debugLine("entry/src/main/ets/pages/Tasks.ets(219:7)", "entry");
+            Column.debugLine("entry/src/main/ets/pages/Tasks.ets(284:7)", "entry");
             Column.width('80%');
             Column.padding(24);
             Column.backgroundColor('#FFFFFF');
             Column.borderRadius(12);
         }, Column);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
+            // 对话框标题
             Text.create('添加任务');
-            Text.debugLine("entry/src/main/ets/pages/Tasks.ets(220:9)", "entry");
+            Text.debugLine("entry/src/main/ets/pages/Tasks.ets(286:9)", "entry");
+            // 对话框标题
             Text.fontSize(20);
+            // 对话框标题
             Text.fontWeight(FontWeight.Bold);
+            // 对话框标题
             Text.margin({ bottom: 16 });
         }, Text);
+        // 对话框标题
         Text.pop();
         this.observeComponentCreation2((elmtId, isInitialRender) => {
-            TextInput.create({ placeholder: '请输入任务标题' });
-            TextInput.debugLine("entry/src/main/ets/pages/Tasks.ets(225:9)", "entry");
-            TextInput.width('100%');
-            TextInput.height(40);
-            TextInput.onChange((value: string) => {
+            // 任务内容输入框（固定显示三行，超过部分可滚动）
+            TextArea.create({ placeholder: '请输入任务内容', text: this.newTask.title });
+            TextArea.debugLine("entry/src/main/ets/pages/Tasks.ets(292:9)", "entry");
+            // 任务内容输入框（固定显示三行，超过部分可滚动）
+            TextArea.width('100%');
+            // 任务内容输入框（固定显示三行，超过部分可滚动）
+            TextArea.height(90);
+            // 任务内容输入框（固定显示三行，超过部分可滚动）
+            TextArea.maxLength(500);
+            // 任务内容输入框（固定显示三行，超过部分可滚动）
+            TextArea.fontSize(14);
+            // 任务内容输入框（固定显示三行，超过部分可滚动）
+            TextArea.onChange((value: string) => {
                 this.newTask.title = value;
             });
-            TextInput.margin({ bottom: 12 });
-        }, TextInput);
+            // 任务内容输入框（固定显示三行，超过部分可滚动）
+            TextArea.margin({ bottom: 16 });
+        }, TextArea);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
-            TextInput.create({ placeholder: '请输入任务描述（可选）' });
-            TextInput.debugLine("entry/src/main/ets/pages/Tasks.ets(233:9)", "entry");
-            TextInput.width('100%');
-            TextInput.height(80);
-            TextInput.type(InputType.Normal);
-            TextInput.onChange((value: string) => {
-                this.newTask.description = value;
-            });
-            TextInput.margin({ bottom: 16 });
-        }, TextInput);
+            // 优先级选择
+            Text.create('优先级');
+            Text.debugLine("entry/src/main/ets/pages/Tasks.ets(303:9)", "entry");
+            // 优先级选择
+            Text.fontSize(14);
+            // 优先级选择
+            Text.fontColor(Constants.COLOR_TEXT_SECONDARY);
+            // 优先级选择
+            Text.margin({ bottom: 8 });
+        }, Text);
+        // 优先级选择
+        Text.pop();
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Row.create();
-            Row.debugLine("entry/src/main/ets/pages/Tasks.ets(242:9)", "entry");
+            Row.debugLine("entry/src/main/ets/pages/Tasks.ets(308:9)", "entry");
             Row.width('100%');
-            Row.justifyContent(FlexAlign.SpaceAround);
+            Row.margin({ bottom: 24 });
+        }, Row);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            // 普通优先级按钮
+            Button.createWithLabel('普通');
+            Button.debugLine("entry/src/main/ets/pages/Tasks.ets(310:11)", "entry");
+            // 普通优先级按钮
+            Button.type(ButtonType.Normal);
+            // 普通优先级按钮
+            Button.layoutWeight(1);
+            // 普通优先级按钮
+            Button.fontSize(14);
+            // 普通优先级按钮
+            Button.backgroundColor(this.newTask.priority === Constants.PRIORITY_NORMAL
+                ? Constants.COLOR_PRIMARY
+                : Constants.COLOR_CARD_BACKGROUND);
+            // 普通优先级按钮
+            Button.fontColor(this.newTask.priority === Constants.PRIORITY_NORMAL
+                ? Constants.COLOR_TEXT_ON_PRIMARY
+                : Constants.COLOR_TEXT_PRIMARY);
+            // 普通优先级按钮
+            Button.border({
+                width: this.newTask.priority === Constants.PRIORITY_NORMAL ? 0 : 1,
+                color: Constants.COLOR_BORDER
+            });
+            // 普通优先级按钮
+            Button.onClick(() => {
+                this.newTask.priority = Constants.PRIORITY_NORMAL;
+            });
+        }, Button);
+        // 普通优先级按钮
+        Button.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            // 重要优先级按钮
+            Button.createWithLabel('重要');
+            Button.debugLine("entry/src/main/ets/pages/Tasks.ets(333:11)", "entry");
+            // 重要优先级按钮
+            Button.type(ButtonType.Normal);
+            // 重要优先级按钮
+            Button.layoutWeight(1);
+            // 重要优先级按钮
+            Button.fontSize(14);
+            // 重要优先级按钮
+            Button.backgroundColor(this.newTask.priority === Constants.PRIORITY_IMPORTANT
+                ? '#FF3B30' // 大红色，与优先级标签颜色一致
+                : Constants.COLOR_CARD_BACKGROUND);
+            // 重要优先级按钮
+            Button.fontColor(this.newTask.priority === Constants.PRIORITY_IMPORTANT
+                ? Constants.COLOR_TEXT_ON_PRIMARY
+                : Constants.COLOR_TEXT_PRIMARY);
+            // 重要优先级按钮
+            Button.border({
+                width: this.newTask.priority === Constants.PRIORITY_IMPORTANT ? 0 : 1,
+                color: Constants.COLOR_BORDER
+            });
+            // 重要优先级按钮
+            Button.margin({ left: 8 });
+            // 重要优先级按钮
+            Button.onClick(() => {
+                this.newTask.priority = Constants.PRIORITY_IMPORTANT;
+            });
+        }, Button);
+        // 重要优先级按钮
+        Button.pop();
+        Row.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            // 操作按钮行
+            Row.create();
+            Row.debugLine("entry/src/main/ets/pages/Tasks.ets(360:9)", "entry");
+            // 操作按钮行
+            Row.width('100%');
+            // 操作按钮行
+            Row.justifyContent(FlexAlign.SpaceBetween);
         }, Row);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Button.createWithLabel('取消');
-            Button.debugLine("entry/src/main/ets/pages/Tasks.ets(243:11)", "entry");
+            Button.debugLine("entry/src/main/ets/pages/Tasks.ets(361:11)", "entry");
             Button.type(ButtonType.Normal);
             Button.layoutWeight(1);
+            Button.fontSize(14);
+            Button.backgroundColor(Constants.COLOR_CARD_BACKGROUND);
+            Button.fontColor(Constants.COLOR_TEXT_PRIMARY);
             Button.onClick(() => {
                 this.showAddDialog = false;
+                // 重置表单
+                this.newTask = new Task();
+                this.newTask.priority = Constants.PRIORITY_NORMAL;
             });
         }, Button);
         Button.pop();
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Button.createWithLabel('确定');
-            Button.debugLine("entry/src/main/ets/pages/Tasks.ets(250:11)", "entry");
+            Button.debugLine("entry/src/main/ets/pages/Tasks.ets(374:11)", "entry");
             Button.type(ButtonType.Normal);
             Button.layoutWeight(1);
+            Button.fontSize(14);
             Button.backgroundColor(Constants.COLOR_PRIMARY);
-            Button.fontColor('#FFFFFF');
+            Button.fontColor(Constants.COLOR_TEXT_ON_PRIMARY);
+            Button.margin({ left: 12 });
             Button.onClick(() => {
                 this.addTask();
             });
         }, Button);
         Button.pop();
+        // 操作按钮行
         Row.pop();
         Column.pop();
         Column.pop();
@@ -514,7 +709,7 @@ export class Tasks extends ViewPU {
     buildFilterButton(status: string, label: string, parent = null) {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Button.createWithLabel(label);
-            Button.debugLine("entry/src/main/ets/pages/Tasks.ets(278:5)", "entry");
+            Button.debugLine("entry/src/main/ets/pages/Tasks.ets(408:5)", "entry");
             Button.type(ButtonType.Normal);
             Button.fontSize(14);
             Button.fontColor(this.filterStatus === status
@@ -532,7 +727,7 @@ export class Tasks extends ViewPU {
     buildStatCard(title: string, value: string, color: string, parent = null) {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Column.create();
-            Column.debugLine("entry/src/main/ets/pages/Tasks.ets(298:5)", "entry");
+            Column.debugLine("entry/src/main/ets/pages/Tasks.ets(428:5)", "entry");
             Column.layoutWeight(1);
             Column.padding(12);
             Column.backgroundColor(Constants.COLOR_CARD_BACKGROUND);
@@ -542,7 +737,7 @@ export class Tasks extends ViewPU {
         }, Column);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Text.create(value);
-            Text.debugLine("entry/src/main/ets/pages/Tasks.ets(299:7)", "entry");
+            Text.debugLine("entry/src/main/ets/pages/Tasks.ets(429:7)", "entry");
             Text.fontSize(24);
             Text.fontWeight(FontWeight.Bold);
             Text.fontColor(color);
@@ -551,7 +746,7 @@ export class Tasks extends ViewPU {
         Text.pop();
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Text.create(title);
-            Text.debugLine("entry/src/main/ets/pages/Tasks.ets(304:7)", "entry");
+            Text.debugLine("entry/src/main/ets/pages/Tasks.ets(434:7)", "entry");
             Text.fontSize(12);
             Text.fontColor(Constants.COLOR_TEXT_SECONDARY);
         }, Text);

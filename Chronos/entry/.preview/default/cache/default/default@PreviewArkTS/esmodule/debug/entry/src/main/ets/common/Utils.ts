@@ -1,3 +1,4 @@
+import { Constants } from "@normalized:N&&&entry/src/main/ets/common/Constants&";
 /**
  * 工具函数类
  */
@@ -91,38 +92,24 @@ export class Utils {
         return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
     }
     /**
-     * 获取优先级颜色
+     * 获取优先级颜色（只有两种：普通和重要）
      */
     static getPriorityColor(priority: number): string {
-        switch (priority) {
-            case 1:
-                return '#8E8E93'; // 低优先级 - 灰色
-            case 2:
-                return '#007AFF'; // 中优先级 - 蓝色
-            case 3:
-                return '#FF9500'; // 高优先级 - 橙色
-            case 4:
-                return '#FF3B30'; // 紧急 - 红色
-            default:
-                return '#8E8E93';
+        if (priority === Constants.PRIORITY_IMPORTANT) {
+            return '#FF3B30'; // 重要 - 大红色
         }
+        // 默认普通优先级
+        return '#007AFF'; // 普通 - 蓝色
     }
     /**
-     * 获取优先级文本
+     * 获取优先级文本（只有两种：普通和重要）
      */
     static getPriorityText(priority: number): string {
-        switch (priority) {
-            case 1:
-                return '低';
-            case 2:
-                return '中';
-            case 3:
-                return '高';
-            case 4:
-                return '紧急';
-            default:
-                return '低';
+        if (priority === Constants.PRIORITY_IMPORTANT) {
+            return '重要';
         }
+        // 默认普通优先级
+        return '普通';
     }
     /**
      * 获取状态文本

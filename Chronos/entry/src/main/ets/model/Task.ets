@@ -40,7 +40,7 @@ export class Task {
   title: string = ''; // 任务标题
   description: string = ''; // 任务描述
   status: string = Constants.TASK_STATUS_PENDING; // 任务状态
-  priority: number = Constants.PRIORITY_MEDIUM; // 优先级
+  priority: number = Constants.PRIORITY_NORMAL; // 优先级（默认普通）
   dueDate: Date | null = null; // 截止日期
   createTime: Date = new Date(); // 创建时间
   updateTime: Date = new Date(); // 更新时间
@@ -97,7 +97,7 @@ export class Task {
       title: json.title || '',
       description: json.description || '',
       status: json.status || Constants.TASK_STATUS_PENDING,
-      priority: json.priority || Constants.PRIORITY_MEDIUM,
+      priority: json.priority || Constants.PRIORITY_NORMAL,
       dueDate: json.dueDate ? new Date(json.dueDate) : null,
       createTime: json.createTime ? new Date(json.createTime) : new Date(),
       updateTime: json.updateTime ? new Date(json.updateTime) : new Date(),

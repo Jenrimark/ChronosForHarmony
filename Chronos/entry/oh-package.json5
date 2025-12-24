@@ -5,6 +5,9 @@
   "main": "",
   "author": "",
   "license": "",
-  "dependencies": {}
+  "dependencies": {
+    "@hw-agconnect/hmcore": "^1.0.5",
+    "@hw-agconnect/cloud": "^1.0.1"
+  }
 }
 

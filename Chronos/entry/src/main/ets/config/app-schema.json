@@ -1,0 +1,125 @@
+{
+  "objectTypes": [
+    {
+      "name": "TaskCloudDB",
+      "fields": [
+        {
+          "name": "id",
+          "type": "String",
+          "isPrimaryKey": true,
+          "isNullable": false
+        },
+        {
+          "name": "title",
+          "type": "String",
+          "isNullable": false
+        },
+        {
+          "name": "description",
+          "type": "String",
+          "isNullable": true
+        },
+        {
+          "name": "status",
+          "type": "String",
+          "isNullable": false
+        },
+        {
+          "name": "priority",
+          "type": "Integer",
+          "isNullable": false
+        },
+        {
+          "name": "dueDate",
+          "type": "String",
+          "isNullable": true
+        },
+        {
+          "name": "createTime",
+          "type": "String",
+          "isNullable": false
+        },
+        {
+          "name": "updateTime",
+          "type": "String",
+          "isNullable": false
+        },
+        {
+          "name": "completedTime",
+          "type": "String",
+          "isNullable": true
+        },
+        {
+          "name": "tags",
+          "type": "String",
+          "isNullable": false
+        },
+        {
+          "name": "userId",
+          "type": "String",
+          "isNullable": false
+        }
+      ]
+    },
+    {
+      "name": "BillCloudDB",
+      "fields": [
+        {
+          "name": "id",
+          "type": "String",
+          "isPrimaryKey": true,
+          "isNullable": false
+        },
+        {
+          "name": "type",
+          "type": "String",
+          "isNullable": false
+        },
+        {
+          "name": "category",
+          "type": "String",
+          "isNullable": false
+        },
+        {
+          "name": "amount",
+          "type": "Double",
+          "isNullable": false
+        },
+        {
+          "name": "description",
+          "type": "String",
+          "isNullable": true
+        },
+        {
+          "name": "date",
+          "type": "String",
+          "isNullable": false
+        },
+        {
+          "name": "createTime",
+          "type": "String",
+          "isNullable": false
+        },
+        {
+          "name": "updateTime",
+          "type": "String",
+          "isNullable": false
+        },
+        {
+          "name": "tags",
+          "type": "String",
+          "isNullable": false
+        },
+        {
+          "name": "userId",
+          "type": "String",
+          "isNullable": false
+        }
+      ]
+    }
+  ]
+}
+
+
+
+

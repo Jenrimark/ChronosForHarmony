@@ -1,19 +1,9 @@
 import { Bill, BillType, BillCategory, BillJSON } from '../model/Bill';
 import { Utils } from '../common/Utils';
-import { ApiClient } from '../common/ApiClient';
+import { CloudDBService } from './CloudDBService';
+import { CloudDBConverter } from '../utils/CloudDBConverter';
 import { Constants } from '../common/Constants';
 import { BillStatistics } from '../common/Types';
-
-/**
- * 账单查询参数类
- */
-class BillQueryParams {
-  type?: string;
-  category?: string;
-  date?: string;
-  startDate?: string;
-  endDate?: string;
-}
 
 /**
  * 默认账单统计信息类
@@ -27,27 +17,16 @@ class DefaultBillStatistics implements BillStatistics {
 }
 
 /**
- * 账单请求数据类
- */
-class BillRequestData {
-  type: string = '';
-  category: string = '';
-  amount: number = 0;
-  description: string = '';
-  date: string = '';
-  tags: string[] = [];
-}
-
-/**
- * 账单服务类 - 通过API调用后端
+ * 账单服务类 - 使用华为云数据库（Cloud DB）
+ * 按照官方文档规范实现端云协同：优先读写本地缓存，网络空闲时自动同步云端
  */
 export class BillService {
   private static instance: BillService;
-  private apiClient: ApiClient = ApiClient.getInstance();
+  private cloudDBService: CloudDBService = CloudDBService.getInstance();
 
   private constructor() {
-    // 初始化API客户端
-    this.apiClient.setBaseUrl(Constants.API_BASE_URL);
+    // 确保Cloud DB服务已初始化
+    this.cloudDBService.init();
   }
 
   static getInstance(): BillService {
@@ -59,12 +38,25 @@ export class BillService {
 
   /**
    * 创建账单
+   * 数据会立即存入本地，随后静默上传云端
    */
   async createBill(bill: Bill): Promise<Bill> {
     try {
-      const billData = this.billToRequestData(bill);
-      const response = await this.apiClient.post<BillJSON>('/bills', billData);
-      return this.billFromResponse(response.data);
+      // 设置创建时间和更新时间
+      if (!bill.createTime) {
+        bill.createTime = new Date();
+      }
+      bill.updateTime = new Date();
+      
+      // 转换为Cloud DB对象
+      const userId = CloudDBConverter.getCurrentUserId();
+      const cloudDBBill = CloudDBConverter.billToCloudDB(bill, userId);
+      
+      // 保存到Cloud DB（会自动同步到云端），返回保存后的对象
+      const savedBill = await this.cloudDBService.upsertBill(cloudDBBill);
+      
+      // 转换回Bill对象
+      return CloudDBConverter.cloudDBToBill(savedBill);
     } catch (error) {
       console.error('创建账单失败:', error);
       throw error instanceof Error ? error : new Error(String(error));
@@ -76,8 +68,10 @@ export class BillService {
    */
   async updateBill(bill: Bill): Promise<void> {
     try {
-      const billData = this.billToRequestData(bill);
-      await this.apiClient.put<BillJSON>(`/bills/${bill.id}`, billData);
+      bill.updateTime = new Date();
+      const userId = CloudDBConverter.getCurrentUserId();
+      const cloudDBBill = CloudDBConverter.billToCloudDB(bill, userId);
+      await this.cloudDBService.upsertBill(cloudDBBill);
     } catch (error) {
       console.error('更新账单失败:', error);
       throw error instanceof Error ? error : new Error(String(error));
@@ -89,7 +83,7 @@ export class BillService {
    */
   async deleteBill(id: number): Promise<void> {
     try {
-      await this.apiClient.delete<Record<string, ESObject>>(`/bills/${id}`);
+      await this.cloudDBService.deleteBill(id.toString());
     } catch (error) {
       console.error('删除账单失败:', error);
       throw error instanceof Error ? error : new Error(String(error));
@@ -101,8 +95,11 @@ export class BillService {
    */
   async getBillById(id: number): Promise<Bill | null> {
     try {
-      const response = await this.apiClient.get<BillJSON>(`/bills/${id}`);
-      return this.billFromResponse(response.data);
+      const cloudDBBill = await this.cloudDBService.queryBillById(id.toString());
+      if (!cloudDBBill) {
+        return null;
+      }
+      return CloudDBConverter.cloudDBToBill(cloudDBBill);
     } catch (error) {
       console.error('获取账单失败:', error);
       return null;
@@ -114,8 +111,9 @@ export class BillService {
    */
   async getAllBills(): Promise<Bill[]> {
     try {
-      const response = await this.apiClient.get<BillJSON[]>('/bills');
-      return response.data.map(json => this.billFromResponse(json));
+      const userId = CloudDBConverter.getCurrentUserId();
+      const cloudDBBills = await this.cloudDBService.queryAllBills(userId);
+      return cloudDBBills.map(cloudDB => CloudDBConverter.cloudDBToBill(cloudDB));
     } catch (error) {
       console.error('获取账单列表失败:', error);
       return [];
@@ -127,10 +125,9 @@ export class BillService {
    */
   async getBillsByType(type: BillType): Promise<Bill[]> {
     try {
-      const params = new BillQueryParams();
-      params.type = type;
-      const response = await this.apiClient.get<BillJSON[]>('/bills', params as Record<string, ESObject>);
-      return response.data.map(json => this.billFromResponse(json));
+      const userId = CloudDBConverter.getCurrentUserId();
+      const cloudDBBills = await this.cloudDBService.queryBillsByType(type, userId);
+      return cloudDBBills.map(cloudDB => CloudDBConverter.cloudDBToBill(cloudDB));
     } catch (error) {
       console.error('获取账单列表失败:', error);
       return [];
@@ -139,13 +136,12 @@ export class BillService {
 
   /**
    * 根据分类获取账单
+   * 注意：Cloud DB查询需要先获取所有账单，然后在内存中过滤
    */
   async getBillsByCategory(category: BillCategory): Promise<Bill[]> {
     try {
-      const params = new BillQueryParams();
-      params.category = category;
-      const response = await this.apiClient.get<BillJSON[]>('/bills', params as Record<string, ESObject>);
-      return response.data.map(json => this.billFromResponse(json));
+      const allBills = await this.getAllBills();
+      return allBills.filter(bill => bill.category === category);
     } catch (error) {
       console.error('获取账单列表失败:', error);
       return [];
@@ -157,11 +153,18 @@ export class BillService {
    */
   async getBillsByDate(date: Date): Promise<Bill[]> {
     try {
-      const dateStr = date.toISOString();
-      const params = new BillQueryParams();
-      params.date = dateStr;
-      const response = await this.apiClient.get<BillJSON[]>('/bills', params as Record<string, ESObject>);
-      return response.data.map(json => this.billFromResponse(json));
+      const startDate = new Date(date);
+      startDate.setHours(0, 0, 0, 0);
+      const endDate = new Date(date);
+      endDate.setHours(23, 59, 59, 999);
+      
+      const userId = CloudDBConverter.getCurrentUserId();
+      const cloudDBBills = await this.cloudDBService.queryBillsByDateRange(
+        startDate.toISOString(),
+        endDate.toISOString(),
+        userId
+      );
+      return cloudDBBills.map(cloudDB => CloudDBConverter.cloudDBToBill(cloudDB));
     } catch (error) {
       console.error('获取账单列表失败:', error);
       return [];
@@ -173,13 +176,13 @@ export class BillService {
    */
   async getBillsByDateRange(startDate: Date, endDate: Date): Promise<Bill[]> {
     try {
-      const startDateStr = startDate.toISOString();
-      const endDateStr = endDate.toISOString();
-      const params = new BillQueryParams();
-      params.startDate = startDateStr;
-      params.endDate = endDateStr;
-      const response = await this.apiClient.get<BillJSON[]>('/bills', params as Record<string, ESObject>);
-      return response.data.map(json => this.billFromResponse(json));
+      const userId = CloudDBConverter.getCurrentUserId();
+      const cloudDBBills = await this.cloudDBService.queryBillsByDateRange(
+        startDate.toISOString(),
+        endDate.toISOString(),
+        userId
+      );
+      return cloudDBBills.map(cloudDB => CloudDBConverter.cloudDBToBill(cloudDB));
     } catch (error) {
       console.error('获取账单列表失败:', error);
       return [];
@@ -246,18 +249,32 @@ export class BillService {
    */
   async getStatistics(type?: string, startDate?: Date, endDate?: Date): Promise<BillStatistics> {
     try {
-      const params: Record<string, ESObject> = {};
+      let bills: Bill[] = [];
+      if (startDate && endDate) {
+        bills = await this.getBillsByDateRange(startDate, endDate);
+      } else {
+        bills = await this.getAllBills();
+      }
+      
+      // 如果指定了类型，过滤账单
       if (type) {
-        params.type = type;
+        bills = bills.filter(bill => bill.type === type);
       }
-      if (startDate) {
-        params.startDate = startDate.toISOString();
-      }
-      if (endDate) {
-        params.endDate = endDate.toISOString();
-      }
-      const response = await this.apiClient.get<BillStatistics>('/bills/statistics', params);
-      return response.data;
+      
+      // 计算统计信息
+      const stats = new DefaultBillStatistics();
+      bills.forEach(bill => {
+        if (bill.isIncome()) {
+          stats.totalIncome += bill.amount;
+          stats.incomeCount++;
+        } else {
+          stats.totalExpense += bill.amount;
+          stats.expenseCount++;
+        }
+      });
+      stats.netIncome = stats.totalIncome - stats.totalExpense;
+      
+      return stats;
     } catch (error) {
       console.error('获取统计信息失败:', error);
       const defaultStats = new DefaultBillStatistics();
@@ -265,71 +282,4 @@ export class BillService {
     }
   }
 
-  /**
-   * 将Bill转换为请求数据格式
-   */
-  private billToRequestData(bill: Bill): Record<string, ESObject> {
-    const requestData = new BillRequestData();
-    requestData.type = bill.type;
-    requestData.category = bill.category;
-    requestData.amount = bill.amount;
-    requestData.description = bill.description;
-    requestData.date = bill.date.toISOString();
-    requestData.tags = bill.tags;
-    return requestData as Record<string, ESObject>;
-  }
-
-  /**
-   * 从响应数据创建Bill对象
-   */
-  private billFromResponse(json: BillJSON): Bill {
-    let tags: string[] = [];
-    // 处理tags字段：后端返回的可能是数组或字符串
-    try {
-      const tagsValue = json.tags;
-      if (!tagsValue) {
-        tags = [];
-      } else {
-        // 先尝试作为数组处理
-        try {
-          const tagsArray = tagsValue as string[];
-          // 检查是否是有效的数组（有length属性）
-          if (tagsArray.length !== undefined) {
-            tags = tagsArray;
-          } else {
-            // 不是数组，尝试作为字符串解析
-            const tagsStr = tagsValue as string;
-            if (tagsStr.length > 0) {
-              tags = JSON.parse(tagsStr);
-            }
-          }
-        } catch (e1) {
-          // 数组转换失败，尝试作为字符串解析
-          try {
-            const tagsStr = tagsValue as string;
-            if (tagsStr && tagsStr.length > 0) {
-              tags = JSON.parse(tagsStr);
-            }
-          } catch (e2) {
-            tags = [];
-          }
-        }
-      }
-    } catch (e) {
-      // 解析失败，使用空数组
-      tags = [];
-    }
-
-    return new Bill({
-      id: json.id,
-      type: json.type as BillType,
-      category: json.category as BillCategory,
-      amount: json.amount,
-      description: json.description,
-      date: json.date,
-      createTime: json.createTime,
-      updateTime: json.updateTime,
-      tags: tags
-    });
-  }
 }

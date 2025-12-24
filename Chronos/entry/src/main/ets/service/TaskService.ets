@@ -1,29 +1,18 @@
 import { Task, TaskJSON } from '../model/Task';
 import { Constants } from '../common/Constants';
 import { Utils } from '../common/Utils';
-import { ApiClient } from '../common/ApiClient';
+import { CloudDBService } from './CloudDBService';
+import { CloudDBConverter } from '../utils/CloudDBConverter';
 
 /**
- * 任务查询参数类
- */
-class TaskQueryParams {
-  status?: string;
-  date?: string;
-  startDate?: string;
-  endDate?: string;
-}
-
-/**
- * 任务服务类 - 通过API调用后端
+ * 任务服务类 - 使用华为云数据库（Cloud DB）
+ * 实现端云协同：优先读写本地缓存，网络空闲时自动同步云端
  */
 export class TaskService {
   private static instance: TaskService;
-  private apiClient: ApiClient = ApiClient.getInstance();
+  private cloudDBService: CloudDBService = CloudDBService.getInstance();
 
-  private constructor() {
-    // 初始化API客户端
-    this.apiClient.setBaseUrl(Constants.API_BASE_URL);
-  }
+  private constructor() {}
 
   static getInstance(): TaskService {
     if (!TaskService.instance) {
@@ -34,12 +23,25 @@ export class TaskService {
 
   /**
    * 创建任务
+   * 数据会立即存入本地，随后静默上传云端
    */
   async createTask(task: Task): Promise<Task> {
     try {
-      const taskData = task.toJSON();
-      const response = await this.apiClient.post<TaskJSON>('/tasks', taskData);
-      return Task.fromJSON(response.data);
+      // 设置创建时间和更新时间
+      if (!task.createTime) {
+        task.createTime = new Date();
+      }
+      task.updateTime = new Date();
+      
+      // 转换为Cloud DB对象
+      const userId = CloudDBConverter.getCurrentUserId();
+      const cloudDBTask = CloudDBConverter.taskToCloudDB(task, userId);
+      
+      // 保存到Cloud DB（会自动同步到云端），返回保存后的对象
+      const savedTask = await this.cloudDBService.upsertTask(cloudDBTask);
+      
+      // 转换回Task对象
+      return CloudDBConverter.cloudDBToTask(savedTask);
     } catch (error) {
       console.error('创建任务失败:', error);
       throw error instanceof Error ? error : new Error(String(error));
@@ -51,8 +53,10 @@ export class TaskService {
    */
   async updateTask(task: Task): Promise<void> {
     try {
-      const taskData = task.toJSON();
-      await this.apiClient.put<TaskJSON>(`/tasks/${task.id}`, taskData);
+      task.updateTime = new Date();
+      const userId = CloudDBConverter.getCurrentUserId();
+      const cloudDBTask = CloudDBConverter.taskToCloudDB(task, userId);
+      await this.cloudDBService.upsertTask(cloudDBTask);
     } catch (error) {
       console.error('更新任务失败:', error);
       throw error instanceof Error ? error : new Error(String(error));
@@ -64,7 +68,7 @@ export class TaskService {
    */
   async deleteTask(id: number): Promise<void> {
     try {
-      await this.apiClient.delete<Record<string, ESObject>>(`/tasks/${id}`);
+      await this.cloudDBService.deleteTask(id.toString());
     } catch (error) {
       console.error('删除任务失败:', error);
       throw error instanceof Error ? error : new Error(String(error));
@@ -76,8 +80,11 @@ export class TaskService {
    */
   async getTask(id: number): Promise<Task | null> {
     try {
-      const response = await this.apiClient.get<TaskJSON>(`/tasks/${id}`);
-      return Task.fromJSON(response.data);
+      const cloudDBTask = await this.cloudDBService.queryTaskById(id.toString());
+      if (!cloudDBTask) {
+        return null;
+      }
+      return CloudDBConverter.cloudDBToTask(cloudDBTask);
     } catch (error) {
       console.error('获取任务失败:', error);
       return null;
@@ -89,8 +96,9 @@ export class TaskService {
    */
   async getAllTasks(): Promise<Task[]> {
     try {
-      const response = await this.apiClient.get<TaskJSON[]>('/tasks');
-      return response.data.map(json => Task.fromJSON(json));
+      const userId = CloudDBConverter.getCurrentUserId();
+      const cloudDBTasks = await this.cloudDBService.queryAllTasks(userId);
+      return cloudDBTasks.map(cloudDB => CloudDBConverter.cloudDBToTask(cloudDB));
     } catch (error) {
       console.error('获取任务列表失败:', error);
       return [];
@@ -123,10 +131,9 @@ export class TaskService {
    */
   async getTasksByStatus(status: string): Promise<Task[]> {
     try {
-      const params = new TaskQueryParams();
-      params.status = status;
-      const response = await this.apiClient.get<TaskJSON[]>('/tasks', params as Record<string, ESObject>);
-      return response.data.map(json => Task.fromJSON(json));
+      const userId = CloudDBConverter.getCurrentUserId();
+      const cloudDBTasks = await this.cloudDBService.queryTasksByStatus(status, userId);
+      return cloudDBTasks.map(cloudDB => CloudDBConverter.cloudDBToTask(cloudDB));
     } catch (error) {
       console.error('获取任务列表失败:', error);
       return [];
@@ -138,12 +145,10 @@ export class TaskService {
    */
   async completeTask(task: Task): Promise<void> {
     try {
-      const response = await this.apiClient.post<TaskJSON>(`/tasks/${task.id}/complete`);
-      // 更新本地任务对象
-      const updatedTask = Task.fromJSON(response.data);
-      task.status = updatedTask.status;
-      task.completedTime = updatedTask.completedTime;
-      task.updateTime = updatedTask.updateTime;
+      task.status = Constants.TASK_STATUS_COMPLETED;
+      task.completedTime = new Date();
+      task.updateTime = new Date();
+      await this.updateTask(task);
     } catch (error) {
       console.error('完成任务失败:', error);
       throw error instanceof Error ? error : new Error(String(error));
@@ -155,12 +160,10 @@ export class TaskService {
    */
   async uncompleteTask(task: Task): Promise<void> {
     try {
-      const response = await this.apiClient.post<TaskJSON>(`/tasks/${task.id}/uncomplete`);
-      // 更新本地任务对象
-      const updatedTask = Task.fromJSON(response.data);
-      task.status = updatedTask.status;
-      task.completedTime = updatedTask.completedTime;
-      task.updateTime = updatedTask.updateTime;
+      task.status = Constants.TASK_STATUS_PENDING;
+      task.completedTime = null;
+      task.updateTime = new Date();
+      await this.updateTask(task);
     } catch (error) {
       console.error('取消完成任务失败:', error);
       throw error instanceof Error ? error : new Error(String(error));
@@ -172,11 +175,18 @@ export class TaskService {
    */
   async getTasksByDate(date: Date): Promise<Task[]> {
     try {
-      const dateStr = date.toISOString();
-      const params = new TaskQueryParams();
-      params.date = dateStr;
-      const response = await this.apiClient.get<TaskJSON[]>('/tasks', params as Record<string, ESObject>);
-      return response.data.map(json => Task.fromJSON(json));
+      const startDate = new Date(date);
+      startDate.setHours(0, 0, 0, 0);
+      const endDate = new Date(date);
+      endDate.setHours(23, 59, 59, 999);
+      
+      const userId = CloudDBConverter.getCurrentUserId();
+      const cloudDBTasks = await this.cloudDBService.queryTasksByDateRange(
+        startDate.toISOString(),
+        endDate.toISOString(),
+        userId
+      );
+      return cloudDBTasks.map(cloudDB => CloudDBConverter.cloudDBToTask(cloudDB));
     } catch (error) {
       console.error('获取任务列表失败:', error);
       return [];
@@ -188,13 +198,13 @@ export class TaskService {
    */
   async getTasksByDateRange(startDate: Date, endDate: Date): Promise<Task[]> {
     try {
-      const startDateStr = startDate.toISOString();
-      const endDateStr = endDate.toISOString();
-      const params = new TaskQueryParams();
-      params.startDate = startDateStr;
-      params.endDate = endDateStr;
-      const response = await this.apiClient.get<TaskJSON[]>('/tasks', params as Record<string, ESObject>);
-      return response.data.map(json => Task.fromJSON(json));
+      const userId = CloudDBConverter.getCurrentUserId();
+      const cloudDBTasks = await this.cloudDBService.queryTasksByDateRange(
+        startDate.toISOString(),
+        endDate.toISOString(),
+        userId
+      );
+      return cloudDBTasks.map(cloudDB => CloudDBConverter.cloudDBToTask(cloudDB));
     } catch (error) {
       console.error('获取任务列表失败:', error);
       return [];

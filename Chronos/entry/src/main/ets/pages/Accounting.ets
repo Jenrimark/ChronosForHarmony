@@ -398,10 +398,10 @@ export struct Accounting {
 
       // 支出金额
       Text(`¥${this.monthExpense.toFixed(2)}`)
-        .fontSize(32)
+        .fontSize(36)
         .fontWeight(FontWeight.Bold)
         .fontColor(Constants.COLOR_TEXT_PRIMARY)
-        .margin({ bottom: 12 })
+        .margin({ bottom: 16 })
 
       // 收入和结余
       Row() {
@@ -410,10 +410,10 @@ export struct Accounting {
             .fontSize(14)
             .fontColor(Constants.COLOR_TEXT_SECONDARY)
           Text(`¥${this.monthIncome.toFixed(2)}`)
-            .fontSize(18)
-            .fontWeight(FontWeight.Medium)
+            .fontSize(20)
+            .fontWeight(FontWeight.Bold)
             .fontColor(Constants.COLOR_SUCCESS)
-            .margin({ top: 4 })
+            .margin({ top: 6 })
         }
         .alignItems(HorizontalAlign.Start)
 
@@ -424,49 +424,55 @@ export struct Accounting {
             .fontSize(14)
             .fontColor(Constants.COLOR_TEXT_SECONDARY)
           Text(`¥${this.monthBalance.toFixed(2)}`)
-            .fontSize(18)
-            .fontWeight(FontWeight.Medium)
+            .fontSize(20)
+            .fontWeight(FontWeight.Bold)
             .fontColor(Constants.COLOR_PRIMARY)
-            .margin({ top: 4 })
+            .margin({ top: 6 })
         }
         .alignItems(HorizontalAlign.End)
       }
       .width('100%')
-      .margin({ bottom: 16 })
+      .margin({ bottom: 20 })
 
       // 月预算进度条
       Row() {
         Text('月预算66%')
-          .fontSize(12)
+          .fontSize(13)
           .fontColor(Constants.COLOR_TEXT_SECONDARY)
         
         Blank()
         
         Text('剩余 ¥407.25')
-          .fontSize(12)
+          .fontSize(13)
           .fontColor(Constants.COLOR_TEXT_SECONDARY)
       }
       .width('100%')
-      .margin({ bottom: 8 })
+      .margin({ bottom: 10 })
 
       // 进度条（使用Row模拟）
       Row() {
         Row()
           .width('66%')
-          .height(6)
+          .height(8)
           .backgroundColor(Constants.COLOR_PRIMARY)
-          .borderRadius(3)
+          .borderRadius(4)
       }
       .width('100%')
-      .height(6)
+      .height(8)
       .backgroundColor(Constants.COLOR_BORDER)
-      .borderRadius(3)
+      .borderRadius(4)
     }
     .width('100%')
-    .padding(20)
+    .padding(24)
     .backgroundColor(Constants.COLOR_CARD_BACKGROUND)
-    .borderRadius(12)
+    .borderRadius(16)
     .margin({ top: 16, left: 16, right: 16, bottom: 12 })
+    .shadow({
+      radius: 12,
+      color: 'rgba(0, 0, 0, 0.06)',
+      offsetX: 0,
+      offsetY: 4
+    })
   }
 
   /**
@@ -579,29 +585,39 @@ export struct Accounting {
 
       // 分类图标和名称
       Row() {
-        Text(this.getCategoryIcon(bill.category))
-          .fontSize(20)
+        // 图标背景圆
+        Column() {
+          Text(this.getCategoryIcon(bill.category))
+            .fontSize(18)
+        }
+        .width(36)
+        .height(36)
+        .backgroundColor(bill.isIncome() ? 'rgba(255, 167, 38, 0.15)' : 'rgba(255, 107, 53, 0.1)')
+        .borderRadius(18)
+        .justifyContent(FlexAlign.Center)
+        
         Text(this.getCategoryName(bill.category))
-          .fontSize(16)
+          .fontSize(15)
+          .fontWeight(FontWeight.Medium)
           .fontColor(Constants.COLOR_TEXT_PRIMARY)
-          .margin({ left: 8 })
+          .margin({ left: 10 })
       }
       .layoutWeight(1)
       .margin({ left: 12 })
 
       // 金额
       Text(bill.getDisplayAmount())
-        .fontSize(16)
-        .fontWeight(FontWeight.Medium)
+        .fontSize(17)
+        .fontWeight(FontWeight.Bold)
         .fontColor(
           bill.isIncome() ? Constants.COLOR_SUCCESS : Constants.COLOR_DANGER
         )
     }
     .width('100%')
-    .padding(12)
-    .backgroundColor(Constants.COLOR_BACKGROUND_SECONDARY)
-    .borderRadius(8)
-    .margin({ bottom: 8 })
+    .padding({ top: 14, bottom: 14, left: 12, right: 12 })
+    .backgroundColor(Constants.COLOR_BACKGROUND)
+    .borderRadius(12)
+    .margin({ bottom: 10 })
     .onClick(() => {
       this.onBillTap(bill);
     })
@@ -614,13 +630,20 @@ export struct Accounting {
   buildAddButton() {
     Button('+')
       .type(ButtonType.Circle)
-      .width(56)
-      .height(56)
-      .fontSize(32)
+      .width(60)
+      .height(60)
+      .fontSize(36)
+      .fontWeight(FontWeight.Medium)
       .fontColor(Constants.COLOR_TEXT_ON_PRIMARY)
       .backgroundColor(this.isRecording ? Constants.COLOR_DANGER : Constants.COLOR_PRIMARY)
+      .shadow({
+        radius: 12,
+        color: this.isRecording ? 'rgba(230, 81, 0, 0.4)' : 'rgba(255, 107, 53, 0.4)',
+        offsetX: 0,
+        offsetY: 4
+      })
       .position({ x: '100%', y: '100%' })
-      .translate({ x: -72, y: -72 })
+      .translate({ x: -76, y: -76 })
       .zIndex(20)
       .onClick(() => {
         if (this.isRecording) {
@@ -679,28 +702,33 @@ export struct Accounting {
 
           // 录音时长
           Text(`录音中 ${this.formatDuration(this.recordingDuration)}`)
-            .fontSize(14)
+            .fontSize(15)
+            .fontWeight(FontWeight.Medium)
             .fontColor(Constants.COLOR_DANGER)
-            .margin({ left: 8 })
+            .margin({ left: 10 })
 
           Blank()
 
           // 停止录音按钮
           Button('停止')
             .type(ButtonType.Normal)
+            .height(36)
             .fontSize(14)
+            .fontWeight(FontWeight.Medium)
             .backgroundColor(Constants.COLOR_DANGER)
             .fontColor('#FFFFFF')
+            .borderRadius(18)
+            .padding({ left: 16, right: 16 })
             .margin({ left: 8 })
             .onClick(() => {
               this.stopRecording();
             })
         }
         .width('100%')
-        .padding(12)
+        .padding(14)
         .backgroundColor(Constants.COLOR_CARD_BACKGROUND)
-        .borderRadius(8)
-        .margin({ bottom: 8 })
+        .borderRadius(12)
+        .margin({ bottom: 10 })
       }
 
       Row() {
@@ -710,7 +738,11 @@ export struct Accounting {
           text: this.inputText
         })
           .layoutWeight(1)
-          .fontSize(16)
+          .height(44)
+          .fontSize(15)
+          .backgroundColor(Constants.COLOR_BACKGROUND)
+          .borderRadius(22)
+          .padding({ left: 16, right: 16 })
           .enabled(!this.isRecording)
           .onChange((value: string) => {
             this.inputText = value;
@@ -719,10 +751,20 @@ export struct Accounting {
         // 发送按钮
         Button('发送')
           .type(ButtonType.Normal)
-          .fontSize(14)
+          .height(44)
+          .fontSize(15)
+          .fontWeight(FontWeight.Medium)
           .backgroundColor(Constants.COLOR_PRIMARY)
           .fontColor(Constants.COLOR_TEXT_ON_PRIMARY)
-          .margin({ left: 8 })
+          .borderRadius(22)
+          .padding({ left: 20, right: 20 })
+          .margin({ left: 10 })
+          .shadow({
+            radius: 6,
+            color: 'rgba(255, 107, 53, 0.3)',
+            offsetX: 0,
+            offsetY: 2
+          })
           .enabled(!this.isProcessing && !this.isRecording && this.inputText.trim().length > 0)
           .onClick(() => {
             this.onSendInput();
@@ -730,30 +772,36 @@ export struct Accounting {
 
         // 关闭按钮
         Button('×')
-          .type(ButtonType.Normal)
+          .type(ButtonType.Circle)
           .fontSize(20)
-          .backgroundColor(Constants.COLOR_BORDER)
-          .fontColor(Constants.COLOR_TEXT_PRIMARY)
-          .width(32)
-          .height(32)
-          .margin({ left: 8 })
+          .backgroundColor(Constants.COLOR_BACKGROUND)
+          .fontColor(Constants.COLOR_TEXT_SECONDARY)
+          .width(36)
+          .height(36)
+          .margin({ left: 10 })
           .onClick(() => {
             this.onCloseInputBar();
           })
       }
       .width('100%')
-      .padding(12)
+      .padding(14)
       .backgroundColor(Constants.COLOR_CARD_BACKGROUND)
-      .borderRadius(8)
+      .borderRadius(16)
     }
     .width('100%')
     .padding({ left: 16, right: 16, top: 16, bottom: 16 })
     .backgroundColor(Constants.COLOR_BACKGROUND_SECONDARY)
-    .borderRadius({ topLeft: 16, topRight: 16 })
+    .borderRadius({ topLeft: 20, topRight: 20 })
     .alignItems(HorizontalAlign.Start)
     .position({ x: 0, y: '100%' })
-    .translate({ y: this.isRecording ? -180 : -120 })
+    .translate({ y: this.isRecording ? -200 : -140 })
     .zIndex(100)
+    .shadow({
+      radius: 16,
+      color: 'rgba(0, 0, 0, 0.1)',
+      offsetX: 0,
+      offsetY: -4
+    })
   }
 
   /**
@@ -763,57 +811,119 @@ export struct Accounting {
   buildBillDetail() {
     if (this.selectedBill !== null) {
       Column() {
+        // 半透明背景
+        Column()
+          .width('100%')
+          .height('100%')
+          .backgroundColor('#000000')
+          .opacity(0.5)
+          .onClick(() => {
+            this.showBillDetail = false;
+            this.selectedBill = null;
+          })
+      }
+      .width('100%')
+      .height('100%')
+      .position({ x: 0, y: 0 })
+      .zIndex(200)
+
+      Column() {
         // 详情内容
         Column() {
           Text('账单详情')
-            .fontSize(18)
+            .fontSize(20)
             .fontWeight(FontWeight.Bold)
-            .margin({ bottom: 20 })
+            .fontColor(Constants.COLOR_TEXT_PRIMARY)
+            .margin({ bottom: 24 })
 
-          Row() {
-            Text('金额：')
+          // 金额显示
+          Column() {
             Text(this.selectedBill.getDisplayAmount())
-              .fontSize(20)
+              .fontSize(36)
               .fontWeight(FontWeight.Bold)
               .fontColor(
                 this.selectedBill.isIncome() ? Constants.COLOR_SUCCESS : Constants.COLOR_DANGER
               )
           }
           .width('100%')
-          .margin({ bottom: 12 })
+          .padding(20)
+          .backgroundColor(this.selectedBill.isIncome() ? 'rgba(255, 167, 38, 0.1)' : 'rgba(255, 107, 53, 0.08)')
+          .borderRadius(12)
+          .margin({ bottom: 20 })
 
+          // 分类
           Row() {
-            Text('分类：')
-            Text(this.getCategoryName(this.selectedBill.category))
+            Text('分类')
+              .fontSize(15)
+              .fontColor(Constants.COLOR_TEXT_SECONDARY)
+            Blank()
+            Row() {
+              Text(this.getCategoryIcon(this.selectedBill.category))
+                .fontSize(16)
+              Text(this.getCategoryName(this.selectedBill.category))
+                .fontSize(15)
+                .fontWeight(FontWeight.Medium)
+                .fontColor(Constants.COLOR_TEXT_PRIMARY)
+                .margin({ left: 6 })
+            }
           }
           .width('100%')
-          .margin({ bottom: 12 })
+          .padding({ top: 14, bottom: 14 })
+          .borderWidth({ bottom: 1 })
+          .borderColor(Constants.COLOR_DIVIDER)
 
+          // 描述
           if (this.selectedBill.description) {
             Row() {
-              Text('描述：')
+              Text('描述')
+                .fontSize(15)
+                .fontColor(Constants.COLOR_TEXT_SECONDARY)
+              Blank()
               Text(this.selectedBill.description)
+                .fontSize(15)
+                .fontColor(Constants.COLOR_TEXT_PRIMARY)
             }
             .width('100%')
-            .margin({ bottom: 12 })
+            .padding({ top: 14, bottom: 14 })
+            .borderWidth({ bottom: 1 })
+            .borderColor(Constants.COLOR_DIVIDER)
           }
 
+          // 时间
           Row() {
-            Text('时间：')
+            Text('时间')
+              .fontSize(15)
+              .fontColor(Constants.COLOR_TEXT_SECONDARY)
+            Blank()
             Text(Utils.formatDate(this.selectedBill.date, Constants.DATETIME_FORMAT))
+              .fontSize(15)
+              .fontColor(Constants.COLOR_TEXT_PRIMARY)
           }
           .width('100%')
+          .padding({ top: 14, bottom: 14 })
         }
         .width('100%')
-        .padding(20)
+        .padding(24)
         .backgroundColor(Constants.COLOR_CARD_BACKGROUND)
-        .borderRadius(12)
+        .borderRadius(20)
 
         // 关闭按钮
         Button('关闭')
           .type(ButtonType.Normal)
           .width('100%')
-          .margin({ top: 12 })
+          .height(50)
+          .fontSize(16)
+          .fontWeight(FontWeight.Medium)
+          .backgroundColor(Constants.COLOR_PRIMARY)
+          .fontColor(Constants.COLOR_TEXT_ON_PRIMARY)
+          .borderRadius(25)
+          .margin({ top: 16 })
+          .shadow({
+            radius: 8,
+            color: 'rgba(255, 107, 53, 0.3)',
+            offsetX: 0,
+            offsetY: 2
+          })
           .onClick(() => {
             this.showBillDetail = false;
             this.selectedBill = null;
@@ -821,9 +931,8 @@ export struct Accounting {
       }
       .width('90%')
       .padding(20)
-      .backgroundColor(Constants.COLOR_BACKGROUND)
-      .borderRadius(16)
       .position({ x: '5%', y: '20%' })
+      .zIndex(201)
     }
   }
 

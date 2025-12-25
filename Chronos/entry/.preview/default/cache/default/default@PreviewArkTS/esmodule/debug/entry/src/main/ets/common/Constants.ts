@@ -17,9 +17,10 @@ export class Constants {
     static readonly TASK_STATUS_IN_PROGRESS: string = 'in_progress';
     static readonly TASK_STATUS_COMPLETED: string = 'completed';
     static readonly TASK_STATUS_CANCELLED: string = 'cancelled';
-    // 任务优先级（只有两种：普通和重要）
-    static readonly PRIORITY_NORMAL: number = 1; // 普通优先级
-    static readonly PRIORITY_IMPORTANT: number = 2; // 重要优先级
+    // 任务优先级（三级：低、中、高）
+    static readonly PRIORITY_LOW: number = 1; // 低优先级
+    static readonly PRIORITY_MEDIUM: number = 2; // 中优先级
+    static readonly PRIORITY_HIGH: number = 3; // 高优先级
     // 颜色主题 - 橙色系列（与图标颜色保持一致）
     // 主色调
     static readonly COLOR_PRIMARY: string = '#FF6B35'; // 主橙色（与图标背景色一致）

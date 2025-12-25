@@ -1,0 +1,1 @@
+E:\CODE\Chronos\Chronos\oh_modules\.ohpm\@hw-agconnect+hmcore@1.0.5\oh_modules\@hw-agconnect\hmcore\src\main\ets\base\aegis\AegisAes.ts

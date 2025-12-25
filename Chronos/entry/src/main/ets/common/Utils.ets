@@ -104,25 +104,29 @@ export class Utils {
   }
 
   /**
-   * 获取优先级颜色（只有两种：普通和重要）
+   * 获取优先级颜色（三级：低、中、高）
    */
   static getPriorityColor(priority: number): string {
-    if (priority === Constants.PRIORITY_IMPORTANT) {
-      return '#FF3B30'; // 重要 - 大红色
+    if (priority === Constants.PRIORITY_HIGH) {
+      return '#E65100'; // 高 - 红橙色
+    } else if (priority === Constants.PRIORITY_MEDIUM) {
+      return '#FF8F00'; // 中 - 橙色
     }
-    // 默认普通优先级
-    return '#007AFF'; // 普通 - 蓝色
+    // 默认低优先级
+    return '#FFA726'; // 低 - 浅橙色
   }
 
   /**
-   * 获取优先级文本（只有两种：普通和重要）
+   * 获取优先级文本（三级：低、中、高）
    */
   static getPriorityText(priority: number): string {
-    if (priority === Constants.PRIORITY_IMPORTANT) {
-      return '重要';
+    if (priority === Constants.PRIORITY_HIGH) {
+      return '高';
+    } else if (priority === Constants.PRIORITY_MEDIUM) {
+      return '中';
     }
-    // 默认普通优先级
-    return '普通';
+    // 默认低优先级
+    return '低';
   }
 
   /**

@@ -29,21 +29,22 @@ export struct TaskItem {
             .fontColor('#FFFFFF')
             .fontWeight(FontWeight.Bold)
         }
-        .width(24)
-        .height(24)
-        .borderRadius(12)
+        .width(26)
+        .height(26)
+        .borderRadius(13)
         .backgroundColor(Constants.COLOR_SUCCESS)
         .justifyContent(FlexAlign.Center)
         .onClick(() => {
           this.onCompleteAction = this.task.id;
         })
       } else {
-        // 未完成：空心圆圈
-        Text('')
-          .width(24)
-          .height(24)
-          .borderRadius(12)
-          .border({ width: 2, color: Constants.COLOR_TEXT_SECONDARY })
+        // 未完成：空心圆圈，带主题色边框
+        Column()
+          .width(26)
+          .height(26)
+          .borderRadius(13)
+          .border({ width: 2, color: Constants.COLOR_PRIMARY_LIGHT })
+          .backgroundColor('transparent')
           .onClick(() => {
             this.onCompleteAction = this.task.id;
           })
@@ -55,7 +56,7 @@ export struct TaskItem {
           .fontSize(16)
           .fontColor(
             this.task.status === Constants.TASK_STATUS_COMPLETED
-              ? Constants.COLOR_TEXT_SECONDARY
+              ? Constants.COLOR_TEXT_TERTIARY
               : Constants.COLOR_TEXT_PRIMARY
           )
           .fontWeight(
@@ -65,10 +66,10 @@ export struct TaskItem {
           )
           .decoration(
             this.task.status === Constants.TASK_STATUS_COMPLETED
-              ? { type: TextDecorationType.LineThrough }
+              ? { type: TextDecorationType.LineThrough, color: Constants.COLOR_TEXT_TERTIARY }
               : { type: TextDecorationType.None }
           )
-          .maxLines(1)
+          .maxLines(2)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
 
         if (this.task.description) {
@@ -77,68 +78,93 @@ export struct TaskItem {
             .fontColor(Constants.COLOR_TEXT_SECONDARY)
             .maxLines(2)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
-            .margin({ top: 4 })
+            .margin({ top: 6 })
         }
 
         // 任务元信息
         Row() {
-          // 优先级标签
+          // 优先级标签 - 美化样式
           Text(Utils.getPriorityText(this.task.priority))
-            .fontSize(12)
+            .fontSize(11)
+            .fontWeight(FontWeight.Medium)
             .fontColor('#FFFFFF')
             .backgroundColor(Utils.getPriorityColor(this.task.priority))
-            .padding({ left: 6, right: 6, top: 2, bottom: 2 })
-            .borderRadius(4)
+            .padding({ left: 8, right: 8, top: 3, bottom: 3 })
+            .borderRadius(10)
 
           // 截止日期
           if (this.task.dueDate) {
-            Text(Utils.formatDate(this.task.dueDate, 'MM-DD'))
-              .fontSize(12)
-              .fontColor(
-                this.task.isOverdue()
-                  ? Constants.COLOR_DANGER
-                  : (this.task.isDueToday() ? Constants.COLOR_WARNING : Constants.COLOR_TEXT_SECONDARY)
-              )
-              .margin({ left: 8 })
+            Row() {
+              Text('📅')
+                .fontSize(12)
+              Text(Utils.formatDate(this.task.dueDate, 'MM-DD'))
+                .fontSize(12)
+                .fontWeight(FontWeight.Medium)
+                .fontColor(
+                  this.task.isOverdue()
+                    ? Constants.COLOR_DANGER
+                    : (this.task.isDueToday() ? Constants.COLOR_WARNING : Constants.COLOR_TEXT_SECONDARY)
+                )
+                .margin({ left: 4 })
+            }
+            .margin({ left: 10 })
           }
 
           Blank()
 
-          // 状态标签
+          // 状态标签 - 美化样式
           Text(Utils.getStatusText(this.task.status))
-            .fontSize(12)
+            .fontSize(11)
             .fontColor(Constants.COLOR_TEXT_SECONDARY)
+            .backgroundColor(Constants.COLOR_BACKGROUND)
+            .padding({ left: 8, right: 8, top: 3, bottom: 3 })
+            .borderRadius(10)
         }
         .width('100%')
-        .margin({ top: 8 })
+        .margin({ top: 10 })
       }
       .layoutWeight(1)
       .alignItems(HorizontalAlign.Start)
-      .margin({ left: 12 })
+      .margin({ left: 14 })
 
-      // 删除按钮
-      Text('×')
-        .width(24)
-        .height(24)
-        .fontSize(20)
-        .fontColor(Constants.COLOR_TEXT_SECONDARY)
-        .textAlign(TextAlign.Center)
-        .onClick(() => {
-          this.onDeleteAction = this.task.id;
-        })
+      // 删除按钮 - 美化样式
+      Column() {
+        Text('×')
+          .fontSize(18)
+          .fontColor(Constants.COLOR_TEXT_SECONDARY)
+      }
+      .width(32)
+      .height(32)
+      .borderRadius(16)
+      .backgroundColor(Constants.COLOR_BACKGROUND)
+      .justifyContent(FlexAlign.Center)
+      .onClick(() => {
+        this.onDeleteAction = this.task.id;
+      })
     }
     .width('100%')
-    .padding(16)
+    .padding({ top: 16, bottom: 16, left: 16, right: 14 })
     .backgroundColor(
       this.task.status === Constants.TASK_STATUS_COMPLETED
-        ? Constants.COLOR_BACKGROUND_SECONDARY
+        ? Constants.COLOR_BACKGROUND
         : Constants.COLOR_CARD_BACKGROUND
     )
-    .borderRadius(8)
-    .margin({ bottom: 8 })
+    .borderRadius(14)
+    .margin({ bottom: 10 })
+    .shadow(this.task.status === Constants.TASK_STATUS_COMPLETED ? {
+      radius: 0,
+      color: 'transparent',
+      offsetX: 0,
+      offsetY: 0
+    } : {
+      radius: 8,
+      color: 'rgba(0, 0, 0, 0.04)',
+      offsetX: 0,
+      offsetY: 2
+    })
     .opacity(
       this.task.status === Constants.TASK_STATUS_COMPLETED
-        ? 0.7
+        ? 0.75
         : 1.0
     )
     .onClick(() => {

@@ -10,7 +10,11 @@ import { CloudDBConverter } from "@normalized:N&&&entry/src/main/ets/utils/Cloud
 export class TaskService {
     private static instance: TaskService;
     private cloudDBService: CloudDBService = CloudDBService.getInstance();
-    private constructor() { }
+    private initPromise: Promise<void> | null = null;
+    private constructor() {
+        // 初始化Cloud DB服务
+        this.initPromise = this.cloudDBService.init();
+    }
     static getInstance(): TaskService {
         if (!TaskService.instance) {
             TaskService.instance = new TaskService();
@@ -18,10 +22,19 @@ export class TaskService {
         return TaskService.instance;
     }
     /**
+     * 确保CloudDB已初始化
+     */
+    private async ensureInitialized(): Promise<void> {
+        if (this.initPromise) {
+            await this.initPromise;
+        }
+    }
+    /**
      * 创建任务
      * 数据会立即存入本地，随后静默上传云端
      */
     async createTask(task: Task): Promise<Task> {
+        await this.ensureInitialized();
         try {
             // 设置创建时间和更新时间
             if (!task.createTime) {
@@ -31,10 +44,10 @@ export class TaskService {
             // 转换为Cloud DB对象
             const userId = CloudDBConverter.getCurrentUserId();
             const cloudDBTask = CloudDBConverter.taskToCloudDB(task, userId);
-            // 保存到Cloud DB（会自动同步到云端）
-            await this.cloudDBService.upsertTask(cloudDBTask);
+            // 保存到Cloud DB（会自动同步到云端），返回保存后的对象
+            const savedTask = await this.cloudDBService.upsertTask(cloudDBTask);
             // 转换回Task对象
-            return CloudDBConverter.cloudDBToTask(cloudDBTask);
+            return CloudDBConverter.cloudDBToTask(savedTask);
         }
         catch (error) {
             console.error('创建任务失败:', error);
@@ -45,6 +58,7 @@ export class TaskService {
      * 更新任务
      */
     async updateTask(task: Task): Promise<void> {
+        await this.ensureInitialized();
         try {
             task.updateTime = new Date();
             const userId = CloudDBConverter.getCurrentUserId();
@@ -60,6 +74,7 @@ export class TaskService {
      * 删除任务
      */
     async deleteTask(id: number): Promise<void> {
+        await this.ensureInitialized();
         try {
             await this.cloudDBService.deleteTask(id.toString());
         }
@@ -72,6 +87,7 @@ export class TaskService {
      * 获取任务
      */
     async getTask(id: number): Promise<Task | null> {
+        await this.ensureInitialized();
         try {
             const cloudDBTask = await this.cloudDBService.queryTaskById(id.toString());
             if (!cloudDBTask) {
@@ -88,6 +104,7 @@ export class TaskService {
      * 获取所有任务
      */
     async getAllTasks(): Promise<Task[]> {
+        await this.ensureInitialized();
         try {
             const userId = CloudDBConverter.getCurrentUserId();
             const cloudDBTasks = await this.cloudDBService.queryAllTasks(userId);
@@ -120,6 +137,7 @@ export class TaskService {
      * 根据状态获取任务
      */
     async getTasksByStatus(status: string): Promise<Task[]> {
+        await this.ensureInitialized();
         try {
             const userId = CloudDBConverter.getCurrentUserId();
             const cloudDBTasks = await this.cloudDBService.queryTasksByStatus(status, userId);
@@ -134,6 +152,7 @@ export class TaskService {
      * 完成任务
      */
     async completeTask(task: Task): Promise<void> {
+        await this.ensureInitialized();
         try {
             task.status = Constants.TASK_STATUS_COMPLETED;
             task.completedTime = new Date();
@@ -149,6 +168,7 @@ export class TaskService {
      * 取消完成任务
      */
     async uncompleteTask(task: Task): Promise<void> {
+        await this.ensureInitialized();
         try {
             task.status = Constants.TASK_STATUS_PENDING;
             task.completedTime = null;
@@ -164,6 +184,7 @@ export class TaskService {
      * 获取指定日期的任务
      */
     async getTasksByDate(date: Date): Promise<Task[]> {
+        await this.ensureInitialized();
         try {
             const startDate = new Date(date);
             startDate.setHours(0, 0, 0, 0);
@@ -182,6 +203,7 @@ export class TaskService {
      * 获取指定日期范围的任务
      */
     async getTasksByDateRange(startDate: Date, endDate: Date): Promise<Task[]> {
+        await this.ensureInitialized();
         try {
             const userId = CloudDBConverter.getCurrentUserId();
             const cloudDBTasks = await this.cloudDBService.queryTasksByDateRange(startDate.toISOString(), endDate.toISOString(), userId);

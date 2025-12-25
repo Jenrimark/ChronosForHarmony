@@ -23,10 +23,11 @@ class DefaultBillStatistics implements BillStatistics {
 export class BillService {
   private static instance: BillService;
   private cloudDBService: CloudDBService = CloudDBService.getInstance();
+  private initPromise: Promise<void> | null = null;
 
   private constructor() {
-    // 确保Cloud DB服务已初始化
-    this.cloudDBService.init();
+    // 初始化Cloud DB服务
+    this.initPromise = this.cloudDBService.init();
   }
 
   static getInstance(): BillService {
@@ -37,10 +38,20 @@ export class BillService {
   }
 
   /**
+   * 确保CloudDB已初始化
+   */
+  private async ensureInitialized(): Promise<void> {
+    if (this.initPromise) {
+      await this.initPromise;
+    }
+  }
+
+  /**
    * 创建账单
    * 数据会立即存入本地，随后静默上传云端
    */
   async createBill(bill: Bill): Promise<Bill> {
+    await this.ensureInitialized();
     try {
       // 设置创建时间和更新时间
       if (!bill.createTime) {
@@ -52,11 +63,11 @@ export class BillService {
       const userId = CloudDBConverter.getCurrentUserId();
       const cloudDBBill = CloudDBConverter.billToCloudDB(bill, userId);
       
-      // 保存到Cloud DB（会自动同步到云端），返回保存后的对象
-      const savedBill = await this.cloudDBService.upsertBill(cloudDBBill);
+      // 保存到Cloud DB（会自动同步到云端）
+      await this.cloudDBService.upsertBill(cloudDBBill);
       
-      // 转换回Bill对象
-      return CloudDBConverter.cloudDBToBill(savedBill);
+      // 返回转换后的Bill对象（使用cloudDBBill的id）
+      return CloudDBConverter.cloudDBToBill(cloudDBBill);
     } catch (error) {
       console.error('创建账单失败:', error);
       throw error instanceof Error ? error : new Error(String(error));
@@ -67,6 +78,7 @@ export class BillService {
    * 更新账单
    */
   async updateBill(bill: Bill): Promise<void> {
+    await this.ensureInitialized();
     try {
       bill.updateTime = new Date();
       const userId = CloudDBConverter.getCurrentUserId();
@@ -82,6 +94,7 @@ export class BillService {
    * 删除账单
    */
   async deleteBill(id: number): Promise<void> {
+    await this.ensureInitialized();
     try {
       await this.cloudDBService.deleteBill(id.toString());
     } catch (error) {
@@ -94,6 +107,7 @@ export class BillService {
    * 获取账单
    */
   async getBillById(id: number): Promise<Bill | null> {
+    await this.ensureInitialized();
     try {
       const cloudDBBill = await this.cloudDBService.queryBillById(id.toString());
       if (!cloudDBBill) {
@@ -110,9 +124,9 @@ export class BillService {
    * 获取所有账单
    */
   async getAllBills(): Promise<Bill[]> {
+    await this.ensureInitialized();
     try {
-      const userId = CloudDBConverter.getCurrentUserId();
-      const cloudDBBills = await this.cloudDBService.queryAllBills(userId);
+      const cloudDBBills = await this.cloudDBService.queryAllBills();
       return cloudDBBills.map(cloudDB => CloudDBConverter.cloudDBToBill(cloudDB));
     } catch (error) {
       console.error('获取账单列表失败:', error);
@@ -124,9 +138,9 @@ export class BillService {
    * 根据类型获取账单
    */
   async getBillsByType(type: BillType): Promise<Bill[]> {
+    await this.ensureInitialized();
     try {
-      const userId = CloudDBConverter.getCurrentUserId();
-      const cloudDBBills = await this.cloudDBService.queryBillsByType(type, userId);
+      const cloudDBBills = await this.cloudDBService.queryBillsByType(type);
       return cloudDBBills.map(cloudDB => CloudDBConverter.cloudDBToBill(cloudDB));
     } catch (error) {
       console.error('获取账单列表失败:', error);
@@ -139,6 +153,7 @@ export class BillService {
    * 注意：Cloud DB查询需要先获取所有账单，然后在内存中过滤
    */
   async getBillsByCategory(category: BillCategory): Promise<Bill[]> {
+    await this.ensureInitialized();
     try {
       const allBills = await this.getAllBills();
       return allBills.filter(bill => bill.category === category);
@@ -152,17 +167,16 @@ export class BillService {
    * 获取指定日期的账单
    */
   async getBillsByDate(date: Date): Promise<Bill[]> {
+    await this.ensureInitialized();
     try {
       const startDate = new Date(date);
       startDate.setHours(0, 0, 0, 0);
       const endDate = new Date(date);
       endDate.setHours(23, 59, 59, 999);
       
-      const userId = CloudDBConverter.getCurrentUserId();
       const cloudDBBills = await this.cloudDBService.queryBillsByDateRange(
         startDate.toISOString(),
-        endDate.toISOString(),
-        userId
+        endDate.toISOString()
       );
       return cloudDBBills.map(cloudDB => CloudDBConverter.cloudDBToBill(cloudDB));
     } catch (error) {
@@ -175,12 +189,11 @@ export class BillService {
    * 获取指定日期范围的账单
    */
   async getBillsByDateRange(startDate: Date, endDate: Date): Promise<Bill[]> {
+    await this.ensureInitialized();
     try {
-      const userId = CloudDBConverter.getCurrentUserId();
       const cloudDBBills = await this.cloudDBService.queryBillsByDateRange(
         startDate.toISOString(),
-        endDate.toISOString(),
-        userId
+        endDate.toISOString()
       );
       return cloudDBBills.map(cloudDB => CloudDBConverter.cloudDBToBill(cloudDB));
     } catch (error) {

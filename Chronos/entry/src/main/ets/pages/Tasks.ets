@@ -157,7 +157,7 @@ export struct Tasks {
    */
   showAddTaskDialog(): void {
     this.newTask = new Task();
-    this.newTask.priority = Constants.PRIORITY_NORMAL; // 默认普通优先级
+    this.newTask.priority = Constants.PRIORITY_LOW; // 默认低优先级
     this.showAddDialog = true;
   }
 
@@ -178,7 +178,7 @@ export struct Tasks {
       await this.loadTasks();
       // 重置新建任务对象
       this.newTask = new Task();
-      this.newTask.priority = Constants.PRIORITY_NORMAL;
+      this.newTask.priority = Constants.PRIORITY_LOW;
     } catch (error) {
       console.error('添加任务失败:', error);
       // 可以在这里添加错误提示
@@ -253,15 +253,22 @@ export struct Tasks {
           .padding({ left: 16, right: 16 })
         }
 
-        // 添加按钮
+        // 添加按钮 - 悬浮样式
         Button('+')
           .type(ButtonType.Circle)
-          .width(56)
-          .height(56)
-          .fontSize(32)
+          .width(60)
+          .height(60)
+          .fontSize(36)
+          .fontWeight(FontWeight.Medium)
           .fontColor(Constants.COLOR_TEXT_ON_PRIMARY)
           .backgroundColor(Constants.COLOR_PRIMARY)
-          .margin({ right: 16, bottom: 16 })
+          .shadow({
+            radius: 12,
+            color: 'rgba(255, 107, 53, 0.4)',
+            offsetX: 0,
+            offsetY: 4
+          })
+          .margin({ right: 20, bottom: 20 })
           .alignSelf(ItemAlign.End)
           .onClick(() => this.showAddTaskDialog())
     }
@@ -284,73 +291,167 @@ export struct Tasks {
       Column() {
         // 对话框标题
         Text('添加任务')
-          .fontSize(20)
+          .fontSize(22)
           .fontWeight(FontWeight.Bold)
-          .margin({ bottom: 16 })
+          .fontColor(Constants.COLOR_TEXT_PRIMARY)
+          .margin({ bottom: 20 })
 
-        // 任务内容输入框（固定显示三行，超过部分可滚动）
-        TextArea({ placeholder: '请输入任务内容', text: this.newTask.title })
+        // 任务标题输入框
+        Text('任务标题')
+          .fontSize(15)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(Constants.COLOR_TEXT_PRIMARY)
+          .margin({ bottom: 8 })
+          .alignSelf(ItemAlign.Start)
+
+        TextInput({ placeholder: '请输入任务标题', text: this.newTask.title })
           .width('100%')
-          .height(90)  // 固定高度约3行（每行约30px）
-          .maxLength(500)  // 限制最大长度
-          .fontSize(14)  // 设置字体大小
+          .height(48)
+          .maxLength(100)
+          .fontSize(15)
+          .backgroundColor(Constants.COLOR_BACKGROUND)
+          .borderRadius(12)
+          .padding({ left: 12, right: 12 })
           .onChange((value: string) => {
             this.newTask.title = value;
           })
           .margin({ bottom: 16 })
 
-        // 优先级选择
-        Text('优先级')
-          .fontSize(14)
-          .fontColor(Constants.COLOR_TEXT_SECONDARY)
+        // 任务描述输入框
+        Text('任务描述（可选）')
+          .fontSize(15)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(Constants.COLOR_TEXT_PRIMARY)
           .margin({ bottom: 8 })
+          .alignSelf(ItemAlign.Start)
+
+        TextArea({ placeholder: '请输入任务描述', text: this.newTask.description })
+          .width('100%')
+          .height(80)
+          .maxLength(500)
+          .fontSize(14)
+          .backgroundColor(Constants.COLOR_BACKGROUND)
+          .borderRadius(12)
+          .padding(12)
+          .onChange((value: string) => {
+            this.newTask.description = value;
+          })
+          .margin({ bottom: 16 })
+
+        // 截止日期选择
+        Text('截止日期（可选）')
+          .fontSize(15)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(Constants.COLOR_TEXT_PRIMARY)
+          .margin({ bottom: 8 })
+          .alignSelf(ItemAlign.Start)
 
         Row() {
-          // 普通优先级按钮
-          Button('普通')
+          Text(this.newTask.dueDate ? Utils.formatDate(this.newTask.dueDate, 'YYYY-MM-DD') : '点击选择日期')
+            .fontSize(15)
+            .fontColor(this.newTask.dueDate ? Constants.COLOR_TEXT_PRIMARY : Constants.COLOR_TEXT_SECONDARY)
+            .layoutWeight(1)
+
+          if (this.newTask.dueDate) {
+            Text('×')
+              .fontSize(18)
+              .fontColor(Constants.COLOR_TEXT_SECONDARY)
+              .padding({ left: 8, right: 8 })
+              .onClick(() => {
+                this.newTask.dueDate = null;
+              })
+          }
+        }
+        .width('100%')
+        .height(48)
+        .padding({ left: 12, right: 12 })
+        .backgroundColor(Constants.COLOR_BACKGROUND)
+        .borderRadius(12)
+        .margin({ bottom: 16 })
+        .onClick(() => {
+          // 设置为明天作为默认截止日期
+          if (!this.newTask.dueDate) {
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            this.newTask.dueDate = tomorrow;
+          }
+        })
+
+        // 优先级选择
+        Text('优先级')
+          .fontSize(15)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(Constants.COLOR_TEXT_PRIMARY)
+          .margin({ bottom: 12 })
+          .alignSelf(ItemAlign.Start)
+
+        Row() {
+          // 低优先级按钮
+          Button('低')
             .type(ButtonType.Normal)
             .layoutWeight(1)
-            .fontSize(14)
+            .height(44)
+            .fontSize(15)
+            .fontWeight(FontWeight.Medium)
             .backgroundColor(
-              this.newTask.priority === Constants.PRIORITY_NORMAL
-                ? Constants.COLOR_PRIMARY
-                : Constants.COLOR_CARD_BACKGROUND
+              this.newTask.priority === Constants.PRIORITY_LOW
+                ? '#FFA726'
+                : Constants.COLOR_BACKGROUND
             )
             .fontColor(
-              this.newTask.priority === Constants.PRIORITY_NORMAL
+              this.newTask.priority === Constants.PRIORITY_LOW
                 ? Constants.COLOR_TEXT_ON_PRIMARY
-                : Constants.COLOR_TEXT_PRIMARY
+                : Constants.COLOR_TEXT_SECONDARY
             )
-            .border({
-              width: this.newTask.priority === Constants.PRIORITY_NORMAL ? 0 : 1,
-              color: Constants.COLOR_BORDER
-            })
+            .borderRadius(10)
             .onClick(() => {
-              this.newTask.priority = Constants.PRIORITY_NORMAL;
+              this.newTask.priority = Constants.PRIORITY_LOW;
             })
 
-          // 重要优先级按钮
-          Button('重要')
+          // 中优先级按钮
+          Button('中')
             .type(ButtonType.Normal)
             .layoutWeight(1)
-            .fontSize(14)
+            .height(44)
+            .fontSize(15)
+            .fontWeight(FontWeight.Medium)
             .backgroundColor(
-              this.newTask.priority === Constants.PRIORITY_IMPORTANT
-                ? '#FF3B30'  // 大红色，与优先级标签颜色一致
-                : Constants.COLOR_CARD_BACKGROUND
+              this.newTask.priority === Constants.PRIORITY_MEDIUM
+                ? '#FF8F00'
+                : Constants.COLOR_BACKGROUND
             )
             .fontColor(
-              this.newTask.priority === Constants.PRIORITY_IMPORTANT
+              this.newTask.priority === Constants.PRIORITY_MEDIUM
                 ? Constants.COLOR_TEXT_ON_PRIMARY
-                : Constants.COLOR_TEXT_PRIMARY
+                : Constants.COLOR_TEXT_SECONDARY
             )
-            .border({
-              width: this.newTask.priority === Constants.PRIORITY_IMPORTANT ? 0 : 1,
-              color: Constants.COLOR_BORDER
-            })
-            .margin({ left: 8 })
+            .borderRadius(10)
+            .margin({ left: 10 })
             .onClick(() => {
-              this.newTask.priority = Constants.PRIORITY_IMPORTANT;
+              this.newTask.priority = Constants.PRIORITY_MEDIUM;
+            })
+
+          // 高优先级按钮
+          Button('高')
+            .type(ButtonType.Normal)
+            .layoutWeight(1)
+            .height(44)
+            .fontSize(15)
+            .fontWeight(FontWeight.Medium)
+            .backgroundColor(
+              this.newTask.priority === Constants.PRIORITY_HIGH
+                ? Constants.COLOR_DANGER
+                : Constants.COLOR_BACKGROUND
+            )
+            .fontColor(
+              this.newTask.priority === Constants.PRIORITY_HIGH
+                ? Constants.COLOR_TEXT_ON_PRIMARY
+                : Constants.COLOR_TEXT_SECONDARY
+            )
+            .borderRadius(10)
+            .margin({ left: 10 })
+            .onClick(() => {
+              this.newTask.priority = Constants.PRIORITY_HIGH;
             })
         }
         .width('100%')
@@ -361,23 +462,35 @@ export struct Tasks {
           Button('取消')
             .type(ButtonType.Normal)
             .layoutWeight(1)
-            .fontSize(14)
-            .backgroundColor(Constants.COLOR_CARD_BACKGROUND)
-            .fontColor(Constants.COLOR_TEXT_PRIMARY)
+            .height(48)
+            .fontSize(16)
+            .fontWeight(FontWeight.Medium)
+            .backgroundColor(Constants.COLOR_BACKGROUND)
+            .fontColor(Constants.COLOR_TEXT_SECONDARY)
+            .borderRadius(12)
             .onClick(() => {
               this.showAddDialog = false;
               // 重置表单
               this.newTask = new Task();
-              this.newTask.priority = Constants.PRIORITY_NORMAL;
+              this.newTask.priority = Constants.PRIORITY_LOW;
             })
 
           Button('确定')
             .type(ButtonType.Normal)
             .layoutWeight(1)
-            .fontSize(14)
+            .height(48)
+            .fontSize(16)
+            .fontWeight(FontWeight.Medium)
             .backgroundColor(Constants.COLOR_PRIMARY)
             .fontColor(Constants.COLOR_TEXT_ON_PRIMARY)
-            .margin({ left: 12 })
+            .borderRadius(12)
+            .margin({ left: 16 })
+            .shadow({
+              radius: 8,
+              color: 'rgba(255, 107, 53, 0.3)',
+              offsetX: 0,
+              offsetY: 2
+            })
             .onClick(() => {
               this.addTask();
             })
@@ -385,10 +498,16 @@ export struct Tasks {
         .width('100%')
         .justifyContent(FlexAlign.SpaceBetween)
       }
-      .width('80%')
+      .width('90%')
       .padding(24)
       .backgroundColor('#FFFFFF')
-      .borderRadius(12)
+      .borderRadius(20)
+      .shadow({
+        radius: 20,
+        color: 'rgba(0, 0, 0, 0.15)',
+        offsetX: 0,
+        offsetY: 8
+      })
     }
     .width('100%')
     .height('100%')
@@ -399,7 +518,7 @@ export struct Tasks {
       this.showAddDialog = false;
       // 重置表单
       this.newTask = new Task();
-      this.newTask.priority = Constants.PRIORITY_NORMAL;
+      this.newTask.priority = Constants.PRIORITY_LOW;
     })
   }
 
@@ -408,18 +527,30 @@ export struct Tasks {
     Button(label)
       .type(ButtonType.Normal)
       .fontSize(14)
+      .fontWeight(this.filterStatus === status ? FontWeight.Medium : FontWeight.Normal)
       .fontColor(
         this.filterStatus === status
           ? Constants.COLOR_TEXT_ON_PRIMARY
-          : Constants.COLOR_TEXT_PRIMARY
+          : Constants.COLOR_TEXT_SECONDARY
       )
       .backgroundColor(
         this.filterStatus === status
           ? Constants.COLOR_PRIMARY
           : Constants.COLOR_CARD_BACKGROUND
       )
-      .borderRadius(16)
-      .padding({ left: 16, right: 16, top: 6, bottom: 6 })
+      .borderRadius(20)
+      .padding({ left: 18, right: 18, top: 8, bottom: 8 })
+      .shadow(this.filterStatus === status ? {
+        radius: 6,
+        color: 'rgba(255, 107, 53, 0.3)',
+        offsetX: 0,
+        offsetY: 2
+      } : {
+        radius: 0,
+        color: 'transparent',
+        offsetX: 0,
+        offsetY: 0
+      })
       .onClick(() => this.onFilterChange(status))
   }
 
@@ -427,20 +558,26 @@ export struct Tasks {
   buildStatCard(title: string, value: string, color: string) {
     Column() {
       Text(value)
-        .fontSize(24)
+        .fontSize(28)
         .fontWeight(FontWeight.Bold)
         .fontColor(color)
-        .margin({ bottom: 4 })
+        .margin({ bottom: 6 })
       Text(title)
-        .fontSize(12)
+        .fontSize(13)
         .fontColor(Constants.COLOR_TEXT_SECONDARY)
     }
     .layoutWeight(1)
-    .padding(12)
+    .padding({ top: 16, bottom: 16, left: 12, right: 12 })
     .backgroundColor(Constants.COLOR_CARD_BACKGROUND)
-    .borderRadius(8)
-    .margin({ left: 4, right: 4 })
+    .borderRadius(12)
+    .margin({ left: 6, right: 6 })
     .justifyContent(FlexAlign.Center)
+    .shadow({
+      radius: 8,
+      color: 'rgba(0, 0, 0, 0.06)',
+      offsetX: 0,
+      offsetY: 2
+    })
   }
 }
 

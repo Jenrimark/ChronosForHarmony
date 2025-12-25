@@ -21,9 +21,10 @@ export class Constants {
   static readonly TASK_STATUS_COMPLETED: string = 'completed';
   static readonly TASK_STATUS_CANCELLED: string = 'cancelled';
 
-  // 任务优先级（只有两种：普通和重要）
-  static readonly PRIORITY_NORMAL: number = 1;   // 普通优先级
-  static readonly PRIORITY_IMPORTANT: number = 2; // 重要优先级
+  // 任务优先级（三级：低、中、高）
+  static readonly PRIORITY_LOW: number = 1;      // 低优先级
+  static readonly PRIORITY_MEDIUM: number = 2;   // 中优先级
+  static readonly PRIORITY_HIGH: number = 3;     // 高优先级
 
   // 颜色主题 - 橙色系列（与图标颜色保持一致）
   // 主色调
@@ -72,8 +73,13 @@ export class Constants {
   static readonly MIMO_API_KEY: string = 'sk-c98gx1dgjy6bpmu8ejq77l1zmvvied1f0fmtmgvie271iezj';
   static readonly MIMO_API_URL: string = 'https://api.xiaomimimo.com/v1/chat/completions';
   
-  // 天行API配置（节假日接口）
+  // 天行API配置（节假日接口）- 已弃用
   static readonly TIANAPI_KEY: string = '946b76bdb2c6424342e01207eba8372f';
   static readonly TIANAPI_HOLIDAY_URL: string = 'https://apis.tianapi.com/jiejiari/index';
+  
+  // mxnzp API配置（节假日及万年历接口）
+  static readonly MXNZP_APP_ID: string = 'ngeorpqtkeijibqu';
+  static readonly MXNZP_APP_SECRET: string = 'ZWJlWXFzc21KNjYzVG9iakdBT3cydz09';
+  static readonly MXNZP_HOLIDAY_URL: string = 'https://www.mxnzp.com/api/holiday/single';
 }
 

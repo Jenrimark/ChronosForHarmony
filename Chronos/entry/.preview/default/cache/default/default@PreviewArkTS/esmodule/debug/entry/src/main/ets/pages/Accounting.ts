@@ -643,10 +643,16 @@ export class Accounting extends ViewPU {
             Column.create();
             Column.debugLine("entry/src/main/ets/pages/Accounting.ets(383:5)", "entry");
             Column.width('100%');
-            Column.padding(20);
+            Column.padding(24);
             Column.backgroundColor(Constants.COLOR_CARD_BACKGROUND);
-            Column.borderRadius(12);
+            Column.borderRadius(16);
             Column.margin({ top: 16, left: 16, right: 16, bottom: 12 });
+            Column.shadow({
+                radius: 12,
+                color: 'rgba(0, 0, 0, 0.06)',
+                offsetX: 0,
+                offsetY: 4
+            });
         }, Column);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             // 12月支出标题
@@ -683,13 +689,13 @@ export class Accounting extends ViewPU {
             Text.create(`¥${this.monthExpense.toFixed(2)}`);
             Text.debugLine("entry/src/main/ets/pages/Accounting.ets(400:7)", "entry");
             // 支出金额
-            Text.fontSize(32);
+            Text.fontSize(36);
             // 支出金额
             Text.fontWeight(FontWeight.Bold);
             // 支出金额
             Text.fontColor(Constants.COLOR_TEXT_PRIMARY);
             // 支出金额
-            Text.margin({ bottom: 12 });
+            Text.margin({ bottom: 16 });
         }, Text);
         // 支出金额
         Text.pop();
@@ -700,7 +706,7 @@ export class Accounting extends ViewPU {
             // 收入和结余
             Row.width('100%');
             // 收入和结余
-            Row.margin({ bottom: 16 });
+            Row.margin({ bottom: 20 });
         }, Row);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Column.create();
@@ -717,10 +723,10 @@ export class Accounting extends ViewPU {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Text.create(`¥${this.monthIncome.toFixed(2)}`);
             Text.debugLine("entry/src/main/ets/pages/Accounting.ets(412:11)", "entry");
-            Text.fontSize(18);
-            Text.fontWeight(FontWeight.Medium);
+            Text.fontSize(20);
+            Text.fontWeight(FontWeight.Bold);
             Text.fontColor(Constants.COLOR_SUCCESS);
-            Text.margin({ top: 4 });
+            Text.margin({ top: 6 });
         }, Text);
         Text.pop();
         Column.pop();
@@ -744,10 +750,10 @@ export class Accounting extends ViewPU {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Text.create(`¥${this.monthBalance.toFixed(2)}`);
             Text.debugLine("entry/src/main/ets/pages/Accounting.ets(426:11)", "entry");
-            Text.fontSize(18);
-            Text.fontWeight(FontWeight.Medium);
+            Text.fontSize(20);
+            Text.fontWeight(FontWeight.Bold);
             Text.fontColor(Constants.COLOR_PRIMARY);
-            Text.margin({ top: 4 });
+            Text.margin({ top: 6 });
         }, Text);
         Text.pop();
         Column.pop();
@@ -760,12 +766,12 @@ export class Accounting extends ViewPU {
             // 月预算进度条
             Row.width('100%');
             // 月预算进度条
-            Row.margin({ bottom: 8 });
+            Row.margin({ bottom: 10 });
         }, Row);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Text.create('月预算66%');
             Text.debugLine("entry/src/main/ets/pages/Accounting.ets(439:9)", "entry");
-            Text.fontSize(12);
+            Text.fontSize(13);
             Text.fontColor(Constants.COLOR_TEXT_SECONDARY);
         }, Text);
         Text.pop();
@@ -777,7 +783,7 @@ export class Accounting extends ViewPU {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Text.create('剩余 ¥407.25');
             Text.debugLine("entry/src/main/ets/pages/Accounting.ets(445:9)", "entry");
-            Text.fontSize(12);
+            Text.fontSize(13);
             Text.fontColor(Constants.COLOR_TEXT_SECONDARY);
         }, Text);
         Text.pop();
@@ -790,19 +796,19 @@ export class Accounting extends ViewPU {
             // 进度条（使用Row模拟）
             Row.width('100%');
             // 进度条（使用Row模拟）
-            Row.height(6);
+            Row.height(8);
             // 进度条（使用Row模拟）
             Row.backgroundColor(Constants.COLOR_BORDER);
             // 进度条（使用Row模拟）
-            Row.borderRadius(3);
+            Row.borderRadius(4);
         }, Row);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Row.create();
             Row.debugLine("entry/src/main/ets/pages/Accounting.ets(454:9)", "entry");
             Row.width('66%');
-            Row.height(6);
+            Row.height(8);
             Row.backgroundColor(Constants.COLOR_PRIMARY);
-            Row.borderRadius(3);
+            Row.borderRadius(4);
         }, Row);
         Row.pop();
         // 进度条（使用Row模拟）
@@ -815,7 +821,7 @@ export class Accounting extends ViewPU {
     buildTodayBillsList(parent = null) {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Column.create();
-            Column.debugLine("entry/src/main/ets/pages/Accounting.ets(477:5)", "entry");
+            Column.debugLine("entry/src/main/ets/pages/Accounting.ets(483:5)", "entry");
             Column.width('100%');
             Column.backgroundColor(Constants.COLOR_CARD_BACKGROUND);
             Column.borderRadius(12);
@@ -824,7 +830,7 @@ export class Accounting extends ViewPU {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             // 标题
             Row.create();
-            Row.debugLine("entry/src/main/ets/pages/Accounting.ets(479:7)", "entry");
+            Row.debugLine("entry/src/main/ets/pages/Accounting.ets(485:7)", "entry");
             // 标题
             Row.width('100%');
             // 标题
@@ -832,7 +838,7 @@ export class Accounting extends ViewPU {
         }, Row);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Text.create(`今天 ${Utils.formatDate(new Date(), 'MM月DD日')} (${this.getWeekDay()})`);
-            Text.debugLine("entry/src/main/ets/pages/Accounting.ets(480:9)", "entry");
+            Text.debugLine("entry/src/main/ets/pages/Accounting.ets(486:9)", "entry");
             Text.fontSize(16);
             Text.fontWeight(FontWeight.Medium);
             Text.fontColor(Constants.COLOR_TEXT_PRIMARY);
@@ -840,12 +846,12 @@ export class Accounting extends ViewPU {
         Text.pop();
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Blank.create();
-            Blank.debugLine("entry/src/main/ets/pages/Accounting.ets(485:9)", "entry");
+            Blank.debugLine("entry/src/main/ets/pages/Accounting.ets(491:9)", "entry");
         }, Blank);
         Blank.pop();
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Text.create('>');
-            Text.debugLine("entry/src/main/ets/pages/Accounting.ets(487:9)", "entry");
+            Text.debugLine("entry/src/main/ets/pages/Accounting.ets(493:9)", "entry");
             Text.fontSize(16);
             Text.fontColor(Constants.COLOR_TEXT_SECONDARY);
         }, Text);
@@ -855,7 +861,7 @@ export class Accounting extends ViewPU {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             // 今日统计
             Text.create(`支出¥${this.todayExpense.toFixed(2)} | 收入¥${this.todayIncome.toFixed(2)}`);
-            Text.debugLine("entry/src/main/ets/pages/Accounting.ets(495:7)", "entry");
+            Text.debugLine("entry/src/main/ets/pages/Accounting.ets(501:7)", "entry");
             // 今日统计
             Text.fontSize(14);
             // 今日统计
@@ -872,13 +878,13 @@ export class Accounting extends ViewPU {
                 this.ifElseBranchUpdateFunction(0, () => {
                     this.observeComponentCreation2((elmtId, isInitialRender) => {
                         Column.create();
-                        Column.debugLine("entry/src/main/ets/pages/Accounting.ets(502:9)", "entry");
+                        Column.debugLine("entry/src/main/ets/pages/Accounting.ets(508:9)", "entry");
                         Column.width('100%');
                         Column.padding(20);
                     }, Column);
                     this.observeComponentCreation2((elmtId, isInitialRender) => {
                         Text.create('今天还没有账单');
-                        Text.debugLine("entry/src/main/ets/pages/Accounting.ets(503:11)", "entry");
+                        Text.debugLine("entry/src/main/ets/pages/Accounting.ets(509:11)", "entry");
                         Text.fontSize(14);
                         Text.fontColor(Constants.COLOR_TEXT_SECONDARY);
                     }, Text);
@@ -890,7 +896,7 @@ export class Accounting extends ViewPU {
                 this.ifElseBranchUpdateFunction(1, () => {
                     this.observeComponentCreation2((elmtId, isInitialRender) => {
                         Column.create();
-                        Column.debugLine("entry/src/main/ets/pages/Accounting.ets(510:9)", "entry");
+                        Column.debugLine("entry/src/main/ets/pages/Accounting.ets(516:9)", "entry");
                         Column.width('100%');
                         Column.padding({ left: 16, right: 16 });
                     }, Column);
@@ -920,7 +926,7 @@ export class Accounting extends ViewPU {
                 this.ifElseBranchUpdateFunction(0, () => {
                     this.observeComponentCreation2((elmtId, isInitialRender) => {
                         Column.create();
-                        Column.debugLine("entry/src/main/ets/pages/Accounting.ets(531:7)", "entry");
+                        Column.debugLine("entry/src/main/ets/pages/Accounting.ets(537:7)", "entry");
                         Column.width('100%');
                     }, Column);
                     this.observeComponentCreation2((elmtId, isInitialRender) => {
@@ -929,7 +935,7 @@ export class Accounting extends ViewPU {
                             const group = _item;
                             this.observeComponentCreation2((elmtId, isInitialRender) => {
                                 Column.create();
-                                Column.debugLine("entry/src/main/ets/pages/Accounting.ets(533:11)", "entry");
+                                Column.debugLine("entry/src/main/ets/pages/Accounting.ets(539:11)", "entry");
                                 Column.width('100%');
                                 Column.backgroundColor('#FFFFFF');
                                 Column.borderRadius(12);
@@ -938,7 +944,7 @@ export class Accounting extends ViewPU {
                             this.observeComponentCreation2((elmtId, isInitialRender) => {
                                 // 日期标题
                                 Row.create();
-                                Row.debugLine("entry/src/main/ets/pages/Accounting.ets(535:13)", "entry");
+                                Row.debugLine("entry/src/main/ets/pages/Accounting.ets(541:13)", "entry");
                                 // 日期标题
                                 Row.width('100%');
                                 // 日期标题
@@ -946,19 +952,19 @@ export class Accounting extends ViewPU {
                             }, Row);
                             this.observeComponentCreation2((elmtId, isInitialRender) => {
                                 Text.create(group.date);
-                                Text.debugLine("entry/src/main/ets/pages/Accounting.ets(536:15)", "entry");
+                                Text.debugLine("entry/src/main/ets/pages/Accounting.ets(542:15)", "entry");
                                 Text.fontSize(14);
                                 Text.fontColor(Constants.COLOR_TEXT_SECONDARY);
                             }, Text);
                             Text.pop();
                             this.observeComponentCreation2((elmtId, isInitialRender) => {
                                 Blank.create();
-                                Blank.debugLine("entry/src/main/ets/pages/Accounting.ets(540:15)", "entry");
+                                Blank.debugLine("entry/src/main/ets/pages/Accounting.ets(546:15)", "entry");
                             }, Blank);
                             Blank.pop();
                             this.observeComponentCreation2((elmtId, isInitialRender) => {
                                 Text.create('>');
-                                Text.debugLine("entry/src/main/ets/pages/Accounting.ets(542:15)", "entry");
+                                Text.debugLine("entry/src/main/ets/pages/Accounting.ets(548:15)", "entry");
                                 Text.fontSize(14);
                                 Text.fontColor(Constants.COLOR_TEXT_SECONDARY);
                             }, Text);
@@ -968,7 +974,7 @@ export class Accounting extends ViewPU {
                             this.observeComponentCreation2((elmtId, isInitialRender) => {
                                 // 该日期的账单
                                 Column.create();
-                                Column.debugLine("entry/src/main/ets/pages/Accounting.ets(550:13)", "entry");
+                                Column.debugLine("entry/src/main/ets/pages/Accounting.ets(556:13)", "entry");
                                 // 该日期的账单
                                 Column.width('100%');
                                 // 该日期的账单
@@ -1008,12 +1014,12 @@ export class Accounting extends ViewPU {
     buildBillItem(bill: Bill, parent = null) {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Row.create();
-            Row.debugLine("entry/src/main/ets/pages/Accounting.ets(573:5)", "entry");
+            Row.debugLine("entry/src/main/ets/pages/Accounting.ets(579:5)", "entry");
             Row.width('100%');
-            Row.padding(12);
-            Row.backgroundColor(Constants.COLOR_BACKGROUND_SECONDARY);
-            Row.borderRadius(8);
-            Row.margin({ bottom: 8 });
+            Row.padding({ top: 14, bottom: 14, left: 12, right: 12 });
+            Row.backgroundColor(Constants.COLOR_BACKGROUND);
+            Row.borderRadius(12);
+            Row.margin({ bottom: 10 });
             Row.onClick(() => {
                 this.onBillTap(bill);
             });
@@ -1021,7 +1027,7 @@ export class Accounting extends ViewPU {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             // 时间
             Text.create(Utils.formatDate(bill.date, 'HH:mm'));
-            Text.debugLine("entry/src/main/ets/pages/Accounting.ets(575:7)", "entry");
+            Text.debugLine("entry/src/main/ets/pages/Accounting.ets(581:7)", "entry");
             // 时间
             Text.fontSize(14);
             // 时间
@@ -1034,24 +1040,42 @@ export class Accounting extends ViewPU {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             // 分类图标和名称
             Row.create();
-            Row.debugLine("entry/src/main/ets/pages/Accounting.ets(581:7)", "entry");
+            Row.debugLine("entry/src/main/ets/pages/Accounting.ets(587:7)", "entry");
             // 分类图标和名称
             Row.layoutWeight(1);
             // 分类图标和名称
             Row.margin({ left: 12 });
         }, Row);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
+            // 图标背景圆
+            Column.create();
+            Column.debugLine("entry/src/main/ets/pages/Accounting.ets(589:9)", "entry");
+            // 图标背景圆
+            Column.width(36);
+            // 图标背景圆
+            Column.height(36);
+            // 图标背景圆
+            Column.backgroundColor(bill.isIncome() ? 'rgba(255, 167, 38, 0.15)' : 'rgba(255, 107, 53, 0.1)');
+            // 图标背景圆
+            Column.borderRadius(18);
+            // 图标背景圆
+            Column.justifyContent(FlexAlign.Center);
+        }, Column);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
             Text.create(this.getCategoryIcon(bill.category));
-            Text.debugLine("entry/src/main/ets/pages/Accounting.ets(582:9)", "entry");
-            Text.fontSize(20);
+            Text.debugLine("entry/src/main/ets/pages/Accounting.ets(590:11)", "entry");
+            Text.fontSize(18);
         }, Text);
         Text.pop();
+        // 图标背景圆
+        Column.pop();
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Text.create(this.getCategoryName(bill.category));
-            Text.debugLine("entry/src/main/ets/pages/Accounting.ets(584:9)", "entry");
-            Text.fontSize(16);
+            Text.debugLine("entry/src/main/ets/pages/Accounting.ets(599:9)", "entry");
+            Text.fontSize(15);
+            Text.fontWeight(FontWeight.Medium);
             Text.fontColor(Constants.COLOR_TEXT_PRIMARY);
-            Text.margin({ left: 8 });
+            Text.margin({ left: 10 });
         }, Text);
         Text.pop();
         // 分类图标和名称
@@ -1059,11 +1083,11 @@ export class Accounting extends ViewPU {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             // 金额
             Text.create(bill.getDisplayAmount());
-            Text.debugLine("entry/src/main/ets/pages/Accounting.ets(593:7)", "entry");
+            Text.debugLine("entry/src/main/ets/pages/Accounting.ets(609:7)", "entry");
             // 金额
-            Text.fontSize(16);
+            Text.fontSize(17);
             // 金额
-            Text.fontWeight(FontWeight.Medium);
+            Text.fontWeight(FontWeight.Bold);
             // 金额
             Text.fontColor(bill.isIncome() ? Constants.COLOR_SUCCESS : Constants.COLOR_DANGER);
         }, Text);
@@ -1077,15 +1101,22 @@ export class Accounting extends ViewPU {
     buildAddButton(parent = null) {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Button.createWithLabel('+');
-            Button.debugLine("entry/src/main/ets/pages/Accounting.ets(615:5)", "entry");
+            Button.debugLine("entry/src/main/ets/pages/Accounting.ets(631:5)", "entry");
             Button.type(ButtonType.Circle);
-            Button.width(56);
-            Button.height(56);
-            Button.fontSize(32);
+            Button.width(60);
+            Button.height(60);
+            Button.fontSize(36);
+            Button.fontWeight(FontWeight.Medium);
             Button.fontColor(Constants.COLOR_TEXT_ON_PRIMARY);
             Button.backgroundColor(this.isRecording ? Constants.COLOR_DANGER : Constants.COLOR_PRIMARY);
+            Button.shadow({
+                radius: 12,
+                color: this.isRecording ? 'rgba(230, 81, 0, 0.4)' : 'rgba(255, 107, 53, 0.4)',
+                offsetX: 0,
+                offsetY: 4
+            });
             Button.position({ x: '100%', y: '100%' });
-            Button.translate({ x: -72, y: -72 });
+            Button.translate({ x: -76, y: -76 });
             Button.zIndex(20);
             Button.onClick(() => {
                 if (this.isRecording) {
@@ -1127,15 +1158,21 @@ export class Accounting extends ViewPU {
     buildInputBar(parent = null) {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Column.create();
-            Column.debugLine("entry/src/main/ets/pages/Accounting.ets(661:5)", "entry");
+            Column.debugLine("entry/src/main/ets/pages/Accounting.ets(684:5)", "entry");
             Column.width('100%');
             Column.padding({ left: 16, right: 16, top: 16, bottom: 16 });
             Column.backgroundColor(Constants.COLOR_BACKGROUND_SECONDARY);
-            Column.borderRadius({ topLeft: 16, topRight: 16 });
+            Column.borderRadius({ topLeft: 20, topRight: 20 });
             Column.alignItems(HorizontalAlign.Start);
             Column.position({ x: 0, y: '100%' });
-            Column.translate({ y: this.isRecording ? -180 : -120 });
+            Column.translate({ y: this.isRecording ? -200 : -140 });
             Column.zIndex(100);
+            Column.shadow({
+                radius: 16,
+                color: 'rgba(0, 0, 0, 0.1)',
+                offsetX: 0,
+                offsetY: -4
+            });
         }, Column);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             If.create();
@@ -1144,17 +1181,17 @@ export class Accounting extends ViewPU {
                 this.ifElseBranchUpdateFunction(0, () => {
                     this.observeComponentCreation2((elmtId, isInitialRender) => {
                         Row.create();
-                        Row.debugLine("entry/src/main/ets/pages/Accounting.ets(664:9)", "entry");
+                        Row.debugLine("entry/src/main/ets/pages/Accounting.ets(687:9)", "entry");
                         Row.width('100%');
-                        Row.padding(12);
+                        Row.padding(14);
                         Row.backgroundColor(Constants.COLOR_CARD_BACKGROUND);
-                        Row.borderRadius(8);
-                        Row.margin({ bottom: 8 });
+                        Row.borderRadius(12);
+                        Row.margin({ bottom: 10 });
                     }, Row);
                     this.observeComponentCreation2((elmtId, isInitialRender) => {
                         // 录音动画指示器
                         Column.create();
-                        Column.debugLine("entry/src/main/ets/pages/Accounting.ets(666:11)", "entry");
+                        Column.debugLine("entry/src/main/ets/pages/Accounting.ets(689:11)", "entry");
                         Context.animation({
                             iterations: -1,
                             duration: 1000,
@@ -1170,7 +1207,7 @@ export class Accounting extends ViewPU {
                     }, Column);
                     this.observeComponentCreation2((elmtId, isInitialRender) => {
                         Text.create('●');
-                        Text.debugLine("entry/src/main/ets/pages/Accounting.ets(667:13)", "entry");
+                        Text.debugLine("entry/src/main/ets/pages/Accounting.ets(690:13)", "entry");
                         Text.fontSize(20);
                         Text.fontColor(Constants.COLOR_DANGER);
                     }, Text);
@@ -1180,33 +1217,43 @@ export class Accounting extends ViewPU {
                     this.observeComponentCreation2((elmtId, isInitialRender) => {
                         // 录音时长
                         Text.create(`录音中 ${this.formatDuration(this.recordingDuration)}`);
-                        Text.debugLine("entry/src/main/ets/pages/Accounting.ets(681:11)", "entry");
+                        Text.debugLine("entry/src/main/ets/pages/Accounting.ets(704:11)", "entry");
                         // 录音时长
-                        Text.fontSize(14);
+                        Text.fontSize(15);
+                        // 录音时长
+                        Text.fontWeight(FontWeight.Medium);
                         // 录音时长
                         Text.fontColor(Constants.COLOR_DANGER);
                         // 录音时长
-                        Text.margin({ left: 8 });
+                        Text.margin({ left: 10 });
                     }, Text);
                     // 录音时长
                     Text.pop();
                     this.observeComponentCreation2((elmtId, isInitialRender) => {
                         Blank.create();
-                        Blank.debugLine("entry/src/main/ets/pages/Accounting.ets(686:11)", "entry");
+                        Blank.debugLine("entry/src/main/ets/pages/Accounting.ets(710:11)", "entry");
                     }, Blank);
                     Blank.pop();
                     this.observeComponentCreation2((elmtId, isInitialRender) => {
                         // 停止录音按钮
                         Button.createWithLabel('停止');
-                        Button.debugLine("entry/src/main/ets/pages/Accounting.ets(689:11)", "entry");
+                        Button.debugLine("entry/src/main/ets/pages/Accounting.ets(713:11)", "entry");
                         // 停止录音按钮
                         Button.type(ButtonType.Normal);
                         // 停止录音按钮
+                        Button.height(36);
+                        // 停止录音按钮
                         Button.fontSize(14);
+                        // 停止录音按钮
+                        Button.fontWeight(FontWeight.Medium);
                         // 停止录音按钮
                         Button.backgroundColor(Constants.COLOR_DANGER);
                         // 停止录音按钮
                         Button.fontColor('#FFFFFF');
+                        // 停止录音按钮
+                        Button.borderRadius(18);
+                        // 停止录音按钮
+                        Button.padding({ left: 16, right: 16 });
                         // 停止录音按钮
                         Button.margin({ left: 8 });
                         // 停止录音按钮
@@ -1227,11 +1274,11 @@ export class Accounting extends ViewPU {
         If.pop();
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Row.create();
-            Row.debugLine("entry/src/main/ets/pages/Accounting.ets(706:7)", "entry");
+            Row.debugLine("entry/src/main/ets/pages/Accounting.ets(734:7)", "entry");
             Row.width('100%');
-            Row.padding(12);
+            Row.padding(14);
             Row.backgroundColor(Constants.COLOR_CARD_BACKGROUND);
-            Row.borderRadius(8);
+            Row.borderRadius(16);
         }, Row);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             // 输入框
@@ -1239,11 +1286,19 @@ export class Accounting extends ViewPU {
                 placeholder: this.isRecording ? '正在录音...' : '输入账单描述，如：午餐15元',
                 text: this.inputText
             });
-            TextInput.debugLine("entry/src/main/ets/pages/Accounting.ets(708:9)", "entry");
+            TextInput.debugLine("entry/src/main/ets/pages/Accounting.ets(736:9)", "entry");
             // 输入框
             TextInput.layoutWeight(1);
             // 输入框
-            TextInput.fontSize(16);
+            TextInput.height(44);
+            // 输入框
+            TextInput.fontSize(15);
+            // 输入框
+            TextInput.backgroundColor(Constants.COLOR_BACKGROUND);
+            // 输入框
+            TextInput.borderRadius(22);
+            // 输入框
+            TextInput.padding({ left: 16, right: 16 });
             // 输入框
             TextInput.enabled(!this.isRecording);
             // 输入框
@@ -1254,17 +1309,32 @@ export class Accounting extends ViewPU {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             // 发送按钮
             Button.createWithLabel('发送');
-            Button.debugLine("entry/src/main/ets/pages/Accounting.ets(720:9)", "entry");
+            Button.debugLine("entry/src/main/ets/pages/Accounting.ets(752:9)", "entry");
             // 发送按钮
             Button.type(ButtonType.Normal);
             // 发送按钮
-            Button.fontSize(14);
+            Button.height(44);
+            // 发送按钮
+            Button.fontSize(15);
+            // 发送按钮
+            Button.fontWeight(FontWeight.Medium);
             // 发送按钮
             Button.backgroundColor(Constants.COLOR_PRIMARY);
             // 发送按钮
             Button.fontColor(Constants.COLOR_TEXT_ON_PRIMARY);
             // 发送按钮
-            Button.margin({ left: 8 });
+            Button.borderRadius(22);
+            // 发送按钮
+            Button.padding({ left: 20, right: 20 });
+            // 发送按钮
+            Button.margin({ left: 10 });
+            // 发送按钮
+            Button.shadow({
+                radius: 6,
+                color: 'rgba(255, 107, 53, 0.3)',
+                offsetX: 0,
+                offsetY: 2
+            });
             // 发送按钮
             Button.enabled(!this.isProcessing && !this.isRecording && this.inputText.trim().length > 0);
             // 发送按钮
@@ -1277,21 +1347,21 @@ export class Accounting extends ViewPU {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             // 关闭按钮
             Button.createWithLabel('×');
-            Button.debugLine("entry/src/main/ets/pages/Accounting.ets(732:9)", "entry");
+            Button.debugLine("entry/src/main/ets/pages/Accounting.ets(774:9)", "entry");
             // 关闭按钮
-            Button.type(ButtonType.Normal);
+            Button.type(ButtonType.Circle);
             // 关闭按钮
             Button.fontSize(20);
             // 关闭按钮
-            Button.backgroundColor(Constants.COLOR_BORDER);
+            Button.backgroundColor(Constants.COLOR_BACKGROUND);
             // 关闭按钮
-            Button.fontColor(Constants.COLOR_TEXT_PRIMARY);
+            Button.fontColor(Constants.COLOR_TEXT_SECONDARY);
             // 关闭按钮
-            Button.width(32);
+            Button.width(36);
             // 关闭按钮
-            Button.height(32);
+            Button.height(36);
             // 关闭按钮
-            Button.margin({ left: 8 });
+            Button.margin({ left: 10 });
             // 关闭按钮
             Button.onClick(() => {
                 this.onCloseInputBar();
@@ -1312,94 +1382,171 @@ export class Accounting extends ViewPU {
                 this.ifElseBranchUpdateFunction(0, () => {
                     this.observeComponentCreation2((elmtId, isInitialRender) => {
                         Column.create();
-                        Column.debugLine("entry/src/main/ets/pages/Accounting.ets(765:7)", "entry");
+                        Column.debugLine("entry/src/main/ets/pages/Accounting.ets(813:7)", "entry");
+                        Column.width('100%');
+                        Column.height('100%');
+                        Column.position({ x: 0, y: 0 });
+                        Column.zIndex(200);
+                    }, Column);
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        // 半透明背景
+                        Column.create();
+                        Column.debugLine("entry/src/main/ets/pages/Accounting.ets(815:9)", "entry");
+                        // 半透明背景
+                        Column.width('100%');
+                        // 半透明背景
+                        Column.height('100%');
+                        // 半透明背景
+                        Column.backgroundColor('#000000');
+                        // 半透明背景
+                        Column.opacity(0.5);
+                        // 半透明背景
+                        Column.onClick(() => {
+                            this.showBillDetail = false;
+                            this.selectedBill = null;
+                        });
+                    }, Column);
+                    // 半透明背景
+                    Column.pop();
+                    Column.pop();
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Column.create();
+                        Column.debugLine("entry/src/main/ets/pages/Accounting.ets(830:7)", "entry");
                         Column.width('90%');
                         Column.padding(20);
-                        Column.backgroundColor(Constants.COLOR_BACKGROUND);
-                        Column.borderRadius(16);
                         Column.position({ x: '5%', y: '20%' });
+                        Column.zIndex(201);
                     }, Column);
                     this.observeComponentCreation2((elmtId, isInitialRender) => {
                         // 详情内容
                         Column.create();
-                        Column.debugLine("entry/src/main/ets/pages/Accounting.ets(767:9)", "entry");
+                        Column.debugLine("entry/src/main/ets/pages/Accounting.ets(832:9)", "entry");
                         // 详情内容
                         Column.width('100%');
                         // 详情内容
-                        Column.padding(20);
+                        Column.padding(24);
                         // 详情内容
                         Column.backgroundColor(Constants.COLOR_CARD_BACKGROUND);
                         // 详情内容
-                        Column.borderRadius(12);
+                        Column.borderRadius(20);
                     }, Column);
                     this.observeComponentCreation2((elmtId, isInitialRender) => {
                         Text.create('账单详情');
-                        Text.debugLine("entry/src/main/ets/pages/Accounting.ets(768:11)", "entry");
-                        Text.fontSize(18);
+                        Text.debugLine("entry/src/main/ets/pages/Accounting.ets(833:11)", "entry");
+                        Text.fontSize(20);
                         Text.fontWeight(FontWeight.Bold);
-                        Text.margin({ bottom: 20 });
+                        Text.fontColor(Constants.COLOR_TEXT_PRIMARY);
+                        Text.margin({ bottom: 24 });
                     }, Text);
                     Text.pop();
                     this.observeComponentCreation2((elmtId, isInitialRender) => {
-                        Row.create();
-                        Row.debugLine("entry/src/main/ets/pages/Accounting.ets(773:11)", "entry");
-                        Row.width('100%');
-                        Row.margin({ bottom: 12 });
-                    }, Row);
-                    this.observeComponentCreation2((elmtId, isInitialRender) => {
-                        Text.create('金额：');
-                        Text.debugLine("entry/src/main/ets/pages/Accounting.ets(774:13)", "entry");
-                    }, Text);
-                    Text.pop();
+                        // 金额显示
+                        Column.create();
+                        Column.debugLine("entry/src/main/ets/pages/Accounting.ets(840:11)", "entry");
+                        // 金额显示
+                        Column.width('100%');
+                        // 金额显示
+                        Column.padding(20);
+                        // 金额显示
+                        Column.backgroundColor(this.selectedBill.isIncome() ? 'rgba(255, 167, 38, 0.1)' : 'rgba(255, 107, 53, 0.08)');
+                        // 金额显示
+                        Column.borderRadius(12);
+                        // 金额显示
+                        Column.margin({ bottom: 20 });
+                    }, Column);
                     this.observeComponentCreation2((elmtId, isInitialRender) => {
                         Text.create(this.selectedBill.getDisplayAmount());
-                        Text.debugLine("entry/src/main/ets/pages/Accounting.ets(775:13)", "entry");
-                        Text.fontSize(20);
+                        Text.debugLine("entry/src/main/ets/pages/Accounting.ets(841:13)", "entry");
+                        Text.fontSize(36);
                         Text.fontWeight(FontWeight.Bold);
                         Text.fontColor(this.selectedBill.isIncome() ? Constants.COLOR_SUCCESS : Constants.COLOR_DANGER);
                     }, Text);
                     Text.pop();
-                    Row.pop();
+                    // 金额显示
+                    Column.pop();
                     this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        // 分类
                         Row.create();
-                        Row.debugLine("entry/src/main/ets/pages/Accounting.ets(785:11)", "entry");
+                        Row.debugLine("entry/src/main/ets/pages/Accounting.ets(855:11)", "entry");
+                        // 分类
                         Row.width('100%');
-                        Row.margin({ bottom: 12 });
+                        // 分类
+                        Row.padding({ top: 14, bottom: 14 });
+                        // 分类
+                        Row.borderWidth({ bottom: 1 });
+                        // 分类
+                        Row.borderColor(Constants.COLOR_DIVIDER);
                     }, Row);
                     this.observeComponentCreation2((elmtId, isInitialRender) => {
-                        Text.create('分类：');
-                        Text.debugLine("entry/src/main/ets/pages/Accounting.ets(786:13)", "entry");
+                        Text.create('分类');
+                        Text.debugLine("entry/src/main/ets/pages/Accounting.ets(856:13)", "entry");
+                        Text.fontSize(15);
+                        Text.fontColor(Constants.COLOR_TEXT_SECONDARY);
+                    }, Text);
+                    Text.pop();
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Blank.create();
+                        Blank.debugLine("entry/src/main/ets/pages/Accounting.ets(859:13)", "entry");
+                    }, Blank);
+                    Blank.pop();
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Row.create();
+                        Row.debugLine("entry/src/main/ets/pages/Accounting.ets(860:13)", "entry");
+                    }, Row);
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Text.create(this.getCategoryIcon(this.selectedBill.category));
+                        Text.debugLine("entry/src/main/ets/pages/Accounting.ets(861:15)", "entry");
+                        Text.fontSize(16);
                     }, Text);
                     Text.pop();
                     this.observeComponentCreation2((elmtId, isInitialRender) => {
                         Text.create(this.getCategoryName(this.selectedBill.category));
-                        Text.debugLine("entry/src/main/ets/pages/Accounting.ets(787:13)", "entry");
+                        Text.debugLine("entry/src/main/ets/pages/Accounting.ets(863:15)", "entry");
+                        Text.fontSize(15);
+                        Text.fontWeight(FontWeight.Medium);
+                        Text.fontColor(Constants.COLOR_TEXT_PRIMARY);
+                        Text.margin({ left: 6 });
                     }, Text);
                     Text.pop();
                     Row.pop();
+                    // 分类
+                    Row.pop();
                     this.observeComponentCreation2((elmtId, isInitialRender) => {
                         If.create();
+                        // 描述
                         if (this.selectedBill.description) {
                             this.ifElseBranchUpdateFunction(0, () => {
                                 this.observeComponentCreation2((elmtId, isInitialRender) => {
                                     Row.create();
-                                    Row.debugLine("entry/src/main/ets/pages/Accounting.ets(793:13)", "entry");
+                                    Row.debugLine("entry/src/main/ets/pages/Accounting.ets(877:13)", "entry");
                                     Row.width('100%');
-                                    Row.margin({ bottom: 12 });
+                                    Row.padding({ top: 14, bottom: 14 });
+                                    Row.borderWidth({ bottom: 1 });
+                                    Row.borderColor(Constants.COLOR_DIVIDER);
                                 }, Row);
                                 this.observeComponentCreation2((elmtId, isInitialRender) => {
-                                    Text.create('描述：');
-                                    Text.debugLine("entry/src/main/ets/pages/Accounting.ets(794:15)", "entry");
+                                    Text.create('描述');
+                                    Text.debugLine("entry/src/main/ets/pages/Accounting.ets(878:15)", "entry");
+                                    Text.fontSize(15);
+                                    Text.fontColor(Constants.COLOR_TEXT_SECONDARY);
                                 }, Text);
                                 Text.pop();
                                 this.observeComponentCreation2((elmtId, isInitialRender) => {
+                                    Blank.create();
+                                    Blank.debugLine("entry/src/main/ets/pages/Accounting.ets(881:15)", "entry");
+                                }, Blank);
+                                Blank.pop();
+                                this.observeComponentCreation2((elmtId, isInitialRender) => {
                                     Text.create(this.selectedBill.description);
-                                    Text.debugLine("entry/src/main/ets/pages/Accounting.ets(795:15)", "entry");
+                                    Text.debugLine("entry/src/main/ets/pages/Accounting.ets(882:15)", "entry");
+                                    Text.fontSize(15);
+                                    Text.fontColor(Constants.COLOR_TEXT_PRIMARY);
                                 }, Text);
                                 Text.pop();
                                 Row.pop();
                             });
                         }
+                        // 时间
                         else {
                             this.ifElseBranchUpdateFunction(1, () => {
                             });
@@ -1407,33 +1554,66 @@ export class Accounting extends ViewPU {
                     }, If);
                     If.pop();
                     this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        // 时间
                         Row.create();
-                        Row.debugLine("entry/src/main/ets/pages/Accounting.ets(801:11)", "entry");
+                        Row.debugLine("entry/src/main/ets/pages/Accounting.ets(893:11)", "entry");
+                        // 时间
                         Row.width('100%');
+                        // 时间
+                        Row.padding({ top: 14, bottom: 14 });
                     }, Row);
                     this.observeComponentCreation2((elmtId, isInitialRender) => {
-                        Text.create('时间：');
-                        Text.debugLine("entry/src/main/ets/pages/Accounting.ets(802:13)", "entry");
+                        Text.create('时间');
+                        Text.debugLine("entry/src/main/ets/pages/Accounting.ets(894:13)", "entry");
+                        Text.fontSize(15);
+                        Text.fontColor(Constants.COLOR_TEXT_SECONDARY);
                     }, Text);
                     Text.pop();
                     this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Blank.create();
+                        Blank.debugLine("entry/src/main/ets/pages/Accounting.ets(897:13)", "entry");
+                    }, Blank);
+                    Blank.pop();
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
                         Text.create(Utils.formatDate(this.selectedBill.date, Constants.DATETIME_FORMAT));
-                        Text.debugLine("entry/src/main/ets/pages/Accounting.ets(803:13)", "entry");
+                        Text.debugLine("entry/src/main/ets/pages/Accounting.ets(898:13)", "entry");
+                        Text.fontSize(15);
+                        Text.fontColor(Constants.COLOR_TEXT_PRIMARY);
                     }, Text);
                     Text.pop();
+                    // 时间
                     Row.pop();
                     // 详情内容
                     Column.pop();
                     this.observeComponentCreation2((elmtId, isInitialRender) => {
                         // 关闭按钮
                         Button.createWithLabel('关闭');
-                        Button.debugLine("entry/src/main/ets/pages/Accounting.ets(813:9)", "entry");
+                        Button.debugLine("entry/src/main/ets/pages/Accounting.ets(911:9)", "entry");
                         // 关闭按钮
                         Button.type(ButtonType.Normal);
                         // 关闭按钮
                         Button.width('100%');
                         // 关闭按钮
-                        Button.margin({ top: 12 });
+                        Button.height(50);
+                        // 关闭按钮
+                        Button.fontSize(16);
+                        // 关闭按钮
+                        Button.fontWeight(FontWeight.Medium);
+                        // 关闭按钮
+                        Button.backgroundColor(Constants.COLOR_PRIMARY);
+                        // 关闭按钮
+                        Button.fontColor(Constants.COLOR_TEXT_ON_PRIMARY);
+                        // 关闭按钮
+                        Button.borderRadius(25);
+                        // 关闭按钮
+                        Button.margin({ top: 16 });
+                        // 关闭按钮
+                        Button.shadow({
+                            radius: 8,
+                            color: 'rgba(255, 107, 53, 0.3)',
+                            offsetX: 0,
+                            offsetY: 2
+                        });
                         // 关闭按钮
                         Button.onClick(() => {
                             this.showBillDetail = false;

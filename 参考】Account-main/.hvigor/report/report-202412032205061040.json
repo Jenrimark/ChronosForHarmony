@@ -1153,7 +1153,7 @@
       },
       "additional": {
         "time": {
-          "year": 2024,
+          "year": 2025,
           "month": 12,
           "day": 3,
           "hour": 22,
@@ -1176,7 +1176,7 @@
       },
       "additional": {
         "time": {
-          "year": 2024,
+          "year": 2025,
           "month": 12,
           "day": 3,
           "hour": 22,
@@ -5550,7 +5550,7 @@
       "body": {
         "pid": 3044,
         "tid": "Main Thread",
-        "startTime": 622322820242300
+        "startTime": 622322820252300
       },
       "additional": {
         "logType": "debug",
@@ -7975,7 +7975,7 @@
           "2ae24863-9929-4928-8b28-13b5bd36af7f",
           "10690d13-b473-4937-9f36-895f75919e40",
           "1733dbcc-fa22-40a9-a372-f7ff377d78c3",
-          "3673c305-4d64-498d-9976-93620243e8a1",
+          "3673c305-4d64-498d-9976-93620253e8a1",
           "8c700546-da01-45aa-bca9-985aaf57ec9f",
           "f166f407-5add-41cb-9da4-eb7cf318b42b",
           "d5b70dcf-8988-4c93-8872-d10aebdc6208",
@@ -9346,7 +9346,7 @@
         "frequency": 0,
         "fromHook": false,
         "parent": "6c258c75-d1ca-4051-b3be-dc0f5fc99dba",
-        "logId": "3673c305-4d64-498d-9976-93620243e8a1"
+        "logId": "3673c305-4d64-498d-9976-93620253e8a1"
       },
       "log": {
         "_logger": {
@@ -9363,7 +9363,7 @@
     },
     {
       "head": {
-        "id": "3673c305-4d64-498d-9976-93620243e8a1",
+        "id": "3673c305-4d64-498d-9976-93620253e8a1",
         "name": "module 'ComponentBase.ets' pack",
         "description": "",
         "type": "log"
@@ -18249,7 +18249,7 @@
       },
       "additional": {
         "time": {
-          "year": 2024,
+          "year": 2025,
           "month": 12,
           "day": 3,
           "hour": 22,

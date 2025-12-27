@@ -1,4 +1,4 @@
-import { CalendarPage } from './Calendar';
+import { CalendarNewPage } from './CalendarNew';
 import { Tasks } from './Tasks';
 import { Chat } from './Chat';
 import { Settings } from './Settings';
@@ -26,7 +26,7 @@ struct Main {
       {
         title: '日历',
         icon: '📅',
-        component: CalendarPage
+        component: CalendarNewPage
       },
       {
         title: '任务',
@@ -63,7 +63,7 @@ struct Main {
       // 内容区域
       Column() {
         if (this.currentIndex === 0) {
-          CalendarPage()
+          CalendarNewPage()
         } else if (this.currentIndex === 1) {
           Tasks()
         } else if (this.currentIndex === 2) {

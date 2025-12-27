@@ -1,22 +1,24 @@
-import { Task, TaskJSON } from '../model/Task';
+import { Task, TaskData } from '../model/Task';
 import { Constants } from '../common/Constants';
 import { Utils } from '../common/Utils';
-import { CloudDBService } from './CloudDBService';
-import { CloudDBConverter } from '../utils/CloudDBConverter';
+import { LocalDBService, LocalTask, SyncStatus } from './LocalDBService';
+import { SyncService } from './SyncService';
+import { hilog } from '@kit.PerformanceAnalysisKit';
+
+const TAG = 'TaskService';
+const DOMAIN = 0x0000;
 
 /**
- * 任务服务类 - 使用华为云数据库（Cloud DB）
- * 实现端云协同：优先读写本地缓存，网络空闲时自动同步云端
+ * 任务服务类 - 离线优先模式
+ * 策略：数据优先存入本地 SQLite，后台静默同步到云端
+ * 参考：华为云开发最佳实践 - 本地 SQLite + CloudDB 双写模式
  */
 export class TaskService {
   private static instance: TaskService;
-  private cloudDBService: CloudDBService = CloudDBService.getInstance();
-  private initPromise: Promise<void> | null = null;
+  private localDB: LocalDBService = LocalDBService.getInstance();
+  private syncService: SyncService = SyncService.getInstance();
 
-  private constructor() {
-    // 初始化Cloud DB服务
-    this.initPromise = this.cloudDBService.init();
-  }
+  private constructor() {}
 
   static getInstance(): TaskService {
     if (!TaskService.instance) {
@@ -26,38 +28,98 @@ export class TaskService {
   }
 
   /**
-   * 确保CloudDB已初始化
+   * 生成唯一ID
    */
-  private async ensureInitialized(): Promise<void> {
-    if (this.initPromise) {
-      await this.initPromise;
+  private generateId(): string {
+    const timestamp = Date.now();
+    const random = Math.floor(Math.random() * 10000);
+    return `${timestamp}_${random}`;
+  }
+
+  /**
+   * Task 转 LocalTask
+   */
+  private taskToLocal(task: Task, syncStatus: number = SyncStatus.PENDING): LocalTask {
+    // 优先使用 localId，如果没有则生成新的
+    const taskId = task.localId ? task.localId : this.generateId();
+    return {
+      id: taskId,
+      title: task.title,
+      description: task.description,
+      status: task.status,
+      priority: task.priority.toString(),
+      dueDate: task.dueDate ? task.dueDate.toISOString() : '',
+      createTime: task.createTime ? task.createTime.toISOString() : new Date().toISOString(),
+      updateTime: task.updateTime ? task.updateTime.toISOString() : new Date().toISOString(),
+      completedTime: task.completedTime ? task.completedTime.toISOString() : '',
+      tags: JSON.stringify(task.tags || []),
+      userId: 'default_user',
+      syncStatus: syncStatus,
+      version: 1
+    };
+  }
+
+  /**
+   * LocalTask 转 Task
+   */
+  private localToTask(local: LocalTask): Task {
+    let tags: string[] = [];
+    try {
+      tags = JSON.parse(local.tags || '[]');
+    } catch (e) {
+      tags = [];
     }
+
+    let priorityNum = 1;
+    if (local.priority) {
+      const parsed = parseInt(local.priority);
+      if (!isNaN(parsed)) {
+        priorityNum = parsed;
+      }
+    }
+
+    const taskData: TaskData = {
+      id: parseInt(local.id) || 0,
+      localId: local.id, // 保存原始的本地ID
+      title: local.title || '',
+      description: local.description || '',
+      status: local.status || 'pending',
+      priority: priorityNum,
+      dueDate: local.dueDate ? new Date(local.dueDate) : null,
+      createTime: local.createTime ? new Date(local.createTime) : new Date(),
+      updateTime: local.updateTime ? new Date(local.updateTime) : new Date(),
+      completedTime: local.completedTime ? new Date(local.completedTime) : null,
+      tags: tags
+    };
+
+    return new Task(taskData);
   }
 
   /**
    * 创建任务
-   * 数据会立即存入本地，随后静默上传云端
+   * 离线优先：先存本地，后台静默同步
    */
   async createTask(task: Task): Promise<Task> {
-    await this.ensureInitialized();
     try {
-      // 设置创建时间和更新时间
+      // 设置时间
       if (!task.createTime) {
         task.createTime = new Date();
       }
       task.updateTime = new Date();
+
+      // 转换为本地格式并保存
+      const localTask = this.taskToLocal(task, SyncStatus.PENDING);
+      await this.localDB.upsertTask(localTask);
       
-      // 转换为Cloud DB对象
-      const userId = CloudDBConverter.getCurrentUserId();
-      const cloudDBTask = CloudDBConverter.taskToCloudDB(task, userId);
-      
-      // 保存到Cloud DB（会自动同步到云端）
-      await this.cloudDBService.upsertTask(cloudDBTask);
-      
-      // 返回转换后的Task对象（使用cloudDBTask的id）
-      return CloudDBConverter.cloudDBToTask(cloudDBTask);
+      hilog.info(DOMAIN, TAG, '任务已保存到本地: %{public}s', localTask.id);
+
+      // 触发后台同步（不阻塞）
+      this.triggerSync();
+
+      // 返回带有新ID的Task
+      return this.localToTask(localTask);
     } catch (error) {
-      console.error('创建任务失败:', error);
+      hilog.error(DOMAIN, TAG, '创建任务失败: %{public}s', String(error));
       throw error instanceof Error ? error : new Error(String(error));
     }
   }
@@ -66,27 +128,38 @@ export class TaskService {
    * 更新任务
    */
   async updateTask(task: Task): Promise<void> {
-    await this.ensureInitialized();
     try {
       task.updateTime = new Date();
-      const userId = CloudDBConverter.getCurrentUserId();
-      const cloudDBTask = CloudDBConverter.taskToCloudDB(task, userId);
-      await this.cloudDBService.upsertTask(cloudDBTask);
+      const localTask = this.taskToLocal(task, SyncStatus.PENDING);
+      await this.localDB.upsertTask(localTask);
+      
+      hilog.info(DOMAIN, TAG, '任务已更新: %{public}s', localTask.id);
+      this.triggerSync();
     } catch (error) {
-      console.error('更新任务失败:', error);
+      hilog.error(DOMAIN, TAG, '更新任务失败: %{public}s', String(error));
       throw error instanceof Error ? error : new Error(String(error));
     }
   }
 
   /**
-   * 删除任务
+   * 删除任务（标记删除）
+   * @param taskOrId 可以是 Task 对象或 localId 字符串
    */
-  async deleteTask(id: number): Promise<void> {
-    await this.ensureInitialized();
+  async deleteTask(taskOrId: Task | string): Promise<void> {
     try {
-      await this.cloudDBService.deleteTask(id.toString());
+      let localId: string;
+      if (typeof taskOrId === 'string') {
+        localId = taskOrId;
+      } else {
+        // 如果是 Task 对象，优先使用 localId
+        localId = taskOrId.localId || taskOrId.id.toString();
+      }
+      
+      await this.localDB.deleteTask(localId);
+      hilog.info(DOMAIN, TAG, '任务已标记删除: %{public}s', localId);
+      this.triggerSync();
     } catch (error) {
-      console.error('删除任务失败:', error);
+      hilog.error(DOMAIN, TAG, '删除任务失败: %{public}s', String(error));
       throw error instanceof Error ? error : new Error(String(error));
     }
   }
@@ -95,15 +168,14 @@ export class TaskService {
    * 获取任务
    */
   async getTask(id: number): Promise<Task | null> {
-    await this.ensureInitialized();
     try {
-      const cloudDBTask = await this.cloudDBService.queryTaskById(id.toString());
-      if (!cloudDBTask) {
+      const localTask = await this.localDB.queryTaskById(id.toString());
+      if (!localTask) {
         return null;
       }
-      return CloudDBConverter.cloudDBToTask(cloudDBTask);
+      return this.localToTask(localTask);
     } catch (error) {
-      console.error('获取任务失败:', error);
+      hilog.error(DOMAIN, TAG, '获取任务失败: %{public}s', String(error));
       return null;
     }
   }
@@ -112,12 +184,11 @@ export class TaskService {
    * 获取所有任务
    */
   async getAllTasks(): Promise<Task[]> {
-    await this.ensureInitialized();
     try {
-      const cloudDBTasks = await this.cloudDBService.queryAllTasks();
-      return cloudDBTasks.map(cloudDB => CloudDBConverter.cloudDBToTask(cloudDB));
+      const localTasks = await this.localDB.queryAllTasks();
+      return localTasks.map(local => this.localToTask(local));
     } catch (error) {
-      console.error('获取任务列表失败:', error);
+      hilog.error(DOMAIN, TAG, '获取任务列表失败: %{public}s', String(error));
       return [];
     }
   }
@@ -147,12 +218,11 @@ export class TaskService {
    * 根据状态获取任务
    */
   async getTasksByStatus(status: string): Promise<Task[]> {
-    await this.ensureInitialized();
     try {
-      const cloudDBTasks = await this.cloudDBService.queryTasksByStatus(status);
-      return cloudDBTasks.map(cloudDB => CloudDBConverter.cloudDBToTask(cloudDB));
+      const localTasks = await this.localDB.queryTasksByStatus(status);
+      return localTasks.map(local => this.localToTask(local));
     } catch (error) {
-      console.error('获取任务列表失败:', error);
+      hilog.error(DOMAIN, TAG, '获取任务列表失败: %{public}s', String(error));
       return [];
     }
   }
@@ -161,52 +231,41 @@ export class TaskService {
    * 完成任务
    */
   async completeTask(task: Task): Promise<void> {
-    await this.ensureInitialized();
-    try {
-      task.status = Constants.TASK_STATUS_COMPLETED;
-      task.completedTime = new Date();
-      task.updateTime = new Date();
-      await this.updateTask(task);
-    } catch (error) {
-      console.error('完成任务失败:', error);
-      throw error instanceof Error ? error : new Error(String(error));
-    }
+    task.status = Constants.TASK_STATUS_COMPLETED;
+    task.completedTime = new Date();
+    task.updateTime = new Date();
+    await this.updateTask(task);
   }
 
   /**
    * 取消完成任务
    */
   async uncompleteTask(task: Task): Promise<void> {
-    await this.ensureInitialized();
-    try {
-      task.status = Constants.TASK_STATUS_PENDING;
-      task.completedTime = null;
-      task.updateTime = new Date();
-      await this.updateTask(task);
-    } catch (error) {
-      console.error('取消完成任务失败:', error);
-      throw error instanceof Error ? error : new Error(String(error));
-    }
+    task.status = Constants.TASK_STATUS_PENDING;
+    task.completedTime = null;
+    task.updateTime = new Date();
+    await this.updateTask(task);
   }
 
   /**
    * 获取指定日期的任务
+   * 注意：本地查询需要在内存中过滤
    */
   async getTasksByDate(date: Date): Promise<Task[]> {
-    await this.ensureInitialized();
     try {
-      const startDate = new Date(date);
-      startDate.setHours(0, 0, 0, 0);
-      const endDate = new Date(date);
-      endDate.setHours(23, 59, 59, 999);
-      
-      const cloudDBTasks = await this.cloudDBService.queryTasksByDateRange(
-        startDate.toISOString(),
-        endDate.toISOString()
-      );
-      return cloudDBTasks.map(cloudDB => CloudDBConverter.cloudDBToTask(cloudDB));
+      const allTasks = await this.getAllTasks();
+      const startOfDay = new Date(date);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(date);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      return allTasks.filter(task => {
+        if (!task.dueDate) return false;
+        const dueTime = task.dueDate.getTime();
+        return dueTime >= startOfDay.getTime() && dueTime <= endOfDay.getTime();
+      });
     } catch (error) {
-      console.error('获取任务列表失败:', error);
+      hilog.error(DOMAIN, TAG, '获取任务列表失败: %{public}s', String(error));
       return [];
     }
   }
@@ -215,15 +274,18 @@ export class TaskService {
    * 获取指定日期范围的任务
    */
   async getTasksByDateRange(startDate: Date, endDate: Date): Promise<Task[]> {
-    await this.ensureInitialized();
     try {
-      const cloudDBTasks = await this.cloudDBService.queryTasksByDateRange(
-        startDate.toISOString(),
-        endDate.toISOString()
-      );
-      return cloudDBTasks.map(cloudDB => CloudDBConverter.cloudDBToTask(cloudDB));
+      const allTasks = await this.getAllTasks();
+      const startTime = startDate.getTime();
+      const endTime = endDate.getTime();
+
+      return allTasks.filter(task => {
+        if (!task.dueDate) return false;
+        const dueTime = task.dueDate.getTime();
+        return dueTime >= startTime && dueTime <= endTime;
+      });
     } catch (error) {
-      console.error('获取任务列表失败:', error);
+      hilog.error(DOMAIN, TAG, '获取任务列表失败: %{public}s', String(error));
       return [];
     }
   }
@@ -232,8 +294,7 @@ export class TaskService {
    * 获取今日任务
    */
   async getTodayTasks(): Promise<Task[]> {
-    const today = new Date();
-    return await this.getTasksByDate(today);
+    return await this.getTasksByDate(new Date());
   }
 
   /**
@@ -254,5 +315,24 @@ export class TaskService {
     const monthStart = Utils.getMonthStart(today);
     const monthEnd = Utils.getMonthEnd(today);
     return await this.getTasksByDateRange(monthStart, monthEnd);
+  }
+
+  /**
+   * 触发后台同步（非阻塞）
+   */
+  private triggerSync(): void {
+    // 使用 setTimeout 延迟执行，避免阻塞主线程
+    setTimeout(() => {
+      this.syncService.syncAll().catch((err: Error) => {
+        hilog.warn(DOMAIN, TAG, '后台同步失败（将在下次重试）: %{public}s', String(err));
+      });
+    }, 100);
+  }
+
+  /**
+   * 手动触发同步
+   */
+  async manualSync(): Promise<void> {
+    await this.syncService.syncAll();
   }
 }

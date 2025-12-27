@@ -6,7 +6,11 @@ import { Utils } from '../common/Utils';
 import { MimoAIService, BillRecognitionResult } from '../service/MimoAIService';
 import { AudioRecorderService } from '../service/AudioRecorderService';
 import { SpeechRecognitionService } from '../service/SpeechRecognitionService';
+import { ManualBillSheet } from '../components/ManualBillSheet';
+import { BillStatistics } from '../components/BillStatistics';
+import { promptAction } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
+import { preferences } from '@kit.ArkData';
 
 /**
  * 账单分组接口
@@ -45,8 +49,18 @@ export struct Accounting {
   
   // 历史账单分组数据
   @State historyBillGroups: BillGroup[] = [];
-
-  private billService: BillService = BillService.getInstance();
+  
+  // 手动记账弹窗
+  @State showManualBillSheet: boolean = false;
+  
+  // 月预算相关状态
+  @State monthBudget: number = 0;
+  @State showBudgetDialog: boolean = false;
+  @State budgetInputText: string = '';
+  private readonly BUDGET_KEY: string = 'month_budget';
+  
+  // 统计页面状态
+  @State showStatistics: boolean = false;  private billService: BillService = BillService.getInstance();
   private aiService: MimoAIService = MimoAIService.getInstance();
   private audioRecorderService: AudioRecorderService = AudioRecorderService.getInstance();
   private speechRecognitionService: SpeechRecognitionService = SpeechRecognitionService.getInstance();
@@ -54,6 +68,7 @@ export struct Accounting {
   aboutToAppear() {
     this.loadBills();
     this.loadStatistics();
+    this.loadBudget();
     // 设置MIMO API Key（从配置中读取）
     // TODO: 从配置文件或用户设置中读取API Key
     const apiKey = Constants.MIMO_API_KEY;
@@ -64,6 +79,56 @@ export struct Accounting {
     // 注意：getContext已废弃，这里暂时不设置context
     // 后续可以通过其他方式获取context，或者修改AudioRecorderService不需要context
     // this.audioRecorderService.setContext(context);
+  }
+
+  /**
+   * 加载月预算
+   */
+  async loadBudget(): Promise<void> {
+    try {
+      const context = getContext(this) as common.UIAbilityContext;
+      const store = await preferences.getPreferences(context, 'accounting_prefs');
+      const budget = await store.get(this.BUDGET_KEY, 0);
+      this.monthBudget = budget as number;
+    } catch (error) {
+      console.error('加载预算失败:', error);
+      this.monthBudget = 0;
+    }
+  }
+
+  /**
+   * 保存月预算
+   */
+  async saveBudget(budget: number): Promise<void> {
+    try {
+      const context = getContext(this) as common.UIAbilityContext;
+      const store = await preferences.getPreferences(context, 'accounting_prefs');
+      await store.put(this.BUDGET_KEY, budget);
+      await store.flush();
+      this.monthBudget = budget;
+      promptAction.showToast({ message: '预算设置成功' });
+    } catch (error) {
+      console.error('保存预算失败:', error);
+      promptAction.showToast({ message: '保存失败，请重试' });
+    }
+  }
+
+  /**
+   * 获取预算使用百分比
+   */
+  getBudgetPercentage(): number {
+    if (this.monthBudget <= 0) {
+      return 0;
+    }
+    const percentage = (this.monthExpense / this.monthBudget) * 100;
+    return Math.min(percentage, 100);
+  }
+
+  /**
+   * 获取预算剩余金额
+   */
+  getBudgetRemaining(): number {
+    return Math.max(this.monthBudget - this.monthExpense, 0);
   }
 
   /**
@@ -80,6 +145,11 @@ export struct Accounting {
       const billDate = new Date(bill.date);
       billDate.setHours(0, 0, 0, 0);
       return billDate.getTime() === today.getTime();
+    });
+    
+    // 按创建时间倒序排列（最新的在前面）
+    this.todayBills.sort((a: Bill, b: Bill): number => {
+      return b.createTime.getTime() - a.createTime.getTime();
     });
     
     // 加载历史账单分组
@@ -331,44 +401,115 @@ export struct Accounting {
     this.showBillDetail = true;
   }
 
+  /**
+   * 删除账单
+   */
+  async onBillDelete(bill: Bill): Promise<void> {
+    try {
+      AlertDialog.show({
+        title: '确认删除',
+        message: `确定要删除这笔${bill.isIncome() ? '收入' : '支出'}记录吗？`,
+        primaryButton: {
+          value: '取消',
+          action: () => {}
+        },
+        secondaryButton: {
+          value: '删除',
+          fontColor: Constants.COLOR_DANGER,
+          action: async () => {
+            try {
+              await this.billService.deleteBill(bill);
+              promptAction.showToast({ message: '账单已删除' });
+              await this.loadBills();
+              await this.loadStatistics();
+            } catch (error) {
+              console.error('删除账单失败:', error);
+              promptAction.showToast({ message: '删除失败，请重试' });
+            }
+          }
+        }
+      });
+    } catch (error) {
+      console.error('删除账单失败:', error);
+      promptAction.showToast({ message: '删除失败，请重试' });
+    }
+  }
+
+  /**
+   * 手动记账保存回调
+   */
+  async onManualBillSave(bill: Bill): Promise<void> {
+    try {
+      await this.billService.createBill(bill);
+      await this.loadBills();
+      await this.loadStatistics();
+      promptAction.showToast({ message: '账单已保存' });
+    } catch (error) {
+      console.error('保存账单失败:', error);
+      promptAction.showToast({ message: '保存失败，请重试' });
+    }
+  }
+
   build() {
     Stack() {
-      Column() {
-        // 顶部统计卡片
-        this.buildSummaryCard()
-        
-        // 今天的账单列表
-        this.buildTodayBillsList()
-        
-        // 历史账单列表
-        this.buildHistoryBillsList()
-      }
-      .width('100%')
-      .flexGrow(1)
-      .backgroundColor(Constants.COLOR_BACKGROUND)
+      // 统计页面（全屏覆盖）
+      if (this.showStatistics) {
+        BillStatistics({
+          isShow: $showStatistics
+        })
+      } else {
+        Column() {
+          // 顶部统计卡片
+          this.buildSummaryCard()
+          
+          // 今天的账单列表
+          this.buildTodayBillsList()
+          
+          // 历史账单列表
+          this.buildHistoryBillsList()
+        }
+        .width('100%')
+        .flexGrow(1)
+        .backgroundColor(Constants.COLOR_BACKGROUND)
 
-      // 右下角加号按钮
-      this.buildAddButton()
+        // 右下角加号按钮
+        this.buildAddButton()
 
-      // 输入栏遮罩层和输入栏（点击加号时显示）
-      if (this.showInputBar) {
-        // 半透明遮罩层
-        Column()
-          .width('100%')
-          .height('100%')
-          .backgroundColor('#000000')
-          .opacity(0.3)
-          .onClick(() => {
-            this.onCloseInputBar();
+        // 输入栏遮罩层和输入栏（点击加号时显示）
+        if (this.showInputBar) {
+          // 半透明遮罩层
+          Column()
+            .width('100%')
+            .height('100%')
+            .backgroundColor('#000000')
+            .opacity(0.3)
+            .onClick(() => {
+              this.onCloseInputBar();
+            })
+
+          // 输入栏
+          this.buildInputBar()
+        }
+
+        // 账单详情弹窗
+        if (this.showBillDetail && this.selectedBill) {
+          this.buildBillDetail()
+        }
+        
+        // 手动记账弹窗
+        if (this.showManualBillSheet) {
+          ManualBillSheet({
+            isShow: $showManualBillSheet,
+            onSave: async (bill: Bill) => {
+              await this.onManualBillSave(bill);
+            }
           })
-
-        // 输入栏
-        this.buildInputBar()
-      }
-
-      // 账单详情弹窗
-      if (this.showBillDetail && this.selectedBill) {
-        this.buildBillDetail()
+        }
+        
+        // 预算设置弹窗
+        if (this.showBudgetDialog) {
+          this.buildBudgetDialog()
+        }
       }
     }
     .width('100%')
@@ -381,17 +522,29 @@ export struct Accounting {
   @Builder
   buildSummaryCard() {
     Column() {
-      // 12月支出标题
+      // 月份支出标题（动态显示当前月份）
       Row() {
-        Text('12月支出')
+        Text(`${new Date().getMonth() + 1}月支出`)
           .fontSize(18)
           .fontWeight(FontWeight.Bold)
           .fontColor(Constants.COLOR_TEXT_PRIMARY)
         
         Blank()
         
-        Text('👁')
-          .fontSize(20)
+        Row() {
+          Text('📊')
+            .fontSize(18)
+          Text('统计')
+            .fontSize(14)
+            .fontColor(Constants.COLOR_PRIMARY)
+            .margin({ left: 4 })
+        }
+        .padding({ left: 12, right: 12, top: 6, bottom: 6 })
+        .backgroundColor('rgba(255, 107, 53, 0.1)')
+        .borderRadius(16)
+        .onClick(() => {
+          this.showStatistics = true;
+        })
       }
       .width('100%')
       .margin({ bottom: 16 })
@@ -434,33 +587,50 @@ export struct Accounting {
       .width('100%')
       .margin({ bottom: 20 })
 
-      // 月预算进度条
-      Row() {
-        Text('月预算66%')
-          .fontSize(13)
-          .fontColor(Constants.COLOR_TEXT_SECONDARY)
-        
-        Blank()
-        
-        Text('剩余 ¥407.25')
-          .fontSize(13)
-          .fontColor(Constants.COLOR_TEXT_SECONDARY)
-      }
-      .width('100%')
-      .margin({ bottom: 10 })
+      // 月预算进度条（可点击设置）
+      Column() {
+        Row() {
+          if (this.monthBudget > 0) {
+            Text(`月预算${this.getBudgetPercentage().toFixed(0)}%`)
+              .fontSize(13)
+              .fontColor(Constants.COLOR_TEXT_SECONDARY)
+          } else {
+            Text('点击设置月预算')
+              .fontSize(13)
+              .fontColor(Constants.COLOR_PRIMARY)
+          }
+          
+          Blank()
+          
+          if (this.monthBudget > 0) {
+            Text(`剩余 ¥${this.getBudgetRemaining().toFixed(2)}`)
+              .fontSize(13)
+              .fontColor(this.getBudgetRemaining() > 0 ? Constants.COLOR_TEXT_SECONDARY : Constants.COLOR_DANGER)
+          } else {
+            Text('⚙️')
+              .fontSize(14)
+          }
+        }
+        .width('100%')
+        .margin({ bottom: 10 })
 
-      // 进度条（使用Row模拟）
-      Row() {
-        Row()
-          .width('66%')
-          .height(8)
-          .backgroundColor(Constants.COLOR_PRIMARY)
-          .borderRadius(4)
+        // 进度条（使用Row模拟）
+        Row() {
+          Row()
+            .width(`${this.monthBudget > 0 ? this.getBudgetPercentage() : 0}%`)
+            .height(8)
+            .backgroundColor(this.getBudgetPercentage() >= 100 ? Constants.COLOR_DANGER : Constants.COLOR_PRIMARY)
+            .borderRadius(4)
+        }
+        .width('100%')
+        .height(8)
+        .backgroundColor(Constants.COLOR_BORDER)
+        .borderRadius(4)
       }
-      .width('100%')
-      .height(8)
-      .backgroundColor(Constants.COLOR_BORDER)
-      .borderRadius(4)
+      .onClick(() => {
+        this.budgetInputText = this.monthBudget > 0 ? this.monthBudget.toString() : '';
+        this.showBudgetDialog = true;
+      })
     }
     .width('100%')
     .padding(24)
@@ -513,9 +683,14 @@ export struct Accounting {
         .width('100%')
         .padding(20)
       } else {
-        Column() {
+        List() {
           ForEach(this.todayBills, (bill: Bill) => {
-            this.buildBillItem(bill)
+            ListItem() {
+              this.buildBillItemContent(bill)
+            }
+            .swipeAction({
+              end: this.buildSwipeDeleteButton(bill)
+            })
           })
         }
         .width('100%')
@@ -526,6 +701,29 @@ export struct Accounting {
     .backgroundColor(Constants.COLOR_CARD_BACKGROUND)
     .borderRadius(12)
     .margin({ left: 16, right: 16, bottom: 12 })
+  }
+
+  /**
+   * 构建左滑删除按钮
+   */
+  @Builder
+  buildSwipeDeleteButton(bill: Bill) {
+    Row() {
+      Button('删除')
+        .type(ButtonType.Normal)
+        .width(80)
+        .height('100%')
+        .fontSize(15)
+        .fontWeight(FontWeight.Medium)
+        .fontColor('#FFFFFF')
+        .backgroundColor(Constants.COLOR_DANGER)
+        .borderRadius({ topRight: 12, bottomRight: 12 })
+        .onClick(() => {
+          this.onBillDelete(bill);
+        })
+    }
+    .height('100%')
+    .justifyContent(FlexAlign.End)
   }
 
   /**
@@ -553,9 +751,14 @@ export struct Accounting {
             .padding({ left: 16, right: 16, top: 12, bottom: 8 })
 
             // 该日期的账单
-            Column() {
+            List() {
               ForEach(group.bills, (bill: Bill) => {
-                this.buildBillItem(bill)
+                ListItem() {
+                  this.buildBillItemContent(bill)
+                }
+                .swipeAction({
+                  end: this.buildSwipeDeleteButton(bill)
+                })
               })
             }
             .width('100%')
@@ -572,10 +775,10 @@ export struct Accounting {
   }
 
   /**
-   * 构建单个账单项
+   * 构建单个账单项内容
    */
   @Builder
-  buildBillItem(bill: Bill) {
+  buildBillItemContent(bill: Bill) {
     Row() {
       // 时间
       Text(Utils.formatDate(bill.date, 'HH:mm'))
@@ -624,56 +827,80 @@ export struct Accounting {
   }
 
   /**
+   * 构建单个账单项（兼容旧代码）
+   */
+  @Builder
+  buildBillItem(bill: Bill) {
+    this.buildBillItemContent(bill)
+  }
+
+  /**
    * 构建加号按钮
    */
   @Builder
   buildAddButton() {
-    Button('+')
-      .type(ButtonType.Circle)
-      .width(60)
-      .height(60)
-      .fontSize(36)
-      .fontWeight(FontWeight.Medium)
-      .fontColor(Constants.COLOR_TEXT_ON_PRIMARY)
-      .backgroundColor(this.isRecording ? Constants.COLOR_DANGER : Constants.COLOR_PRIMARY)
-      .shadow({
-        radius: 12,
-        color: this.isRecording ? 'rgba(230, 81, 0, 0.4)' : 'rgba(255, 107, 53, 0.4)',
-        offsetX: 0,
-        offsetY: 4
-      })
-      .position({ x: '100%', y: '100%' })
-      .translate({ x: -76, y: -76 })
-      .zIndex(20)
-      .onClick(() => {
-        if (this.isRecording) {
-          // 如果正在录音，点击停止录音
-          this.stopRecording();
-        } else if (!this.isLongPressing) {
-          // 如果不是长按，展开输入栏
-        this.onAddButtonClick();
-        }
-        // 重置长按状态
-        this.isLongPressing = false;
-      })
-      .onTouch((event) => {
-        // 使用事件对象的type属性，不导入类型
-        if (event.type === 0 && !this.isRecording) { // 0 表示 Down
-          // 开始长按计时
-          const timerId = setTimeout(() => {
-            this.isLongPressing = true;
-            this.onAddButtonLongPress();
-          }, 500);
-          this.longPressTimer = timerId as number;
-        } else if (event.type === 1 || event.type === 3) { // 1 表示 Up, 3 表示 Cancel
-          // 取消长按计时
-          if (this.longPressTimer) {
-            clearTimeout(this.longPressTimer);
-            this.longPressTimer = 0;
+    Column() {
+      // 手动记账按钮（在加号按钮上方）
+      Button('📝')
+        .type(ButtonType.Circle)
+        .width(48)
+        .height(48)
+        .fontSize(22)
+        .fontColor(Constants.COLOR_TEXT_ON_PRIMARY)
+        .backgroundColor(Constants.COLOR_SUCCESS)
+        .shadow({
+          radius: 8,
+          color: 'rgba(255, 167, 38, 0.4)',
+          offsetX: 0,
+          offsetY: 2
+        })
+        .margin({ bottom: 12 })
+        .onClick(() => {
+          this.showManualBillSheet = true;
+        })
+
+      // AI记账按钮
+      Button('+')
+        .type(ButtonType.Circle)
+        .width(60)
+        .height(60)
+        .fontSize(36)
+        .fontWeight(FontWeight.Medium)
+        .fontColor(Constants.COLOR_TEXT_ON_PRIMARY)
+        .backgroundColor(this.isRecording ? Constants.COLOR_DANGER : Constants.COLOR_PRIMARY)
+        .shadow({
+          radius: 12,
+          color: this.isRecording ? 'rgba(230, 81, 0, 0.4)' : 'rgba(255, 107, 53, 0.4)',
+          offsetX: 0,
+          offsetY: 4
+        })
+        .onClick(() => {
+          if (this.isRecording) {
+            this.stopRecording();
+          } else if (!this.isLongPressing) {
+            this.onAddButtonClick();
           }
           this.isLongPressing = false;
-        }
-      })
+        })
+        .onTouch((event) => {
+          if (event.type === 0 && !this.isRecording) {
+            const timerId = setTimeout(() => {
+              this.isLongPressing = true;
+              this.onAddButtonLongPress();
+            }, 500);
+            this.longPressTimer = timerId as number;
+          } else if (event.type === 1 || event.type === 3) {
+            if (this.longPressTimer) {
+              clearTimeout(this.longPressTimer);
+              this.longPressTimer = 0;
+            }
+            this.isLongPressing = false;
+          }
+        })
+    }
+    .position({ x: '100%', y: '100%' })
+    .translate({ x: -76, y: -140 })
+    .zIndex(20)
   }
 
   /**
@@ -937,6 +1164,124 @@ export struct Accounting {
   }
 
   /**
+   * 构建预算设置弹窗
+   */
+  @Builder
+  buildBudgetDialog() {
+    // 半透明背景
+    Column()
+      .width('100%')
+      .height('100%')
+      .backgroundColor('#000000')
+      .opacity(0.5)
+      .onClick(() => {
+        this.showBudgetDialog = false;
+      })
+      .position({ x: 0, y: 0 })
+      .zIndex(300)
+
+    // 弹窗内容
+    Column() {
+      Text('设置月预算')
+        .fontSize(20)
+        .fontWeight(FontWeight.Bold)
+        .fontColor(Constants.COLOR_TEXT_PRIMARY)
+        .margin({ bottom: 20 })
+
+      Text('设置每月预算金额，帮助您控制支出')
+        .fontSize(14)
+        .fontColor(Constants.COLOR_TEXT_SECONDARY)
+        .margin({ bottom: 24 })
+
+      // 预算输入框
+      Row() {
+        Text('¥')
+          .fontSize(24)
+          .fontWeight(FontWeight.Bold)
+          .fontColor(Constants.COLOR_TEXT_PRIMARY)
+          .margin({ right: 8 })
+
+        TextInput({ placeholder: '请输入预算金额', text: this.budgetInputText })
+          .type(InputType.Number)
+          .layoutWeight(1)
+          .height(50)
+          .fontSize(24)
+          .fontWeight(FontWeight.Bold)
+          .backgroundColor(Constants.COLOR_BACKGROUND)
+          .borderRadius(12)
+          .padding({ left: 16, right: 16 })
+          .onChange((value: string) => {
+            this.budgetInputText = value;
+          })
+      }
+      .width('100%')
+      .margin({ bottom: 24 })
+
+      // 快捷金额选择
+      Row() {
+        ForEach([1000, 2000, 3000, 5000], (amount: number) => {
+          Button(`${amount}`)
+            .type(ButtonType.Normal)
+            .height(36)
+            .fontSize(14)
+            .backgroundColor(Constants.COLOR_BACKGROUND)
+            .fontColor(Constants.COLOR_TEXT_PRIMARY)
+            .borderRadius(18)
+            .padding({ left: 16, right: 16 })
+            .margin({ right: 8 })
+            .onClick(() => {
+              this.budgetInputText = amount.toString();
+            })
+        })
+      }
+      .width('100%')
+      .margin({ bottom: 24 })
+
+      // 按钮组
+      Row() {
+        Button('取消')
+          .type(ButtonType.Normal)
+          .layoutWeight(1)
+          .height(48)
+          .fontSize(16)
+          .backgroundColor(Constants.COLOR_BACKGROUND)
+          .fontColor(Constants.COLOR_TEXT_PRIMARY)
+          .borderRadius(24)
+          .margin({ right: 12 })
+          .onClick(() => {
+            this.showBudgetDialog = false;
+          })
+
+        Button('确定')
+          .type(ButtonType.Normal)
+          .layoutWeight(1)
+          .height(48)
+          .fontSize(16)
+          .fontWeight(FontWeight.Medium)
+          .backgroundColor(Constants.COLOR_PRIMARY)
+          .fontColor(Constants.COLOR_TEXT_ON_PRIMARY)
+          .borderRadius(24)
+          .onClick(() => {
+            const budget = parseFloat(this.budgetInputText);
+            if (!isNaN(budget) && budget >= 0) {
+              this.saveBudget(budget);
+              this.showBudgetDialog = false;
+            } else {
+              promptAction.showToast({ message: '请输入有效的预算金额' });
+            }
+          })
+      }
+      .width('100%')
+    }
+    .width('90%')
+    .padding(24)
+    .backgroundColor(Constants.COLOR_CARD_BACKGROUND)
+    .borderRadius(20)
+    .position({ x: '5%', y: '30%' })
+    .zIndex(301)
+  }
+
+  /**
    * 获取分类图标
    */
   private getCategoryIcon(category: BillCategory): string {
@@ -1029,10 +1374,14 @@ export struct Accounting {
     });
 
     const result: BillGroup[] = [];
-    groups.forEach((bills, date) => {
+    groups.forEach((groupBills, date) => {
+      // 每组内按创建时间倒序排列（最新的在前面）
+      groupBills.sort((a: Bill, b: Bill): number => {
+        return b.createTime.getTime() - a.createTime.getTime();
+      });
       const group: BillGroup = {
         date: date,
-        bills: bills
+        bills: groupBills
       };
       result.push(group);
     });

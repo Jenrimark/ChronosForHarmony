@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024  即时通讯网(52im.net) & Jack Jiang.
+ * Copyright (C) 2025  即时通讯网(52im.net) & Jack Jiang.
  * The MobileIMSDK-鸿蒙Next客户端 Project. All rights reserved.
  *
  * 联系邮件：jack.jiang@52im.net

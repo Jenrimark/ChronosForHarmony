@@ -1,0 +1,2 @@
+string page_show 0x01000000
+profile network_config 0x01000001

@@ -6,6 +6,10 @@ import { cloudCommon } from '@kit.CloudFoundationKit';
 import util from '@ohos.util';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { HolidayService } from '../service/HolidayService';
+import { EventService } from '../service/EventService';
+import { AuthService } from '../service/AuthService';
+import { LocalDBService } from '../service/LocalDBService';
+import { SyncService } from '../service/SyncService';
 
 const DOMAIN = 0x0000;
 const TAG = 'EntryAbility';
@@ -19,12 +23,34 @@ export default class EntryAbility extends UIAbility {
     }
     hilog.info(DOMAIN, TAG, '%{public}s', 'Ability onCreate');
     
+    // 首先初始化AGC SDK（必须在其他AGC服务之前）
+    await this.initAGC();
+    
     // 初始化HolidayService的Context（用于读取本地万年历数据）
     HolidayService.getInstance().setContext(this.context);
     hilog.info(DOMAIN, TAG, 'HolidayService Context已设置');
     
-    // 初始化AGC SDK（按照官方文档规范）
-    await this.initAGC();
+    // 初始化EventService（日程服务）
+    const eventService = EventService.getInstance();
+    eventService.setContext(this.context);
+    await eventService.initialize();
+    hilog.info(DOMAIN, TAG, 'EventService 初始化完成');
+    
+    // 初始化AuthService的Context（异步初始化Preferences）
+    // 注意：必须在 AGC SDK 初始化之后
+    await AuthService.getInstance().setContext(this.context);
+    hilog.info(DOMAIN, TAG, 'AuthService Context已设置');
+    
+    // 初始化本地数据库服务（离线优先模式）
+    const localDB = LocalDBService.getInstance();
+    localDB.setContext(this.context);
+    await localDB.init();
+    hilog.info(DOMAIN, TAG, 'LocalDBService 初始化完成');
+    
+    // 初始化同步服务
+    const syncService = SyncService.getInstance();
+    await syncService.init();
+    hilog.info(DOMAIN, TAG, 'SyncService 初始化完成');
   }
 
   /**

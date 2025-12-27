@@ -1,17 +1,65 @@
 /**
  * Cloud DB服务类
  * 严格按照华为官方文档实现
- * 参考: https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/cloudfoundation-database-service
  */
 import { cloudDatabase } from '@kit.CloudFoundationKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
-import { TaskCloudDB } from '../model/clouddb/TaskCloudDB';
-import { BillCloudDB } from '../model/clouddb/BillCloudDB';
 
-// 存储区名称（必须与AGC控制台创建的存储区名称一致）
 const ZONE_NAME: string = 'ChronosZone';
 const TAG: string = 'CloudDBService';
 const DOMAIN: number = 0x0000;
+
+/**
+ * 任务Cloud DB对象类型 - 直接在服务中定义避免导入问题
+ */
+class TaskCloudDBInternal extends cloudDatabase.DatabaseObject {
+  public id: string = '';
+  public title: string = '';
+  public description: string = '';
+  public status: string = '';
+  public priority: string = '';
+  public dueDate: string = '';
+  public createTime: string = '';
+  public updateTime: string = '';
+  public completedTime: string = '';
+  public tags: string = '';
+  public userld: string = '';
+
+  constructor() {
+    super();
+  }
+
+  public naturalbase_ClassName(): string {
+    return 'TaskCloudDB';
+  }
+}
+
+/**
+ * 账单Cloud DB对象类型 - 直接在服务中定义避免导入问题
+ */
+class BillCloudDBInternal extends cloudDatabase.DatabaseObject {
+  public id: string = '';
+  public type: string = '';
+  public category: string = '';
+  public amount: string = '';
+  public description: string = '';
+  public date: string = '';
+  public createTime: string = '';
+  public updateTime: string = '';
+  public tags: string = '';
+  public userId: string = '';
+
+  constructor() {
+    super();
+  }
+
+  public naturalbase_ClassName(): string {
+    return 'BillCloudDB';
+  }
+}
+
+// 重新导出供外部使用
+export { TaskCloudDBInternal as TaskCloudDB, BillCloudDBInternal as BillCloudDB };
 
 export class CloudDBService {
   private static instance: CloudDBService;
@@ -26,262 +74,225 @@ export class CloudDBService {
     return CloudDBService.instance;
   }
 
-  /**
-   * 初始化Cloud DB
-   */
   async init(): Promise<void> {
     if (this.isInitialized) {
       hilog.info(DOMAIN, TAG, 'Cloud DB已经初始化');
       return;
     }
-    
     try {
-      // 测试获取zone
+      hilog.info(DOMAIN, TAG, '开始初始化 Cloud DB...');
+      
       const zone = cloudDatabase.zone(ZONE_NAME);
+      
+      if (!zone) {
+        hilog.error(DOMAIN, TAG, 'Cloud DB zone 获取失败: %{public}s', ZONE_NAME);
+        return;
+      }
+      
       hilog.info(DOMAIN, TAG, 'Cloud DB zone获取成功: %{public}s', ZONE_NAME);
       this.isInitialized = true;
     } catch (err) {
       const error = err as Error;
-      hilog.error(DOMAIN, TAG, 'Cloud DB初始化失败: %{public}s', error.message || JSON.stringify(err));
+      hilog.error(DOMAIN, TAG, 'Cloud DB初始化失败: %{public}s', error.message);
     }
   }
 
-  // ==================== 任务相关操作 ====================
+  // ==================== 任务操作 ====================
 
-  /**
-   * 添加或更新任务
-   */
-  async upsertTask(task: TaskCloudDB): Promise<number> {
+  async upsertTask(task: TaskCloudDBInternal): Promise<number> {
     try {
-      hilog.info(DOMAIN, TAG, '准备保存任务: %{public}s', task.id || 'new');
       const databaseZone = cloudDatabase.zone(ZONE_NAME);
       const record = await databaseZone.upsert(task);
-      hilog.info(DOMAIN, TAG, '任务保存成功，影响记录数: %{public}d', record);
+      hilog.info(DOMAIN, TAG, '任务保存成功');
       return record;
     } catch (err) {
       const error = err as Error;
-      hilog.error(DOMAIN, TAG, '保存任务失败, code: %{public}s, message: %{public}s', 
-        (err as ESObject).code || '', error.message || JSON.stringify(err));
-      throw new Error('保存任务失败: ' + (error.message || JSON.stringify(err)));
+      hilog.error(DOMAIN, TAG, '保存任务失败: %{public}s', error.message);
+      throw error;
     }
   }
 
-  /**
-   * 删除任务
-   */
   async deleteTask(taskId: string): Promise<number> {
     try {
       const databaseZone = cloudDatabase.zone(ZONE_NAME);
-      const taskToDelete = new TaskCloudDB();
+      const taskToDelete = new TaskCloudDBInternal();
       taskToDelete.id = taskId;
       const deleteNum = await databaseZone.delete(taskToDelete);
-      hilog.info(DOMAIN, TAG, '任务删除成功，删除记录数: %{public}d', deleteNum);
       return deleteNum;
     } catch (err) {
       const error = err as Error;
-      hilog.error(DOMAIN, TAG, '删除任务失败, code: %{public}s, message: %{public}s',
-        (err as ESObject).code || '', error.message || JSON.stringify(err));
-      throw new Error('删除任务失败: ' + (error.message || JSON.stringify(err)));
+      hilog.error(DOMAIN, TAG, '删除任务失败: %{public}s', error.message);
+      throw error;
     }
   }
 
-  /**
-   * 查询所有任务
-   */
-  async queryAllTasks(): Promise<TaskCloudDB[]> {
+  async queryAllTasks(): Promise<TaskCloudDBInternal[]> {
     try {
-      hilog.info(DOMAIN, TAG, '===== 开始查询所有任务 =====');
-      
-      // 每次查询都创建新的zone和condition
+      hilog.info(DOMAIN, TAG, '开始查询所有任务');
       const databaseZone = cloudDatabase.zone(ZONE_NAME);
-      const condition = new cloudDatabase.DatabaseQuery(TaskCloudDB);
       
+      if (!databaseZone) {
+        hilog.error(DOMAIN, TAG, 'CloudDB zone 获取失败，可能未初始化或无权限');
+        return [];
+      }
+      
+      const condition = new cloudDatabase.DatabaseQuery(TaskCloudDBInternal);
       const resultArray = await databaseZone.query(condition);
       hilog.info(DOMAIN, TAG, '查询任务成功，数量: %{public}d', resultArray.length);
-      return resultArray as TaskCloudDB[];
+      return resultArray as TaskCloudDBInternal[];
     } catch (err) {
       const error = err as Error;
-      hilog.error(DOMAIN, TAG, '查询任务失败, code: %{public}s, message: %{public}s',
-        (err as ESObject).code || '', error.message || JSON.stringify(err));
+      hilog.error(DOMAIN, TAG, '查询任务失败: %{public}s', error.message);
       return [];
     }
   }
 
-  /**
-   * 根据状态查询任务
-   */
-  async queryTasksByStatus(status: string): Promise<TaskCloudDB[]> {
+  async queryTasksByStatus(status: string): Promise<TaskCloudDBInternal[]> {
     try {
       const databaseZone = cloudDatabase.zone(ZONE_NAME);
-      const condition = new cloudDatabase.DatabaseQuery(TaskCloudDB);
+      const condition = new cloudDatabase.DatabaseQuery(TaskCloudDBInternal);
       condition.equalTo('status', status);
-      
       const resultArray = await databaseZone.query(condition);
-      hilog.info(DOMAIN, TAG, '按状态查询任务成功，数量: %{public}d', resultArray.length);
-      return resultArray as TaskCloudDB[];
+      return resultArray as TaskCloudDBInternal[];
     } catch (err) {
       const error = err as Error;
-      hilog.error(DOMAIN, TAG, '查询任务失败, code: %{public}s, message: %{public}s',
-        (err as ESObject).code || '', error.message || JSON.stringify(err));
+      hilog.error(DOMAIN, TAG, '查询任务失败: %{public}s', error.message);
       return [];
     }
   }
 
-  /**
-   * 根据ID查询任务
-   */
-  async queryTaskById(taskId: string): Promise<TaskCloudDB | null> {
+  async queryTaskById(taskId: string): Promise<TaskCloudDBInternal | null> {
     try {
       const databaseZone = cloudDatabase.zone(ZONE_NAME);
-      const condition = new cloudDatabase.DatabaseQuery(TaskCloudDB);
+      const condition = new cloudDatabase.DatabaseQuery(TaskCloudDBInternal);
       condition.equalTo('id', taskId);
-      
       const resultArray = await databaseZone.query(condition);
-      return resultArray.length > 0 ? resultArray[0] as TaskCloudDB : null;
+      return resultArray.length > 0 ? resultArray[0] as TaskCloudDBInternal : null;
     } catch (err) {
       const error = err as Error;
-      hilog.error(DOMAIN, TAG, '查询任务失败, code: %{public}s, message: %{public}s',
-        (err as ESObject).code || '', error.message || JSON.stringify(err));
+      hilog.error(DOMAIN, TAG, '查询任务失败: %{public}s', error.message);
       return null;
     }
   }
 
-  /**
-   * 根据日期范围查询任务
-   */
-  async queryTasksByDateRange(startDate: string, endDate: string): Promise<TaskCloudDB[]> {
+  async queryTasksByDateRange(startDate: string, endDate: string): Promise<TaskCloudDBInternal[]> {
     try {
       const databaseZone = cloudDatabase.zone(ZONE_NAME);
-      const condition = new cloudDatabase.DatabaseQuery(TaskCloudDB);
+      const condition = new cloudDatabase.DatabaseQuery(TaskCloudDBInternal);
       condition.greaterThanOrEqualTo('dueDate', startDate).lessThanOrEqualTo('dueDate', endDate);
-      
       const resultArray = await databaseZone.query(condition);
-      hilog.info(DOMAIN, TAG, '按日期范围查询任务成功，数量: %{public}d', resultArray.length);
-      return resultArray as TaskCloudDB[];
+      return resultArray as TaskCloudDBInternal[];
     } catch (err) {
       const error = err as Error;
-      hilog.error(DOMAIN, TAG, '查询任务失败, code: %{public}s, message: %{public}s',
-        (err as ESObject).code || '', error.message || JSON.stringify(err));
+      hilog.error(DOMAIN, TAG, '查询任务失败: %{public}s', error.message);
       return [];
     }
   }
 
-  // ==================== 账单相关操作 ====================
+  // ==================== 账单操作 ====================
 
-  /**
-   * 添加或更新账单
-   */
-  async upsertBill(bill: BillCloudDB): Promise<number> {
+  async upsertBill(bill: BillCloudDBInternal): Promise<number> {
     try {
-      hilog.info(DOMAIN, TAG, '准备保存账单: %{public}s', bill.id || 'new');
       const databaseZone = cloudDatabase.zone(ZONE_NAME);
       const record = await databaseZone.upsert(bill);
-      hilog.info(DOMAIN, TAG, '账单保存成功，影响记录数: %{public}d', record);
       return record;
     } catch (err) {
       const error = err as Error;
-      hilog.error(DOMAIN, TAG, '保存账单失败, code: %{public}s, message: %{public}s',
-        (err as ESObject).code || '', error.message || JSON.stringify(err));
-      throw new Error('保存账单失败: ' + (error.message || JSON.stringify(err)));
+      hilog.error(DOMAIN, TAG, '保存账单失败: %{public}s', error.message);
+      throw error;
     }
   }
 
-  /**
-   * 删除账单
-   */
   async deleteBill(billId: string): Promise<number> {
     try {
       const databaseZone = cloudDatabase.zone(ZONE_NAME);
-      const billToDelete = new BillCloudDB();
+      const billToDelete = new BillCloudDBInternal();
       billToDelete.id = billId;
       const deleteNum = await databaseZone.delete(billToDelete);
-      hilog.info(DOMAIN, TAG, '账单删除成功，删除记录数: %{public}d', deleteNum);
       return deleteNum;
     } catch (err) {
       const error = err as Error;
-      hilog.error(DOMAIN, TAG, '删除账单失败, code: %{public}s, message: %{public}s',
-        (err as ESObject).code || '', error.message || JSON.stringify(err));
-      throw new Error('删除账单失败: ' + (error.message || JSON.stringify(err)));
+      hilog.error(DOMAIN, TAG, '删除账单失败: %{public}s', error.message);
+      throw error;
     }
   }
 
-  /**
-   * 查询所有账单
-   */
-  async queryAllBills(): Promise<BillCloudDB[]> {
+  async queryAllBills(): Promise<BillCloudDBInternal[]> {
     try {
-      hilog.info(DOMAIN, TAG, '===== 开始查询所有账单 =====');
-      
+      hilog.info(DOMAIN, TAG, '开始查询所有账单');
       const databaseZone = cloudDatabase.zone(ZONE_NAME);
-      const condition = new cloudDatabase.DatabaseQuery(BillCloudDB);
       
+      if (!databaseZone) {
+        hilog.error(DOMAIN, TAG, 'CloudDB zone 获取失败，可能未初始化或无权限');
+        return [];
+      }
+      
+      const condition = new cloudDatabase.DatabaseQuery(BillCloudDBInternal);
       const resultArray = await databaseZone.query(condition);
       hilog.info(DOMAIN, TAG, '查询账单成功，数量: %{public}d', resultArray.length);
-      return resultArray as BillCloudDB[];
+      return resultArray as BillCloudDBInternal[];
     } catch (err) {
       const error = err as Error;
-      hilog.error(DOMAIN, TAG, '查询账单失败, code: %{public}s, message: %{public}s',
-        (err as ESObject).code || '', error.message || JSON.stringify(err));
+      hilog.error(DOMAIN, TAG, '查询账单失败: %{public}s', error.message);
       return [];
     }
   }
 
-  /**
-   * 根据类型查询账单
-   */
-  async queryBillsByType(type: string): Promise<BillCloudDB[]> {
+  async queryBillsByType(type: string): Promise<BillCloudDBInternal[]> {
     try {
       const databaseZone = cloudDatabase.zone(ZONE_NAME);
-      const condition = new cloudDatabase.DatabaseQuery(BillCloudDB);
+      const condition = new cloudDatabase.DatabaseQuery(BillCloudDBInternal);
       condition.equalTo('type', type);
-      
       const resultArray = await databaseZone.query(condition);
-      hilog.info(DOMAIN, TAG, '按类型查询账单成功，数量: %{public}d', resultArray.length);
-      return resultArray as BillCloudDB[];
+      return resultArray as BillCloudDBInternal[];
     } catch (err) {
       const error = err as Error;
-      hilog.error(DOMAIN, TAG, '查询账单失败, code: %{public}s, message: %{public}s',
-        (err as ESObject).code || '', error.message || JSON.stringify(err));
+      hilog.error(DOMAIN, TAG, '查询账单失败: %{public}s', error.message);
       return [];
     }
   }
 
-  /**
-   * 根据日期范围查询账单
-   */
-  async queryBillsByDateRange(startDate: string, endDate: string): Promise<BillCloudDB[]> {
+  async queryBillsByDateRange(startDate: string, endDate: string): Promise<BillCloudDBInternal[]> {
     try {
       const databaseZone = cloudDatabase.zone(ZONE_NAME);
-      const condition = new cloudDatabase.DatabaseQuery(BillCloudDB);
+      const condition = new cloudDatabase.DatabaseQuery(BillCloudDBInternal);
       condition.greaterThanOrEqualTo('date', startDate).lessThanOrEqualTo('date', endDate);
-      
       const resultArray = await databaseZone.query(condition);
-      hilog.info(DOMAIN, TAG, '按日期范围查询账单成功，数量: %{public}d', resultArray.length);
-      return resultArray as BillCloudDB[];
+      return resultArray as BillCloudDBInternal[];
     } catch (err) {
       const error = err as Error;
-      hilog.error(DOMAIN, TAG, '查询账单失败, code: %{public}s, message: %{public}s',
-        (err as ESObject).code || '', error.message || JSON.stringify(err));
+      hilog.error(DOMAIN, TAG, '查询账单失败: %{public}s', error.message);
       return [];
     }
   }
 
-  /**
-   * 根据ID查询账单
-   */
-  async queryBillById(billId: string): Promise<BillCloudDB | null> {
+  async queryBillById(billId: string): Promise<BillCloudDBInternal | null> {
     try {
       const databaseZone = cloudDatabase.zone(ZONE_NAME);
-      const condition = new cloudDatabase.DatabaseQuery(BillCloudDB);
+      const condition = new cloudDatabase.DatabaseQuery(BillCloudDBInternal);
       condition.equalTo('id', billId);
-      
       const resultArray = await databaseZone.query(condition);
-      return resultArray.length > 0 ? resultArray[0] as BillCloudDB : null;
+      return resultArray.length > 0 ? resultArray[0] as BillCloudDBInternal : null;
     } catch (err) {
       const error = err as Error;
-      hilog.error(DOMAIN, TAG, '查询账单失败, code: %{public}s, message: %{public}s',
-        (err as ESObject).code || '', error.message || JSON.stringify(err));
+      hilog.error(DOMAIN, TAG, '查询账单失败: %{public}s', error.message);
       return null;
     }
+  }
+
+  // ==================== 工厂方法 ====================
+  
+  /**
+   * 创建新的 TaskCloudDB 实例
+   */
+  createTask(): TaskCloudDBInternal {
+    return new TaskCloudDBInternal();
+  }
+
+  /**
+   * 创建新的 BillCloudDB 实例
+   */
+  createBill(): BillCloudDBInternal {
+    return new BillCloudDBInternal();
   }
 }

@@ -5,6 +5,7 @@ import { Constants } from '../common/Constants';
  */
 export interface TaskData {
   id?: number;
+  localId?: string; // 本地数据库ID（字符串格式）
   title?: string;
   description?: string;
   status?: string;
@@ -36,7 +37,8 @@ export interface TaskJSON {
  * 任务数据模型
  */
 export class Task {
-  id: number = 0; // 任务ID
+  id: number = 0; // 任务ID（云端ID）
+  localId: string = ''; // 本地数据库ID（字符串格式）
   title: string = ''; // 任务标题
   description: string = ''; // 任务描述
   status: string = Constants.TASK_STATUS_PENDING; // 任务状态
@@ -50,6 +52,7 @@ export class Task {
   constructor(data?: TaskData) {
     if (data) {
       if (data.id !== undefined) this.id = data.id;
+      if (data.localId !== undefined) this.localId = data.localId;
       if (data.title !== undefined) this.title = data.title;
       if (data.description !== undefined) this.description = data.description;
       if (data.status !== undefined) this.status = data.status;

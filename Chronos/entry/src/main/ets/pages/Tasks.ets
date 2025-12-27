@@ -3,6 +3,8 @@ import { TaskService } from '../service/TaskService';
 import { Task } from '../model/Task';
 import { Constants } from '../common/Constants';
 import { Utils } from '../common/Utils';
+import { promptAction } from '@kit.ArkUI';
+import { CalendarComponent } from '../components/CalendarComponent';
 
 /**
  * 任务页面
@@ -16,51 +18,130 @@ export struct Tasks {
   @State searchKeyword: string = ''; // 搜索关键词
   @State showAddDialog: boolean = false;
   @State newTask: Task = new Task();
-  @State tapActionId: number = 0;
-  @State completeActionId: number = 0;
-  @State deleteActionId: number = 0;
+  @State sortType: string = 'createTime'; // 排序方式：priority(重要性), dueDate(截止时间), createTime(创建时间)
+  @State showDatePicker: boolean = false; // 显示日期选择器
+  @State tempSelectedDate: Date = new Date(); // 临时选择的日期
+  @State monthChangeTrigger: number = 0; // 月份变化触发器
+  
+  // 统计数据 - 使用 @State 确保 UI 更新
+  @State totalCount: number = 0;
+  @State completedCount: number = 0;
+  @State pendingCount: number = 0;
+  
+  // 任务详情弹窗状态
+  @State showDetailDialog: boolean = false;
+  @State selectedTask: Task | null = null;
 
   private taskService: TaskService = TaskService.getInstance();
 
   aboutToAppear() {
     this.loadTasks();
-    // 初始化过滤后的任务列表
-    this.filteredTasks = [];
   }
 
   /**
    * 加载任务
    */
   async loadTasks(): Promise<void> {
-    // 先加载所有任务用于统计
-    this.allTasks = await this.taskService.getAllTasks();
-    
-    // 然后根据筛选状态加载任务列表
-    if (this.filterStatus === 'all') {
-      this.tasks = this.allTasks;
-    } else {
-      this.tasks = await this.taskService.getTasksByStatus(this.filterStatus);
+    try {
+      // 先加载所有任务用于统计
+      this.allTasks = await this.taskService.getAllTasks();
+      
+      // 更新统计数据
+      this.updateStatistics();
+      
+      // 然后根据筛选状态加载任务列表
+      if (this.filterStatus === 'all') {
+        this.tasks = this.allTasks;
+      } else {
+        this.tasks = await this.taskService.getTasksByStatus(this.filterStatus);
+      }
+      
+      // 应用搜索过滤
+      this.applySearchFilter();
+    } catch (error) {
+      console.error('加载任务失败:', error);
+      promptAction.showToast({ message: '加载任务失败' });
     }
-    
-    // 应用搜索过滤
-    this.applySearchFilter();
+  }
+
+  /**
+   * 更新统计数据
+   */
+  updateStatistics(): void {
+    this.totalCount = this.allTasks.length;
+    this.completedCount = this.allTasks.filter(t => t.status === Constants.TASK_STATUS_COMPLETED).length;
+    this.pendingCount = this.allTasks.filter(t => t.status !== Constants.TASK_STATUS_COMPLETED).length;
   }
 
   /**
    * 应用搜索过滤
    */
   applySearchFilter(): void {
-    if (!this.searchKeyword || !this.searchKeyword.trim()) {
-      // 如果没有搜索关键词，直接使用当前筛选的任务列表
-      this.filteredTasks = this.tasks;
-      return;
+    let tasks = this.tasks;
+    
+    // 应用搜索过滤
+    if (this.searchKeyword && this.searchKeyword.trim()) {
+      const keyword = this.searchKeyword.trim().toLowerCase();
+      tasks = tasks.filter(task => 
+        task.title.toLowerCase().includes(keyword)
+      );
     }
+    
+    // 应用排序
+    this.filteredTasks = this.applySort(tasks);
+  }
 
-    // 根据关键词过滤任务标题
-    const keyword = this.searchKeyword.trim().toLowerCase();
-    this.filteredTasks = this.tasks.filter(task => 
-      task.title.toLowerCase().includes(keyword)
-    );
+  /**
+   * 应用排序
+   */
+  applySort(tasks: Task[]): Task[] {
+    const sortedTasks = [...tasks];
+    
+    // 先分离已完成和未完成的任务
+    const completedTasks = sortedTasks.filter(t => t.status === Constants.TASK_STATUS_COMPLETED);
+    const activeTasks = sortedTasks.filter(t => t.status !== Constants.TASK_STATUS_COMPLETED);
+    
+    let sortedActiveTasks: Task[] = [];
+    let sortedCompletedTasks: Task[] = [];
+    
+    if (this.sortType === 'priority') {
+      // 重要性排序：重要程度从高到低（priority从高到低）
+      sortedActiveTasks = activeTasks.sort((a, b) => {
+        return b.priority - a.priority;
+      });
+      sortedCompletedTasks = completedTasks.sort((a, b) => {
+        return b.priority - a.priority;
+      });
+    } else if (this.sortType === 'dueDate') {
+      // 截止时间排序：截止时间早的在前
+      sortedActiveTasks = activeTasks.sort((a, b) => {
+        // 没有截止日期的排在最后
+        if (!a.dueDate && !b.dueDate) return 0;
+        if (!a.dueDate) return 1;
+        if (!b.dueDate) return -1;
+        return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+      });
+      sortedCompletedTasks = completedTasks.sort((a, b) => {
+        if (!a.dueDate && !b.dueDate) return 0;
+        if (!a.dueDate) return 1;
+        if (!b.dueDate) return -1;
+        return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+      });
+    } else if (this.sortType === 'createTime') {
+      // 创建时间排序：创建时间越晚越在前面
+      sortedActiveTasks = activeTasks.sort((a, b) => {
+        return new Date(b.createTime).getTime() - new Date(a.createTime).getTime();
+      });
+      sortedCompletedTasks = completedTasks.sort((a, b) => {
+        return new Date(b.createTime).getTime() - new Date(a.createTime).getTime();
+      });
+    } else {
+      sortedActiveTasks = activeTasks;
+      sortedCompletedTasks = completedTasks;
+    }
+    
+    // 未完成的任务在前，已完成的任务在后
+    return [...sortedActiveTasks, ...sortedCompletedTasks];
   }
 
   /**
@@ -72,84 +153,72 @@ export struct Tasks {
   }
 
   /**
-   * 获取已完成任务数量
-   */
-  getCompletedCount(): number {
-    return this.allTasks.filter(t => t.status === Constants.TASK_STATUS_COMPLETED).length;
-  }
-
-  /**
-   * 获取未完成任务数量
-   */
-  getPendingCount(): number {
-    return this.allTasks.filter(t => t.status !== Constants.TASK_STATUS_COMPLETED).length;
-  }
-
-  /**
    * 切换筛选状态
    */
   onFilterChange(status: string): void {
     this.filterStatus = status;
     this.loadTasks();
-    // 筛选状态改变后，如果有关键词，重新应用搜索过滤
-    if (this.searchKeyword) {
-      this.applySearchFilter();
-    }
   }
 
   /**
-   * 监听状态变化
-   */
-  aboutToUpdate() {
-    if (this.completeActionId > 0) {
-      const task = this.tasks.find(t => t.id === this.completeActionId);
-      if (task) {
-        this.onTaskComplete(task);
-      }
-      this.completeActionId = 0;
-    }
-    if (this.deleteActionId > 0) {
-      const task = this.tasks.find(t => t.id === this.deleteActionId);
-      if (task) {
-        this.onTaskDelete(task);
-      }
-      this.deleteActionId = 0;
-    }
-    if (this.tapActionId > 0) {
-      const task = this.tasks.find(t => t.id === this.tapActionId);
-      if (task) {
-        this.onTaskTap(task);
-      }
-      this.tapActionId = 0;
-    }
-  }
-
-  /**
-   * 完成任务
+   * 完成/取消完成任务 - 直接回调处理
    */
   async onTaskComplete(task: Task): Promise<void> {
-    if (task.status === Constants.TASK_STATUS_COMPLETED) {
-      await this.taskService.uncompleteTask(task);
-    } else {
-      await this.taskService.completeTask(task);
+    try {
+      if (task.status === Constants.TASK_STATUS_COMPLETED) {
+        await this.taskService.uncompleteTask(task);
+        promptAction.showToast({ message: '已取消完成' });
+      } else {
+        await this.taskService.completeTask(task);
+        promptAction.showToast({ message: '任务已完成' });
+      }
+      await this.loadTasks();
+    } catch (error) {
+      console.error('更新任务状态失败:', error);
+      promptAction.showToast({ message: '操作失败，请重试' });
     }
-    await this.loadTasks();
   }
 
   /**
-   * 删除任务
+   * 删除任务 - 直接回调处理
    */
   async onTaskDelete(task: Task): Promise<void> {
-    await this.taskService.deleteTask(task.id);
-    await this.loadTasks();
+    try {
+      // 显示确认对话框
+      AlertDialog.show({
+        title: '确认删除',
+        message: `确定要删除任务"${task.title}"吗？`,
+        primaryButton: {
+          value: '取消',
+          action: () => {}
+        },
+        secondaryButton: {
+          value: '删除',
+          fontColor: Constants.COLOR_DANGER,
+          action: async () => {
+            try {
+              await this.taskService.deleteTask(task);
+              promptAction.showToast({ message: '任务已删除' });
+              await this.loadTasks();
+            } catch (error) {
+              console.error('删除任务失败:', error);
+              promptAction.showToast({ message: '删除失败，请重试' });
+            }
+          }
+        }
+      });
+    } catch (error) {
+      console.error('删除任务失败:', error);
+      promptAction.showToast({ message: '删除失败，请重试' });
+    }
   }
 
   /**
-   * 跳转到任务详情/编辑
+   * 点击任务查看详情
    */
   onTaskTap(task: Task): void {
-    // TODO: 跳转到任务编辑页面
-    console.info('点击任务:', task.title);
+    this.selectedTask = task;
+    this.showDetailDialog = true;
   }
 
   /**
@@ -157,7 +226,7 @@ export struct Tasks {
    */
   showAddTaskDialog(): void {
     this.newTask = new Task();
-    this.newTask.priority = Constants.PRIORITY_LOW; // 默认低优先级
+    this.newTask.priority = Constants.PRIORITY_LOW;
     this.showAddDialog = true;
   }
 
@@ -165,34 +234,99 @@ export struct Tasks {
    * 添加任务
    */
   async addTask(): Promise<void> {
-    // 验证任务标题不能为空
     if (!this.newTask.title || !this.newTask.title.trim()) {
+      promptAction.showToast({ message: '请输入任务标题' });
       return;
     }
     try {
-      // 创建任务
       await this.taskService.createTask(this.newTask);
-      // 关闭对话框
       this.showAddDialog = false;
-      // 重新加载任务列表
       await this.loadTasks();
-      // 重置新建任务对象
       this.newTask = new Task();
       this.newTask.priority = Constants.PRIORITY_LOW;
+      promptAction.showToast({ message: '任务已添加' });
     } catch (error) {
       console.error('添加任务失败:', error);
-      // 可以在这里添加错误提示
+      promptAction.showToast({ message: '添加失败，请重试' });
     }
   }
 
   build() {
     Stack() {
       Column() {
-        // 统计数据卡片
+        // 统计数据卡片 - 直接内联渲染以确保响应式更新
         Row() {
-          this.buildStatCard('全部任务', this.allTasks.length.toString(), Constants.COLOR_PRIMARY)
-          this.buildStatCard('已完成', this.getCompletedCount().toString(), Constants.COLOR_SUCCESS)
-          this.buildStatCard('未完成', this.getPendingCount().toString(), Constants.COLOR_WARNING)
+          // 全部任务卡片
+          Column() {
+            Text(this.totalCount.toString())
+              .fontSize(28)
+              .fontWeight(FontWeight.Bold)
+              .fontColor(Constants.COLOR_PRIMARY)
+              .margin({ bottom: 6 })
+            Text('全部任务')
+              .fontSize(13)
+              .fontColor(Constants.COLOR_TEXT_SECONDARY)
+          }
+          .layoutWeight(1)
+          .padding({ top: 16, bottom: 16, left: 12, right: 12 })
+          .backgroundColor(Constants.COLOR_CARD_BACKGROUND)
+          .borderRadius(12)
+          .margin({ left: 6, right: 6 })
+          .justifyContent(FlexAlign.Center)
+          .shadow({
+            radius: 8,
+            color: 'rgba(0, 0, 0, 0.06)',
+            offsetX: 0,
+            offsetY: 2
+          })
+
+          // 已完成卡片
+          Column() {
+            Text(this.completedCount.toString())
+              .fontSize(28)
+              .fontWeight(FontWeight.Bold)
+              .fontColor(Constants.COLOR_SUCCESS)
+              .margin({ bottom: 6 })
+            Text('已完成')
+              .fontSize(13)
+              .fontColor(Constants.COLOR_TEXT_SECONDARY)
+          }
+          .layoutWeight(1)
+          .padding({ top: 16, bottom: 16, left: 12, right: 12 })
+          .backgroundColor(Constants.COLOR_CARD_BACKGROUND)
+          .borderRadius(12)
+          .margin({ left: 6, right: 6 })
+          .justifyContent(FlexAlign.Center)
+          .shadow({
+            radius: 8,
+            color: 'rgba(0, 0, 0, 0.06)',
+            offsetX: 0,
+            offsetY: 2
+          })
+
+          // 未完成卡片
+          Column() {
+            Text(this.pendingCount.toString())
+              .fontSize(28)
+              .fontWeight(FontWeight.Bold)
+              .fontColor(Constants.COLOR_WARNING)
+              .margin({ bottom: 6 })
+            Text('未完成')
+              .fontSize(13)
+              .fontColor(Constants.COLOR_TEXT_SECONDARY)
+          }
+          .layoutWeight(1)
+          .padding({ top: 16, bottom: 16, left: 12, right: 12 })
+          .backgroundColor(Constants.COLOR_CARD_BACKGROUND)
+          .borderRadius(12)
+          .margin({ left: 6, right: 6 })
+          .justifyContent(FlexAlign.Center)
+          .shadow({
+            radius: 8,
+            color: 'rgba(0, 0, 0, 0.06)',
+            offsetX: 0,
+            offsetY: 2
+          })
         }
         .width('100%')
         .padding({ left: 16, right: 16, top: 16, bottom: 12 })
@@ -225,6 +359,21 @@ export struct Tasks {
         .padding({ left: 16, right: 16, top: 8, bottom: 8 })
         .justifyContent(FlexAlign.SpaceAround)
 
+        // 排序方式选择
+        Row() {
+          Text('排序方式：')
+            .fontSize(14)
+            .fontColor(Constants.COLOR_TEXT_SECONDARY)
+            .margin({ right: 12 })
+          
+          this.buildSortButton('priority', '重要性')
+          this.buildSortButton('dueDate', '截止时间')
+          this.buildSortButton('createTime', '创建时间')
+        }
+        .width('100%')
+        .padding({ left: 16, right: 16, top: 8, bottom: 12 })
+        .justifyContent(FlexAlign.Start)
+
         // 任务列表
         if (this.filteredTasks.length === 0) {
           Column() {
@@ -241,9 +390,9 @@ export struct Tasks {
               ListItem() {
                 TaskItem({
                   task: task,
-                  onTapAction: $tapActionId,
-                  onCompleteAction: $completeActionId,
-                  onDeleteAction: $deleteActionId
+                  onComplete: (t: Task) => this.onTaskComplete(t),
+                  onDelete: (t: Task) => this.onTaskDelete(t),
+                  onTap: (t: Task) => this.onTaskTap(t)
                 })
               }
             })
@@ -271,18 +420,198 @@ export struct Tasks {
           .margin({ right: 20, bottom: 20 })
           .alignSelf(ItemAlign.End)
           .onClick(() => this.showAddTaskDialog())
-    }
-    .width('100%')
-    .flexGrow(1)
-    .backgroundColor(Constants.COLOR_BACKGROUND)
+      }
+      .width('100%')
+      .flexGrow(1)
+      .backgroundColor(Constants.COLOR_BACKGROUND)
 
       // 添加任务对话框
       if (this.showAddDialog) {
         this.buildAddTaskDialog()
       }
+
+      // 任务详情对话框
+      if (this.showDetailDialog && this.selectedTask) {
+        this.buildTaskDetailDialog()
+      }
+
+      // 日期选择器弹窗
+      if (this.showDatePicker) {
+        this.buildDatePickerDialog()
+      }
     }
     .width('100%')
     .height('100%')
+  }
+
+  @Builder
+  buildTaskDetailDialog() {
+    Column() {
+      Column() {
+        // 对话框标题
+        Row() {
+          Text('任务详情')
+            .fontSize(20)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(Constants.COLOR_TEXT_PRIMARY)
+          
+          Blank()
+          
+          Text('×')
+            .fontSize(24)
+            .fontColor(Constants.COLOR_TEXT_SECONDARY)
+            .onClick(() => {
+              this.showDetailDialog = false;
+              this.selectedTask = null;
+            })
+        }
+        .width('100%')
+        .margin({ bottom: 20 })
+
+        // 任务标题
+        Text(this.selectedTask?.title || '')
+          .fontSize(18)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(Constants.COLOR_TEXT_PRIMARY)
+          .width('100%')
+          .margin({ bottom: 12 })
+
+        // 任务描述
+        if (this.selectedTask?.description) {
+          Text(this.selectedTask.description)
+            .fontSize(14)
+            .fontColor(Constants.COLOR_TEXT_SECONDARY)
+            .width('100%')
+            .margin({ bottom: 16 })
+        }
+
+        // 详情信息
+        Column() {
+          // 状态
+          Row() {
+            Text('状态')
+              .fontSize(14)
+              .fontColor(Constants.COLOR_TEXT_SECONDARY)
+              .width(80)
+            Text(Utils.getStatusText(this.selectedTask?.status || ''))
+              .fontSize(14)
+              .fontColor(Constants.COLOR_TEXT_PRIMARY)
+          }
+          .width('100%')
+          .padding({ top: 10, bottom: 10 })
+
+          // 优先级
+          Row() {
+            Text('优先级')
+              .fontSize(14)
+              .fontColor(Constants.COLOR_TEXT_SECONDARY)
+              .width(80)
+            Text(Utils.getPriorityText(this.selectedTask?.priority || 1))
+              .fontSize(14)
+              .fontColor(Utils.getPriorityColor(this.selectedTask?.priority || 1))
+              .fontWeight(FontWeight.Medium)
+          }
+          .width('100%')
+          .padding({ top: 10, bottom: 10 })
+
+          // 截止日期
+          if (this.selectedTask?.dueDate) {
+            Row() {
+              Text('截止日期')
+                .fontSize(14)
+                .fontColor(Constants.COLOR_TEXT_SECONDARY)
+                .width(80)
+              Text(Utils.formatDate(this.selectedTask.dueDate, 'YYYY-MM-DD'))
+                .fontSize(14)
+                .fontColor(
+                  this.selectedTask.isOverdue() 
+                    ? Constants.COLOR_DANGER 
+                    : Constants.COLOR_TEXT_PRIMARY
+                )
+            }
+            .width('100%')
+            .padding({ top: 10, bottom: 10 })
+          }
+
+          // 创建时间
+          Row() {
+            Text('创建时间')
+              .fontSize(14)
+              .fontColor(Constants.COLOR_TEXT_SECONDARY)
+              .width(80)
+            Text(Utils.formatDate(this.selectedTask?.createTime || new Date(), 'YYYY-MM-DD HH:mm'))
+              .fontSize(14)
+              .fontColor(Constants.COLOR_TEXT_PRIMARY)
+          }
+          .width('100%')
+          .padding({ top: 10, bottom: 10 })
+        }
+        .width('100%')
+        .backgroundColor(Constants.COLOR_BACKGROUND)
+        .borderRadius(12)
+        .padding(12)
+        .margin({ bottom: 20 })
+
+        // 操作按钮
+        Row() {
+          // 完成/取消完成按钮
+          Button(this.selectedTask?.status === Constants.TASK_STATUS_COMPLETED ? '取消完成' : '完成')
+            .type(ButtonType.Normal)
+            .layoutWeight(1)
+            .height(44)
+            .fontSize(15)
+            .fontWeight(FontWeight.Medium)
+            .backgroundColor(Constants.COLOR_SUCCESS)
+            .fontColor('#FFFFFF')
+            .borderRadius(10)
+            .onClick(() => {
+              if (this.selectedTask) {
+                this.onTaskComplete(this.selectedTask);
+                this.showDetailDialog = false;
+                this.selectedTask = null;
+              }
+            })
+
+          // 删除按钮
+          Button('删除')
+            .type(ButtonType.Normal)
+            .layoutWeight(1)
+            .height(44)
+            .fontSize(15)
+            .fontWeight(FontWeight.Medium)
+            .backgroundColor(Constants.COLOR_DANGER)
+            .fontColor('#FFFFFF')
+            .borderRadius(10)
+            .margin({ left: 12 })
+            .onClick(() => {
+              if (this.selectedTask) {
+                this.showDetailDialog = false;
+                this.onTaskDelete(this.selectedTask);
+                this.selectedTask = null;
+              }
+            })
+        }
+        .width('100%')
+      }
+      .width('90%')
+      .padding(24)
+      .backgroundColor('#FFFFFF')
+      .borderRadius(20)
+      .shadow({
+        radius: 20,
+        color: 'rgba(0, 0, 0, 0.15)',
+        offsetX: 0,
+        offsetY: 8
+      })
+    }
+    .width('100%')
+    .height('100%')
+    .backgroundColor('rgba(0, 0, 0, 0.5)')
+    .justifyContent(FlexAlign.Center)
+    .onClick(() => {
+      this.showDetailDialog = false;
+      this.selectedTask = null;
+    })
   }
 
   @Builder
@@ -369,12 +698,8 @@ export struct Tasks {
         .borderRadius(12)
         .margin({ bottom: 16 })
         .onClick(() => {
-          // 设置为明天作为默认截止日期
-          if (!this.newTask.dueDate) {
-            const tomorrow = new Date();
-            tomorrow.setDate(tomorrow.getDate() + 1);
-            this.newTask.dueDate = tomorrow;
-          }
+          this.tempSelectedDate = this.newTask.dueDate || new Date();
+          this.showDatePicker = true;
         })
 
         // 优先级选择
@@ -386,7 +711,6 @@ export struct Tasks {
           .alignSelf(ItemAlign.Start)
 
         Row() {
-          // 低优先级按钮
           Button('低')
             .type(ButtonType.Normal)
             .layoutWeight(1)
@@ -408,7 +732,6 @@ export struct Tasks {
               this.newTask.priority = Constants.PRIORITY_LOW;
             })
 
-          // 中优先级按钮
           Button('中')
             .type(ButtonType.Normal)
             .layoutWeight(1)
@@ -431,7 +754,6 @@ export struct Tasks {
               this.newTask.priority = Constants.PRIORITY_MEDIUM;
             })
 
-          // 高优先级按钮
           Button('高')
             .type(ButtonType.Normal)
             .layoutWeight(1)
@@ -470,7 +792,6 @@ export struct Tasks {
             .borderRadius(12)
             .onClick(() => {
               this.showAddDialog = false;
-              // 重置表单
               this.newTask = new Task();
               this.newTask.priority = Constants.PRIORITY_LOW;
             })
@@ -514,11 +835,100 @@ export struct Tasks {
     .backgroundColor('rgba(0, 0, 0, 0.5)')
     .justifyContent(FlexAlign.Center)
     .onClick(() => {
-      // 点击背景区域关闭对话框
       this.showAddDialog = false;
-      // 重置表单
       this.newTask = new Task();
       this.newTask.priority = Constants.PRIORITY_LOW;
+    })
+  }
+
+  /**
+   * 构建日期选择器弹窗
+   */
+  @Builder
+  buildDatePickerDialog() {
+    Column() {
+      Column() {
+        // 对话框标题
+        Row() {
+          Text('选择截止日期')
+            .fontSize(20)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(Constants.COLOR_TEXT_PRIMARY)
+          
+          Blank()
+          
+          Text('×')
+            .fontSize(24)
+            .fontColor(Constants.COLOR_TEXT_SECONDARY)
+            .onClick(() => {
+              this.showDatePicker = false;
+            })
+        }
+        .width('100%')
+        .margin({ bottom: 16 })
+
+        // 日历组件
+        CalendarComponent({
+          selectedDate: this.tempSelectedDate,
+          tasks: [],
+          holidays: [],
+          selectedDateChanged: $tempSelectedDate,
+          monthChangeTrigger: $monthChangeTrigger
+        })
+        .width('100%')
+        .margin({ bottom: 20 })
+
+        // 操作按钮
+        Row() {
+          Button('取消')
+            .type(ButtonType.Normal)
+            .layoutWeight(1)
+            .height(44)
+            .fontSize(15)
+            .fontWeight(FontWeight.Medium)
+            .backgroundColor(Constants.COLOR_BACKGROUND)
+            .fontColor(Constants.COLOR_TEXT_SECONDARY)
+            .borderRadius(10)
+            .onClick(() => {
+              this.showDatePicker = false;
+            })
+
+          Button('确定')
+            .type(ButtonType.Normal)
+            .layoutWeight(1)
+            .height(44)
+            .fontSize(15)
+            .fontWeight(FontWeight.Medium)
+            .backgroundColor(Constants.COLOR_PRIMARY)
+            .fontColor(Constants.COLOR_TEXT_ON_PRIMARY)
+            .borderRadius(10)
+            .margin({ left: 12 })
+            .onClick(() => {
+              this.newTask.dueDate = new Date(this.tempSelectedDate);
+              this.newTask.dueDate.setHours(0, 0, 0, 0);
+              this.showDatePicker = false;
+            })
+        }
+        .width('100%')
+      }
+      .width('90%')
+      .padding(24)
+      .backgroundColor('#FFFFFF')
+      .borderRadius(20)
+      .shadow({
+        radius: 20,
+        color: 'rgba(0, 0, 0, 0.15)',
+        offsetX: 0,
+        offsetY: 8
+      })
+    }
+    .width('100%')
+    .height('100%')
+    .backgroundColor('rgba(0, 0, 0, 0.5)')
+    .justifyContent(FlexAlign.Center)
+    .alignItems(HorizontalAlign.Center)
+    .onClick(() => {
+      this.showDatePicker = false;
     })
   }
 
@@ -554,30 +964,33 @@ export struct Tasks {
       .onClick(() => this.onFilterChange(status))
   }
 
+  /**
+   * 切换排序方式
+   */
+  onSortChange(sortType: string): void {
+    this.sortType = sortType;
+    this.applySearchFilter();
+  }
+
   @Builder
-  buildStatCard(title: string, value: string, color: string) {
-    Column() {
-      Text(value)
-        .fontSize(28)
-        .fontWeight(FontWeight.Bold)
-        .fontColor(color)
-        .margin({ bottom: 6 })
-      Text(title)
-        .fontSize(13)
-        .fontColor(Constants.COLOR_TEXT_SECONDARY)
-    }
-    .layoutWeight(1)
-    .padding({ top: 16, bottom: 16, left: 12, right: 12 })
-    .backgroundColor(Constants.COLOR_CARD_BACKGROUND)
-    .borderRadius(12)
-    .margin({ left: 6, right: 6 })
-    .justifyContent(FlexAlign.Center)
-    .shadow({
-      radius: 8,
-      color: 'rgba(0, 0, 0, 0.06)',
-      offsetX: 0,
-      offsetY: 2
-    })
+  buildSortButton(sortType: string, label: string) {
+    Button(label)
+      .type(ButtonType.Normal)
+      .fontSize(13)
+      .fontWeight(this.sortType === sortType ? FontWeight.Medium : FontWeight.Normal)
+      .fontColor(
+        this.sortType === sortType
+          ? Constants.COLOR_TEXT_ON_PRIMARY
+          : Constants.COLOR_TEXT_SECONDARY
+      )
+      .backgroundColor(
+        this.sortType === sortType
+          ? Constants.COLOR_PRIMARY
+          : Constants.COLOR_CARD_BACKGROUND
+      )
+      .borderRadius(16)
+      .padding({ left: 14, right: 14, top: 6, bottom: 6 })
+      .margin({ right: 8 })
+      .onClick(() => this.onSortChange(sortType))
   }
 }
-

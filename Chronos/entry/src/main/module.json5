@@ -13,6 +13,12 @@
     "deliveryWithInstall": true,
     "installationFree": false,
     "pages": "$profile:main_pages",
+    "metadata": [
+      {
+        "name": "client_id",
+        "value": "6917592914212186506"
+      }
+    ],
     "abilities": [
       {
         "name": "EntryAbility",
@@ -69,6 +75,9 @@
           ],
           "when": "inuse"
         }
+      },
+      {
+        "name": "ohos.permission.GET_BUNDLE_INFO"
       }
     ]
   }

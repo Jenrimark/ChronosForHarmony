@@ -4,19 +4,16 @@ import { Constants } from '../common/Constants';
 
 /**
  * 任务项组件
+ * 使用回调函数处理用户交互，替代 @Link 状态传递
  */
 @Component
 export struct TaskItem {
   @Prop task: Task = new Task();
-  @Link onTapAction: number;
-  @Link onCompleteAction: number;
-  @Link onDeleteAction: number;
   
-  @State actionId: number = 0;
-
-  aboutToAppear() {
-    this.actionId = this.task.id;
-  }
+  // 回调函数 - 替代 @Link 状态变量
+  onComplete: (task: Task) => void = () => {};
+  onDelete: (task: Task) => void = () => {};
+  onTap: (task: Task) => void = () => {};
 
   build() {
     Row() {
@@ -35,7 +32,7 @@ export struct TaskItem {
         .backgroundColor(Constants.COLOR_SUCCESS)
         .justifyContent(FlexAlign.Center)
         .onClick(() => {
-          this.onCompleteAction = this.task.id;
+          this.onComplete(this.task);
         })
       } else {
         // 未完成：空心圆圈，带主题色边框
@@ -46,11 +43,11 @@ export struct TaskItem {
           .border({ width: 2, color: Constants.COLOR_PRIMARY_LIGHT })
           .backgroundColor('transparent')
           .onClick(() => {
-            this.onCompleteAction = this.task.id;
+            this.onComplete(this.task);
           })
       }
 
-      // 任务信息
+      // 任务信息区域
       Column() {
         Text(this.task.title)
           .fontSize(16)
@@ -83,7 +80,7 @@ export struct TaskItem {
 
         // 任务元信息
         Row() {
-          // 优先级标签 - 美化样式
+          // 优先级标签
           Text(Utils.getPriorityText(this.task.priority))
             .fontSize(11)
             .fontWeight(FontWeight.Medium)
@@ -112,7 +109,7 @@ export struct TaskItem {
 
           Blank()
 
-          // 状态标签 - 美化样式
+          // 状态标签
           Text(Utils.getStatusText(this.task.status))
             .fontSize(11)
             .fontColor(Constants.COLOR_TEXT_SECONDARY)
@@ -126,8 +123,11 @@ export struct TaskItem {
       .layoutWeight(1)
       .alignItems(HorizontalAlign.Start)
       .margin({ left: 14 })
+      .onClick(() => {
+        this.onTap(this.task);
+      })
 
-      // 删除按钮 - 美化样式
+      // 删除按钮
       Column() {
         Text('×')
           .fontSize(18)
@@ -139,7 +139,7 @@ export struct TaskItem {
       .backgroundColor(Constants.COLOR_BACKGROUND)
       .justifyContent(FlexAlign.Center)
       .onClick(() => {
-        this.onDeleteAction = this.task.id;
+        this.onDelete(this.task);
       })
     }
     .width('100%')
@@ -167,8 +167,5 @@ export struct TaskItem {
         ? 0.75
         : 1.0
     )
-    .onClick(() => {
-      this.onTapAction = this.task.id;
-    })
   }
 }

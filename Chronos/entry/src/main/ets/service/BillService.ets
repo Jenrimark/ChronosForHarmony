@@ -1,9 +1,12 @@
-import { Bill, BillType, BillCategory, BillJSON } from '../model/Bill';
+import { Bill, BillType, BillCategory, BillData } from '../model/Bill';
 import { Utils } from '../common/Utils';
-import { CloudDBService } from './CloudDBService';
-import { CloudDBConverter } from '../utils/CloudDBConverter';
-import { Constants } from '../common/Constants';
+import { LocalDBService, LocalBill, SyncStatus } from './LocalDBService';
+import { SyncService } from './SyncService';
 import { BillStatistics } from '../common/Types';
+import { hilog } from '@kit.PerformanceAnalysisKit';
+
+const TAG = 'BillService';
+const DOMAIN = 0x0000;
 
 /**
  * 默认账单统计信息类
@@ -17,18 +20,16 @@ class DefaultBillStatistics implements BillStatistics {
 }
 
 /**
- * 账单服务类 - 使用华为云数据库（Cloud DB）
- * 按照官方文档规范实现端云协同：优先读写本地缓存，网络空闲时自动同步云端
+ * 账单服务类 - 离线优先模式
+ * 策略：数据优先存入本地 SQLite，后台静默同步到云端
+ * 参考：华为云开发最佳实践 - 本地 SQLite + CloudDB 双写模式
  */
 export class BillService {
   private static instance: BillService;
-  private cloudDBService: CloudDBService = CloudDBService.getInstance();
-  private initPromise: Promise<void> | null = null;
+  private localDB: LocalDBService = LocalDBService.getInstance();
+  private syncService: SyncService = SyncService.getInstance();
 
-  private constructor() {
-    // 初始化Cloud DB服务
-    this.initPromise = this.cloudDBService.init();
-  }
+  private constructor() {}
 
   static getInstance(): BillService {
     if (!BillService.instance) {
@@ -38,38 +39,100 @@ export class BillService {
   }
 
   /**
-   * 确保CloudDB已初始化
+   * 生成唯一ID
    */
-  private async ensureInitialized(): Promise<void> {
-    if (this.initPromise) {
-      await this.initPromise;
+  private generateId(): string {
+    const timestamp = Date.now();
+    const random = Math.floor(Math.random() * 10000);
+    return `${timestamp}_${random}`;
+  }
+
+  /**
+   * Bill 转 LocalBill
+   */
+  private billToLocal(bill: Bill, syncStatus: number = SyncStatus.PENDING): LocalBill {
+    // 优先使用 localId，如果没有则生成新的
+    const billId = bill.localId ? bill.localId : this.generateId();
+    return {
+      id: billId,
+      type: bill.type,
+      category: bill.category,
+      amount: bill.amount.toString(),
+      description: bill.description,
+      date: bill.date ? bill.date.toISOString() : new Date().toISOString(),
+      createTime: bill.createTime ? bill.createTime.toISOString() : new Date().toISOString(),
+      updateTime: bill.updateTime ? bill.updateTime.toISOString() : new Date().toISOString(),
+      tags: JSON.stringify(bill.tags || []),
+      userId: 'default_user',
+      syncStatus: syncStatus,
+      version: 1
+    };
+  }
+
+  /**
+   * LocalBill 转 Bill
+   */
+  private localToBill(local: LocalBill): Bill {
+    let tags: string[] = [];
+    try {
+      tags = JSON.parse(local.tags || '[]');
+    } catch (e) {
+      tags = [];
     }
+
+    let amountNum = 0;
+    if (local.amount) {
+      const parsed = parseFloat(local.amount);
+      if (!isNaN(parsed)) {
+        amountNum = parsed;
+      }
+    }
+
+    const typeStr = local.type || 'expense';
+    const billType: BillType = typeStr === 'income' ? BillType.INCOME : BillType.EXPENSE;
+    const billCategory: BillCategory = (local.category || 'other_expense') as BillCategory;
+
+    const billData: BillData = {
+      id: parseInt(local.id) || 0,
+      localId: local.id, // 保存原始的本地ID
+      type: billType,
+      category: billCategory,
+      amount: amountNum,
+      description: local.description || '',
+      date: local.date ? new Date(local.date) : new Date(),
+      createTime: local.createTime ? new Date(local.createTime) : new Date(),
+      updateTime: local.updateTime ? new Date(local.updateTime) : new Date(),
+      tags: tags
+    };
+
+    return new Bill(billData);
   }
 
   /**
    * 创建账单
-   * 数据会立即存入本地，随后静默上传云端
+   * 离线优先：先存本地，后台静默同步
    */
   async createBill(bill: Bill): Promise<Bill> {
-    await this.ensureInitialized();
     try {
-      // 设置创建时间和更新时间
+      // 设置时间
       if (!bill.createTime) {
         bill.createTime = new Date();
       }
       bill.updateTime = new Date();
-      
-      // 转换为Cloud DB对象
-      const userId = CloudDBConverter.getCurrentUserId();
-      const cloudDBBill = CloudDBConverter.billToCloudDB(bill, userId);
-      
-      // 保存到Cloud DB（会自动同步到云端）
-      await this.cloudDBService.upsertBill(cloudDBBill);
-      
-      // 返回转换后的Bill对象（使用cloudDBBill的id）
-      return CloudDBConverter.cloudDBToBill(cloudDBBill);
+
+      // 转换为本地格式并保存
+      const localBill = this.billToLocal(bill, SyncStatus.PENDING);
+      await this.localDB.upsertBill(localBill);
+
+      hilog.info(DOMAIN, TAG, '账单已保存到本地: %{public}s', localBill.id);
+
+      // 触发后台同步（不阻塞）
+      this.triggerSync();
+
+      // 返回带有新ID的Bill
+      return this.localToBill(localBill);
     } catch (error) {
-      console.error('创建账单失败:', error);
+      hilog.error(DOMAIN, TAG, '创建账单失败: %{public}s', String(error));
       throw error instanceof Error ? error : new Error(String(error));
     }
   }
@@ -78,27 +141,38 @@ export class BillService {
    * 更新账单
    */
   async updateBill(bill: Bill): Promise<void> {
-    await this.ensureInitialized();
     try {
       bill.updateTime = new Date();
-      const userId = CloudDBConverter.getCurrentUserId();
-      const cloudDBBill = CloudDBConverter.billToCloudDB(bill, userId);
-      await this.cloudDBService.upsertBill(cloudDBBill);
+      const localBill = this.billToLocal(bill, SyncStatus.PENDING);
+      await this.localDB.upsertBill(localBill);
+
+      hilog.info(DOMAIN, TAG, '账单已更新: %{public}s', localBill.id);
+      this.triggerSync();
     } catch (error) {
-      console.error('更新账单失败:', error);
+      hilog.error(DOMAIN, TAG, '更新账单失败: %{public}s', String(error));
       throw error instanceof Error ? error : new Error(String(error));
     }
   }
 
   /**
-   * 删除账单
+   * 删除账单（标记删除）
+   * @param billOrId 可以是 Bill 对象或 localId 字符串
    */
-  async deleteBill(id: number): Promise<void> {
-    await this.ensureInitialized();
+  async deleteBill(billOrId: Bill | string): Promise<void> {
     try {
-      await this.cloudDBService.deleteBill(id.toString());
+      let localId: string;
+      if (typeof billOrId === 'string') {
+        localId = billOrId;
+      } else {
+        // 如果是 Bill 对象，优先使用 localId
+        localId = billOrId.localId || billOrId.id.toString();
+      }
+      
+      await this.localDB.deleteBill(localId);
+      hilog.info(DOMAIN, TAG, '账单已标记删除: %{public}s', localId);
+      this.triggerSync();
     } catch (error) {
-      console.error('删除账单失败:', error);
+      hilog.error(DOMAIN, TAG, '删除账单失败: %{public}s', String(error));
       throw error instanceof Error ? error : new Error(String(error));
     }
   }
@@ -107,15 +181,14 @@ export class BillService {
    * 获取账单
    */
   async getBillById(id: number): Promise<Bill | null> {
-    await this.ensureInitialized();
     try {
-      const cloudDBBill = await this.cloudDBService.queryBillById(id.toString());
-      if (!cloudDBBill) {
+      const localBill = await this.localDB.queryBillById(id.toString());
+      if (!localBill) {
         return null;
       }
-      return CloudDBConverter.cloudDBToBill(cloudDBBill);
+      return this.localToBill(localBill);
     } catch (error) {
-      console.error('获取账单失败:', error);
+      hilog.error(DOMAIN, TAG, '获取账单失败: %{public}s', String(error));
       return null;
     }
   }
@@ -124,12 +197,11 @@ export class BillService {
    * 获取所有账单
    */
   async getAllBills(): Promise<Bill[]> {
-    await this.ensureInitialized();
     try {
-      const cloudDBBills = await this.cloudDBService.queryAllBills();
-      return cloudDBBills.map(cloudDB => CloudDBConverter.cloudDBToBill(cloudDB));
+      const localBills = await this.localDB.queryAllBills();
+      return localBills.map(local => this.localToBill(local));
     } catch (error) {
-      console.error('获取账单列表失败:', error);
+      hilog.error(DOMAIN, TAG, '获取账单列表失败: %{public}s', String(error));
       return [];
     }
   }
@@ -138,27 +210,24 @@ export class BillService {
    * 根据类型获取账单
    */
   async getBillsByType(type: BillType): Promise<Bill[]> {
-    await this.ensureInitialized();
     try {
-      const cloudDBBills = await this.cloudDBService.queryBillsByType(type);
-      return cloudDBBills.map(cloudDB => CloudDBConverter.cloudDBToBill(cloudDB));
+      const localBills = await this.localDB.queryBillsByType(type);
+      return localBills.map(local => this.localToBill(local));
     } catch (error) {
-      console.error('获取账单列表失败:', error);
+      hilog.error(DOMAIN, TAG, '获取账单列表失败: %{public}s', String(error));
       return [];
     }
   }
 
   /**
    * 根据分类获取账单
-   * 注意：Cloud DB查询需要先获取所有账单，然后在内存中过滤
    */
   async getBillsByCategory(category: BillCategory): Promise<Bill[]> {
-    await this.ensureInitialized();
     try {
       const allBills = await this.getAllBills();
       return allBills.filter(bill => bill.category === category);
     } catch (error) {
-      console.error('获取账单列表失败:', error);
+      hilog.error(DOMAIN, TAG, '获取账单列表失败: %{public}s', String(error));
       return [];
     }
   }
@@ -167,20 +236,19 @@ export class BillService {
    * 获取指定日期的账单
    */
   async getBillsByDate(date: Date): Promise<Bill[]> {
-    await this.ensureInitialized();
     try {
-      const startDate = new Date(date);
-      startDate.setHours(0, 0, 0, 0);
-      const endDate = new Date(date);
-      endDate.setHours(23, 59, 59, 999);
-      
-      const cloudDBBills = await this.cloudDBService.queryBillsByDateRange(
-        startDate.toISOString(),
-        endDate.toISOString()
-      );
-      return cloudDBBills.map(cloudDB => CloudDBConverter.cloudDBToBill(cloudDB));
+      const allBills = await this.getAllBills();
+      const startOfDay = new Date(date);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(date);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      return allBills.filter(bill => {
+        const billTime = bill.date.getTime();
+        return billTime >= startOfDay.getTime() && billTime <= endOfDay.getTime();
+      });
     } catch (error) {
-      console.error('获取账单列表失败:', error);
+      hilog.error(DOMAIN, TAG, '获取账单列表失败: %{public}s', String(error));
       return [];
     }
   }
@@ -189,15 +257,17 @@ export class BillService {
    * 获取指定日期范围的账单
    */
   async getBillsByDateRange(startDate: Date, endDate: Date): Promise<Bill[]> {
-    await this.ensureInitialized();
     try {
-      const cloudDBBills = await this.cloudDBService.queryBillsByDateRange(
-        startDate.toISOString(),
-        endDate.toISOString()
-      );
-      return cloudDBBills.map(cloudDB => CloudDBConverter.cloudDBToBill(cloudDB));
+      const allBills = await this.getAllBills();
+      const startTime = startDate.getTime();
+      const endTime = endDate.getTime();
+
+      return allBills.filter(bill => {
+        const billTime = bill.date.getTime();
+        return billTime >= startTime && billTime <= endTime;
+      });
     } catch (error) {
-      console.error('获取账单列表失败:', error);
+      hilog.error(DOMAIN, TAG, '获取账单列表失败: %{public}s', String(error));
       return [];
     }
   }
@@ -206,8 +276,7 @@ export class BillService {
    * 获取今日账单
    */
   async getTodayBills(): Promise<Bill[]> {
-    const today = new Date();
-    return await this.getBillsByDate(today);
+    return await this.getBillsByDate(new Date());
   }
 
   /**
@@ -268,12 +337,12 @@ export class BillService {
       } else {
         bills = await this.getAllBills();
       }
-      
+
       // 如果指定了类型，过滤账单
       if (type) {
         bills = bills.filter(bill => bill.type === type);
       }
-      
+
       // 计算统计信息
       const stats = new DefaultBillStatistics();
       bills.forEach(bill => {
@@ -286,13 +355,30 @@ export class BillService {
         }
       });
       stats.netIncome = stats.totalIncome - stats.totalExpense;
-      
+
       return stats;
     } catch (error) {
-      console.error('获取统计信息失败:', error);
-      const defaultStats = new DefaultBillStatistics();
-      return defaultStats;
+      hilog.error(DOMAIN, TAG, '获取统计信息失败: %{public}s', String(error));
+      return new DefaultBillStatistics();
     }
   }
 
+  /**
+   * 触发后台同步（非阻塞）
+   */
+  private triggerSync(): void {
+    setTimeout(() => {
+      this.syncService.syncAll().catch((err: Error) => {
+        hilog.warn(DOMAIN, TAG, '后台同步失败（将在下次重试）: %{public}s', String(err));
+      });
+    }, 100);
+  }
+
+  /**
+   * 手动触发同步
+   */
+  async manualSync(): Promise<void> {
+    await this.syncService.syncAll();
+  }
 }
+

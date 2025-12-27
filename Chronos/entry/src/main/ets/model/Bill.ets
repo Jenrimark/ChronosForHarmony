@@ -36,6 +36,7 @@ export enum BillCategory {
  */
 export interface BillData {
   id?: number;
+  localId?: string; // 本地数据库ID（字符串格式）
   type?: BillType;
   category?: BillCategory;
   amount?: number;
@@ -66,6 +67,7 @@ export interface BillJSON {
  */
 export class Bill {
   id: number = 0;
+  localId: string = ''; // 本地数据库ID（字符串格式）
   type: BillType = BillType.EXPENSE;
   category: BillCategory = BillCategory.OTHER_EXPENSE;
   amount: number = 0;
@@ -78,6 +80,7 @@ export class Bill {
   constructor(data?: BillData) {
     if (data) {
       if (data.id !== undefined) this.id = data.id;
+      if (data.localId !== undefined) this.localId = data.localId;
       if (data.type !== undefined) this.type = data.type;
       if (data.category !== undefined) this.category = data.category;
       if (data.amount !== undefined) this.amount = data.amount;

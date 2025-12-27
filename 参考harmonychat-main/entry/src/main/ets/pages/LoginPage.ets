@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024  即时通讯网(52im.net) & Jack Jiang.
+ * Copyright (C) 2025  即时通讯网(52im.net) & Jack Jiang.
  * The MobileIMSDK-鸿蒙Next客户端 Project. All rights reserved.
  *
  * 联系邮件：jack.jiang@52im.net
@@ -292,7 +292,7 @@ struct LoginPage {
               .textAlign(TextAlign.Center)
               .margin({bottom: 5})
 
-              Text('Copyright © 2024 即时通讯网 / 52im.net')
+              Text('Copyright © 2025 即时通讯网 / 52im.net')
                 .fontSize(12)
                 .fontColor('#a0a2a6')
                 .lineHeight(14)

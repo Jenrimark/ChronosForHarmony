@@ -1,0 +1,42 @@
+{
+  "cloudDBZoneName": "ChronosZone",
+  "objectTypeName": "BillCloudDB",
+  "objects": [
+    {
+      "id": "bill_001",
+      "type": "expense",
+      "category": "餐饮",
+      "amount": "35.50",
+      "description": "午餐外卖",
+      "date": "2025-12-26",
+      "createTime": "2025-12-26T12:30:00",
+      "updateTime": "2025-12-26T12:30:00",
+      "tags": "外卖",
+      "userId": "user_123"
+    },
+    {
+      "id": "bill_002",
+      "type": "expense",
+      "category": "交通",
+      "amount": "15.00",
+      "description": "地铁通勤",
+      "date": "2025-12-26",
+      "createTime": "2025-12-26T08:00:00",
+      "updateTime": "2025-12-26T08:00:00",
+      "tags": "通勤",
+      "userId": "user_123"
+    },
+    {
+      "id": "bill_003",
+      "type": "income",
+      "category": "工资",
+      "amount": "15000.00",
+      "description": "12月工资",
+      "date": "2025-12-25",
+      "createTime": "2025-12-25T10:00:00",
+      "updateTime": "2025-12-25T10:00:00",
+      "tags": "收入",
+      "userId": "user_123"
+    }
+  ]
+}

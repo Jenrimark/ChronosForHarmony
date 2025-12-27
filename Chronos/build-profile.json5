@@ -5,13 +5,26 @@
         "name": "default",
         "type": "HarmonyOS",
         "material": {
-          "certpath": "C:\\Users\\user1\\.ohos\\config\\default_Chronos_QT79YiwGD__nbHIHhqEzzuYB--RR-G-CkJT9yqyPBOY=.cer",
+          "certpath": "C:\\Users\\user1\\.ohos\\config\\default_Chronos_9919CUon3PkiATj0qE78rUsdSghqEvW60zNG_MIhPg8=.cer",
           "keyAlias": "debugKey",
-          "keyPassword": "0000001A6AFAC2F291BD71B647C44387D256070CDB3A31D576495DAD3C0D54782C420FE0ED4AD5DB96EC",
-          "profile": "C:\\Users\\user1\\.ohos\\config\\default_Chronos_QT79YiwGD__nbHIHhqEzzuYB--RR-G-CkJT9yqyPBOY=.p7b",
+          "keyPassword": "0000001B2D240048970FBDE0BD4C7A8C07F212F3217285744140E5302AD5B0BDCF8285CEE8937E310D1400",
+          "profile": "C:\\Users\\user1\\.ohos\\config\\default_Chronos_9919CUon3PkiATj0qE78rUsdSghqEvW60zNG_MIhPg8=.p7b",
           "signAlg": "SHA256withECDSA",
-          "storeFile": "C:\\Users\\user1\\.ohos\\config\\default_Chronos_QT79YiwGD__nbHIHhqEzzuYB--RR-G-CkJT9yqyPBOY=.p12",
-          "storePassword": "0000001AE67C0D6C9DE477D6DF8E398AA4CFA86E4F7FF7ECB40CF3EAFD48FBDF66FC6BCCD8E5001940EC"
+          "storeFile": "C:\\Users\\user1\\.ohos\\config\\default_Chronos_9919CUon3PkiATj0qE78rUsdSghqEvW60zNG_MIhPg8=.p12",
+          "storePassword": "0000001B35A732850F6A6456EF672FF57F6F0B8F7BDFA6E5C267DEC75F8A1F99C5B3665B165CB5DBB51CA7"
+        }
+      },
+      {
+        "name": "release",
+        "type": "HarmonyOS",
+        "material": {
+          "certpath": "E:/CODE/Chronos/HarmonyAPP.cer",
+          "keyAlias": "HarmonyAPP",
+          "keyPassword": "0000001B5F966FDBD35D06F63FD01ABE86F93DA251B4A4FA09A67C11BD69BE4EA3E1B74D53F656A21CD0A9",
+          "profile": "E:/CODE/Chronos/ChronosRelease.p7b",
+          "signAlg": "SHA256withECDSA",
+          "storeFile": "E:/CODE/androidkey/APPKEY/HarmonyAPP.p12",
+          "storePassword": "0000001B2FED1960E4A22421195ED99B588AA172051FD53079C4256B93D661FB893D4215548220921FBCED"
         }
       }
     ],

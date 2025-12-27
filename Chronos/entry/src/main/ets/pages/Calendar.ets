@@ -285,7 +285,7 @@ export struct CalendarPage {
    * 删除任务
    */
   async onTaskDelete(task: Task): Promise<void> {
-    await this.taskService.deleteTask(task.id);
+    await this.taskService.deleteTask(task);
     await this.loadTasks();
   }
 

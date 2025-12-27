@@ -1,7 +1,6 @@
 import { Task, TaskData } from '../model/Task';
-import { TaskCloudDB } from '../model/clouddb/TaskCloudDB';
+import { TaskCloudDB, BillCloudDB } from '../service/CloudDBService';
 import { Bill, BillType, BillCategory, BillData } from '../model/Bill';
-import { BillCloudDB } from '../model/clouddb/BillCloudDB';
 
 /**
  * Cloud DB数据转换工具类
@@ -28,10 +27,10 @@ export class CloudDBConverter {
     cloudDB.description = task.description;
     cloudDB.status = task.status;
     cloudDB.priority = task.priority.toString();  // number -> string
-    cloudDB.dueDate = task.dueDate ? task.dueDate.toISOString() : undefined;
+    cloudDB.dueDate = task.dueDate ? task.dueDate.toISOString() : '';
     cloudDB.createTime = task.createTime.toISOString();
     cloudDB.updateTime = task.updateTime.toISOString();
-    cloudDB.completedTime = task.completedTime ? task.completedTime.toISOString() : undefined;
+    cloudDB.completedTime = task.completedTime ? task.completedTime.toISOString() : '';
     cloudDB.tags = JSON.stringify(task.tags || []);
     cloudDB.userld = odlUserId;  // 注意：数据库字段名是 userld（拼写错误）
     return cloudDB;

@@ -3,6 +3,25 @@ import { SmartParser, ParseResult } from '../../utils/SmartParser';
 import { Constants } from '../../common/Constants';
 
 /**
+ * DatePicker 返回值接口
+ */
+interface DatePickerValue {
+  year: number;
+  month: number;
+  day: number;
+  hour?: number;
+  minute?: number;
+}
+
+/**
+ * TimePicker 返回值接口
+ */
+interface TimePickerResult {
+  hour: number;
+  minute: number;
+}
+
+/**
  * 日程创建/编辑弹窗组件
  */
 @Component
@@ -22,10 +41,10 @@ export struct EventSheet {
   @State repeatRule: RepeatRule = RepeatRule.NONE;
   @State isImportant: boolean = false;
   @State smartInput: string = '';
-  @State showTimePicker: boolean = false;
-  @State isEditingStart: boolean = true;
   @State showReminderPicker: boolean = false;
   @State showRepeatPicker: boolean = false;
+  @State showTimePicker: boolean = false;
+  @State isEditingStart: boolean = true;
 
   private smartParser: SmartParser = SmartParser.getInstance();
   private isEditMode: boolean = false;
@@ -254,125 +273,391 @@ export struct EventSheet {
   }
 
   build() {
-    Column() {
-      // 头部
-      Row() {
-        Button('取消')
-          .type(ButtonType.Normal)
-          .backgroundColor(Color.Transparent)
-          .fontColor(Constants.COLOR_TEXT_SECONDARY)
-          .onClick(() => {
-            this.isShow = false;
-          })
-        
-        Blank()
-        
-        Text(this.isEditMode ? '编辑日程' : '新建日程')
-          .fontSize(17)
-          .fontWeight(FontWeight.Medium)
-          .fontColor(Constants.COLOR_TEXT_PRIMARY)
-        
-        Blank()
-        
-        Button('保存')
-          .type(ButtonType.Normal)
-          .backgroundColor(Color.Transparent)
-          .fontColor(this.validateForm() ? Constants.COLOR_PRIMARY : Constants.COLOR_TEXT_TERTIARY)
-          .onClick(() => {
-            this.saveEvent();
-          })
+    Stack() {
+      Column() {
+        // 头部
+        Row() {
+          Button('取消')
+            .type(ButtonType.Normal)
+            .backgroundColor(Color.Transparent)
+            .fontColor(Constants.COLOR_TEXT_SECONDARY)
+            .onClick(() => {
+              this.isShow = false;
+            })
+          
+          Blank()
+          
+          Text(this.isEditMode ? '编辑日程' : '新建日程')
+            .fontSize(17)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(Constants.COLOR_TEXT_PRIMARY)
+          
+          Blank()
+          
+          Button('保存')
+            .type(ButtonType.Normal)
+            .backgroundColor(Color.Transparent)
+            .fontColor(this.validateForm() ? Constants.COLOR_PRIMARY : Constants.COLOR_TEXT_TERTIARY)
+            .onClick(() => {
+              this.saveEvent();
+            })
+        }
+        .width('100%')
+        .padding({ left: 8, right: 8, top: 12, bottom: 12 })
+
+        Scroll() {
+          Column() {
+            // 智能输入
+            Row() {
+              Text('✨')
+                .fontSize(18)
+                .width(30)
+              
+              TextInput({ placeholder: '一句话智能创建日程（如：明天下午3点开会）', text: this.smartInput })
+                .layoutWeight(1)
+                .backgroundColor(Color.Transparent)
+                .onChange((value: string) => {
+                  this.onSmartInputChange(value);
+                })
+            }
+            .width('100%')
+            .padding({ left: 16, right: 16, top: 12, bottom: 12 })
+            .backgroundColor('#FFF8F5')
+            .borderRadius(8)
+            .margin({ bottom: 16 })
+
+            // 标题
+            this.buildInputRow('📝', '日程标题', this.title, (val: string) => {
+              this.title = val;
+            })
+
+            // 地点
+            this.buildInputRow('📍', '添加地点', this.location, (val: string) => {
+              this.location = val;
+            })
+
+            // 全天开关
+            this.buildToggleRow('🌅', '全天', this.isAllDay, (val: boolean) => {
+              this.isAllDay = val;
+            })
+
+            // 开始时间
+            this.buildSelectRow('🕐', '开始', 
+              this.isAllDay ? this.formatDate(this.startTime) : `${this.formatDate(this.startTime)} ${this.formatTime(this.startTime)}`,
+              () => {
+                this.isEditingStart = true;
+                this.showTimePicker = true;
+              })
+
+            // 结束时间
+            this.buildSelectRow('🕑', '结束',
+              this.isAllDay ? this.formatDate(this.endTime) : `${this.formatDate(this.endTime)} ${this.formatTime(this.endTime)}`,
+              () => {
+                this.isEditingStart = false;
+                this.showTimePicker = true;
+              })
+
+            // 提醒
+            this.buildSelectRow('🔔', '提醒', getReminderTypeText(this.reminderType), () => {
+              this.showReminderPicker = true;
+            })
+
+            // 重复
+            this.buildSelectRow('🔄', '重复', getRepeatRuleText(this.repeatRule), () => {
+              this.showRepeatPicker = true;
+            })
+
+            // 重要标记
+            this.buildToggleRow('⭐', '重要', this.isImportant, (val: boolean) => {
+              this.isImportant = val;
+            })
+
+            // 删除按钮（编辑模式）
+            if (this.isEditMode) {
+              Button('删除日程')
+                .type(ButtonType.Normal)
+                .width('100%')
+                .height(44)
+                .backgroundColor('#FFF0F0')
+                .fontColor(Constants.COLOR_DANGER)
+                .margin({ top: 24 })
+                .onClick(() => {
+                  this.deleteEvent();
+                })
+            }
+          }
+          .width('100%')
+          .padding({ left: 16, right: 16, bottom: 32 })
+        }
+        .layoutWeight(1)
       }
       .width('100%')
-      .padding({ left: 8, right: 8, top: 12, bottom: 12 })
+      .height('100%')
+      .backgroundColor(Constants.COLOR_BACKGROUND)
 
-      Scroll() {
+
+      // 提醒选择器
+      if (this.showReminderPicker) {
+        Column()
+          .width('100%')
+          .height('100%')
+          .backgroundColor('rgba(0,0,0,0.5)')
+          .onClick(() => {
+            this.showReminderPicker = false;
+          })
+        
         Column() {
-          // 智能输入
           Row() {
-            Text('✨')
-              .fontSize(18)
-              .width(30)
-            
-            TextInput({ placeholder: '一句话智能创建日程', text: this.smartInput })
-              .layoutWeight(1)
+            Button('取消')
+              .type(ButtonType.Normal)
               .backgroundColor(Color.Transparent)
-              .onChange((value: string) => {
-                this.onSmartInputChange(value);
+              .fontColor(Constants.COLOR_TEXT_SECONDARY)
+              .onClick(() => {
+                this.showReminderPicker = false;
+              })
+            
+            Blank()
+            
+            Text('选择提醒')
+              .fontSize(17)
+              .fontWeight(FontWeight.Medium)
+            
+            Blank()
+            
+            Button('确定')
+              .type(ButtonType.Normal)
+              .backgroundColor(Color.Transparent)
+              .fontColor(Constants.COLOR_PRIMARY)
+              .onClick(() => {
+                this.showReminderPicker = false;
               })
           }
           .width('100%')
           .padding({ left: 16, right: 16, top: 12, bottom: 12 })
-          .backgroundColor('#FFF8F5')
-          .borderRadius(8)
-          .margin({ bottom: 16 })
-
-          // 标题
-          this.buildInputRow('📝', '日程标题', this.title, (val: string) => {
-            this.title = val;
-          })
-
-          // 地点
-          this.buildInputRow('📍', '添加地点', this.location, (val: string) => {
-            this.location = val;
-          })
-
-          // 全天开关
-          this.buildToggleRow('🌅', '全天', this.isAllDay, (val: boolean) => {
-            this.isAllDay = val;
-          })
-
-          // 开始时间
-          this.buildSelectRow('🕐', '开始', 
-            this.isAllDay ? this.formatDate(this.startTime) : `${this.formatDate(this.startTime)} ${this.formatTime(this.startTime)}`,
-            () => {
-              this.isEditingStart = true;
-              this.showTimePicker = true;
+          
+          List() {
+            ForEach([
+              ReminderType.NONE,
+              ReminderType.AT_TIME,
+              ReminderType.FIVE_MIN,
+              ReminderType.TEN_MIN,
+              ReminderType.THIRTY_MIN,
+              ReminderType.ONE_HOUR,
+              ReminderType.ONE_DAY
+            ], (type: ReminderType) => {
+              ListItem() {
+                Row() {
+                  Text(getReminderTypeText(type))
+                    .fontSize(15)
+                    .fontColor(Constants.COLOR_TEXT_PRIMARY)
+                  
+                  Blank()
+                  
+                  if (this.reminderType === type) {
+                    Text('✓')
+                      .fontSize(18)
+                      .fontColor(Constants.COLOR_PRIMARY)
+                  }
+                }
+                .width('100%')
+                .padding({ left: 16, right: 16, top: 12, bottom: 12 })
+                .onClick(() => {
+                  this.reminderType = type;
+                  this.showReminderPicker = false;
+                })
+              }
             })
+          }
+          .width('100%')
+          .layoutWeight(1)
+        }
+        .width('100%')
+        .height(400)
+        .backgroundColor(Constants.COLOR_CARD_BACKGROUND)
+        .borderRadius({ topLeft: 20, topRight: 20 })
+        .position({ x: 0, y: '100%' })
+        .translate({ y: -400 })
+        .zIndex(1000)
+      }
 
-          // 结束时间
-          this.buildSelectRow('🕑', '结束',
-            this.isAllDay ? this.formatDate(this.endTime) : `${this.formatDate(this.endTime)} ${this.formatTime(this.endTime)}`,
-            () => {
-              this.isEditingStart = false;
-              this.showTimePicker = true;
-            })
-
-          // 提醒
-          this.buildSelectRow('🔔', '提醒', getReminderTypeText(this.reminderType), () => {
-            this.showReminderPicker = true;
+      // 重复选择器
+      if (this.showRepeatPicker) {
+        Column()
+          .width('100%')
+          .height('100%')
+          .backgroundColor('rgba(0,0,0,0.5)')
+          .onClick(() => {
+            this.showRepeatPicker = false;
           })
-
-          // 重复
-          this.buildSelectRow('🔄', '重复', getRepeatRuleText(this.repeatRule), () => {
-            this.showRepeatPicker = true;
-          })
-
-          // 重要标记
-          this.buildToggleRow('⭐', '重要', this.isImportant, (val: boolean) => {
-            this.isImportant = val;
-          })
-
-          // 删除按钮（编辑模式）
-          if (this.isEditMode) {
-            Button('删除日程')
+        
+        Column() {
+          Row() {
+            Button('取消')
               .type(ButtonType.Normal)
-              .width('100%')
-              .height(44)
-              .backgroundColor('#FFF0F0')
-              .fontColor(Constants.COLOR_DANGER)
-              .margin({ top: 24 })
+              .backgroundColor(Color.Transparent)
+              .fontColor(Constants.COLOR_TEXT_SECONDARY)
               .onClick(() => {
-                this.deleteEvent();
+                this.showRepeatPicker = false;
               })
+            
+            Blank()
+            
+            Text('选择重复')
+              .fontSize(17)
+              .fontWeight(FontWeight.Medium)
+            
+            Blank()
+            
+            Button('确定')
+              .type(ButtonType.Normal)
+              .backgroundColor(Color.Transparent)
+              .fontColor(Constants.COLOR_PRIMARY)
+              .onClick(() => {
+                this.showRepeatPicker = false;
+              })
+          }
+          .width('100%')
+          .padding({ left: 16, right: 16, top: 12, bottom: 12 })
+          
+          List() {
+            ForEach([
+              RepeatRule.NONE,
+              RepeatRule.DAILY,
+              RepeatRule.WEEKLY,
+              RepeatRule.MONTHLY,
+              RepeatRule.YEARLY
+            ], (rule: RepeatRule) => {
+              ListItem() {
+                Row() {
+                  Text(getRepeatRuleText(rule))
+                    .fontSize(15)
+                    .fontColor(Constants.COLOR_TEXT_PRIMARY)
+                  
+                  Blank()
+                  
+                  if (this.repeatRule === rule) {
+                    Text('✓')
+                      .fontSize(18)
+                      .fontColor(Constants.COLOR_PRIMARY)
+                  }
+                }
+                .width('100%')
+                .padding({ left: 16, right: 16, top: 12, bottom: 12 })
+                .onClick(() => {
+                  this.repeatRule = rule;
+                  this.showRepeatPicker = false;
+                })
+              }
+            })
+          }
+          .width('100%')
+          .layoutWeight(1)
+        }
+        .width('100%')
+        .height(300)
+        .backgroundColor(Constants.COLOR_CARD_BACKGROUND)
+        .borderRadius({ topLeft: 20, topRight: 20 })
+        .position({ x: 0, y: '100%' })
+        .translate({ y: -300 })
+        .zIndex(1000)
+      }
+
+      // 时间选择器
+      if (this.showTimePicker) {
+        Column()
+          .width('100%')
+          .height('100%')
+          .backgroundColor('rgba(0,0,0,0.5)')
+          .onClick(() => {
+            this.showTimePicker = false;
+          })
+        
+        Column() {
+          Row() {
+            Button('取消')
+              .type(ButtonType.Normal)
+              .backgroundColor(Color.Transparent)
+              .fontColor(Constants.COLOR_TEXT_SECONDARY)
+              .onClick(() => {
+                this.showTimePicker = false;
+              })
+            
+            Blank()
+            
+            Text(this.isAllDay ? '选择日期' : '选择日期时间')
+              .fontSize(17)
+              .fontWeight(FontWeight.Medium)
+            
+            Blank()
+            
+            Button('确定')
+              .type(ButtonType.Normal)
+              .backgroundColor(Color.Transparent)
+              .fontColor(Constants.COLOR_PRIMARY)
+              .onClick(() => {
+                this.showTimePicker = false;
+              })
+          }
+          .width('100%')
+          .padding({ left: 16, right: 16, top: 12, bottom: 12 })
+          
+          if (this.isAllDay) {
+            DatePicker({
+              start: new Date('1970-1-1'),
+              selected: this.isEditingStart ? this.startTime : this.endTime
+            })
+            .onChange((value: DatePickerValue) => {
+              const year = value.year;
+              const month = value.month - 1;
+              const day = value.day;
+              const selectedDate = new Date(year, month, day);
+              if (this.isEditingStart) {
+                this.startTime = selectedDate;
+                this.endTime = new Date(selectedDate);
+              } else {
+                this.endTime = selectedDate;
+              }
+            })
+          } else {
+            // 非全天模式，日期和时间在同一排显示（使用DatePicker同时选择日期和时间）
+            DatePicker({
+              start: new Date('1970-1-1'),
+              selected: this.isEditingStart ? this.startTime : this.endTime
+            })
+            .onChange((value: DatePickerValue) => {
+              const year = value.year;
+              const month = value.month - 1;
+              const day = value.day;
+              // DatePicker在非全天模式下应该返回hour和minute
+              const hour = value.hour !== undefined ? value.hour : (this.isEditingStart ? this.startTime.getHours() : this.endTime.getHours());
+              const minute = value.minute !== undefined ? value.minute : (this.isEditingStart ? this.startTime.getMinutes() : this.endTime.getMinutes());
+              const selectedDateTime = new Date(year, month, day, hour, minute);
+              if (this.isEditingStart) {
+                this.startTime = selectedDateTime;
+                if (this.endTime <= this.startTime) {
+                  this.endTime = new Date(this.startTime);
+                  this.endTime.setHours(this.startTime.getHours() + 1);
+                }
+              } else {
+                this.endTime = selectedDateTime;
+                if (this.endTime <= this.startTime) {
+                  this.endTime = new Date(this.startTime);
+                  this.endTime.setHours(this.startTime.getHours() + 1);
+                }
+              }
+            })
           }
         }
         .width('100%')
-        .padding({ left: 16, right: 16, bottom: 32 })
+        .height(400)
+        .backgroundColor(Constants.COLOR_CARD_BACKGROUND)
+        .borderRadius({ topLeft: 20, topRight: 20 })
+        .position({ x: 0, y: '100%' })
+        .translate({ y: -400 })
+        .zIndex(1000)
       }
-      .layoutWeight(1)
     }
     .width('100%')
     .height('100%')
-    .backgroundColor(Constants.COLOR_BACKGROUND)
   }
 }

@@ -1,10 +1,10 @@
 import { Constants } from '../common/Constants';
 import { AuthService, UserInfo } from '../service/AuthService';
-import { promptAction } from '@kit.ArkUI';
+import { promptAction, UIContext } from '@kit.ArkUI';
 import { hilog } from '@kit.PerformanceAnalysisKit';
-import { authentication } from '@kit.AccountKit';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { common } from '@kit.AbilityKit';
+import auth from '@hw-agconnect/auth';
 
 /**
  * 设置页面
@@ -19,15 +19,8 @@ export struct Settings {
   @State cacheSize: string = '计算中...';
 
   private authService: AuthService = AuthService.getInstance();
-  // AuthenticationController 需要在 aboutToAppear 中用 context 初始化
-  private authController: authentication.AuthenticationController | null = null;
 
   aboutToAppear() {
-    // 使用 UIAbilityContext 初始化 AuthenticationController
-    const context = getContext(this) as common.UIAbilityContext;
-    this.authController = new authentication.AuthenticationController(context);
-    hilog.info(0x0000, 'Settings', 'AuthenticationController 初始化完成');
-    
     // 异步加载用户信息，确保 AuthService 已初始化
     this.initAndLoadUserInfo();
     this.calculateCacheSize();
@@ -92,54 +85,25 @@ export struct Settings {
   }
 
   /**
-   * 获取用户头像昵称（使用 Account Kit 授权）
+   * 获取用户头像昵称（使用 Account Kit）
    */
   async fetchUserProfile(): Promise<void> {
     try {
       hilog.info(0x0000, 'Settings', '开始获取用户头像昵称...');
       
-      if (!this.authController) {
-        hilog.error(0x0000, 'Settings', 'AuthenticationController 未初始化');
-        return;
-      }
+      // 获取UIContext - 在组件中使用this.getUIContext()
+      const uiContext: UIContext = this.getUIContext();
       
-      // 创建授权请求，请求 profile scope 获取头像昵称
-      const authRequest = new authentication.HuaweiIDProvider().createAuthorizationWithHuaweiIDRequest();
-      authRequest.scopes = ['profile'];
-      // 设置为 true 会弹出授权页面引导用户授权
-      authRequest.forceAuthorization = true;
-      
-      hilog.info(0x0000, 'Settings', '执行授权请求...');
-      const response = await this.authController.executeRequest(authRequest);
-      
-      const authResponse = response as authentication.AuthorizationWithHuaweiIDResponse;
-      const credential = authResponse.data?.authorizationCode ? authResponse.data : null;
-      
-      if (authResponse.data) {
-        const nickName = authResponse.data.nickName || '';
-        const avatarUri = authResponse.data.avatarUri || '';
-        
-        hilog.info(0x0000, 'Settings', '获取到用户信息 - 昵称: %{public}s, 头像: %{public}s', 
-          nickName, avatarUri ? '有' : '无');
-        
-        // 更新用户信息
-        if (nickName || avatarUri) {
-          await this.authService.updateUserProfile(nickName, avatarUri);
-          // 刷新本地状态 - ArkTS不支持spread操作符，需要逐个赋值
-          if (this.userInfo) {
-            const updatedUser: UserInfo = {
-              uid: this.userInfo.uid,
-              displayName: nickName || this.userInfo.displayName,
-              avatarUri: avatarUri || this.userInfo.avatarUri,
-              email: this.userInfo.email,
-              phone: this.userInfo.phone
-            };
-            this.userInfo = updatedUser;
-          }
-        }
+      // 使用 Account Kit 获取头像昵称
+      const success = await this.authService.fetchUserProfileWithAccountKit(uiContext);
+      if (success) {
+        // 重新加载用户信息以更新UI
+        await this.loadUserInfo();
+        hilog.info(0x0000, 'Settings', '头像昵称获取成功');
       } else {
-        hilog.warn(0x0000, 'Settings', '授权响应中没有用户数据');
+        hilog.warn(0x0000, 'Settings', '头像昵称获取失败');
       }
+      
     } catch (error) {
       const err = error as BusinessError;
       hilog.error(0x0000, 'Settings', '获取头像昵称失败: Code: %{public}s, Message: %{public}s',
@@ -204,7 +168,7 @@ export struct Settings {
   }
 
   /**
-   * 清除所有数据
+   * 清除所有数据![1766826056702](image/Settings/1766826056702.png)![1766826061508](image/Settings/1766826061508.png)![1766826073260](image/Settings/1766826073260.png)![1766826078188](image/Settings/1766826078188.png)![1766826079196](image/Settings/1766826079196.png)![1766826079413](image/Settings/1766826079413.png)![1766826079591](image/Settings/1766826079591.png)![1766826079774](image/Settings/1766826079774.png)![1766826080003](image/Settings/1766826080003.png)![1766826080109](image/Settings/1766826080109.png)
    */
   clearAllData(): void {
     AlertDialog.show({
@@ -231,7 +195,7 @@ export struct Settings {
   showAbout(): void {
     AlertDialog.show({
       title: Constants.APP_NAME,
-      message: `版本：${this.appVersion}\n\n${Constants.APP_NAME}是一款集日历、任务管理、记账于一体的时间管理应用。\n\n帮助您更好地规划时间，提高效率。\n\n© 2024 辰序团队`,
+      message: `版本：${this.appVersion}\n\n${Constants.APP_NAME}是一款集日历、任务管理、记账于一体的时间管理应用。\n\n帮助您更好地规划时间，提高效率。\n\n© 2025 辰序团队`,
       confirm: {
         value: '确定',
         action: () => {}
@@ -245,7 +209,7 @@ export struct Settings {
   showFeedback(): void {
     AlertDialog.show({
       title: '反馈建议',
-      message: '如有问题或建议，请发送邮件至：\n\nfeedback@chronos.app\n\n我们会尽快回复您！',
+      message: '如有问题或建议，请发送邮件至：\n\n2303532728@qq.com\n\n我们会尽快回复您！',
       confirm: {
         value: '确定',
         action: () => {}
@@ -276,30 +240,43 @@ export struct Settings {
             // 已登录状态
             Row() {
               // 头像
-              if (this.userInfo.avatarUri) {
+              if (this.userInfo.avatarUri && this.userInfo.avatarUri.trim().length > 0) {
                 Image(this.userInfo.avatarUri)
                   .width(60)
                   .height(60)
                   .borderRadius(30)
+                  .alt('用户头像')
+                  .objectFit(ImageFit.Cover)
+                  .onError(() => {
+                    // 如果头像加载失败，使用默认头像
+                    hilog.warn(0x0000, 'Settings', '头像加载失败: %{public}s', this.userInfo?.avatarUri || '');
+                  })
               } else {
+                // 默认头像：显示用户名首字母
                 Column() {
-                  Text(this.userInfo.displayName.charAt(0).toUpperCase())
+                  Text((this.userInfo.displayName && this.userInfo.displayName.length > 0) 
+                    ? this.userInfo.displayName.charAt(0).toUpperCase() 
+                    : '用')
                     .fontSize(24)
                     .fontColor('#FFFFFF')
+                    .fontWeight(FontWeight.Bold)
                 }
                 .width(60)
                 .height(60)
                 .borderRadius(30)
                 .backgroundColor(Constants.COLOR_PRIMARY)
                 .justifyContent(FlexAlign.Center)
+                .alignItems(HorizontalAlign.Center)
               }
 
               // 用户信息
               Column() {
-                Text(this.userInfo.displayName)
+                Text(this.userInfo.displayName || '华为用户')
                   .fontSize(18)
                   .fontWeight(FontWeight.Bold)
                   .fontColor(Constants.COLOR_TEXT_PRIMARY)
+                  .maxLines(1)
+                  .textOverflow({ overflow: TextOverflow.Ellipsis })
                 Text('华为账号已登录')
                   .fontSize(14)
                   .fontColor(Constants.COLOR_TEXT_SECONDARY)
@@ -316,10 +293,12 @@ export struct Settings {
                 .backgroundColor('#F5F5F5')
                 .borderRadius(16)
                 .height(32)
+                .padding({ left: 16, right: 16 })
                 .onClick(() => this.handleLogout())
             }
             .width('100%')
             .padding(20)
+            .alignItems(VerticalAlign.Center)
           } else {
             // 未登录状态
             Column() {

@@ -21,6 +21,15 @@ interface BillGroup {
 }
 
 /**
+ * 分类项接口
+ */
+interface CategoryItem {
+  category: BillCategory;
+  icon: string;
+  name: string;
+}
+
+/**
  * AI记账页面 - 参考截图设计
  */
 @Component
@@ -33,8 +42,10 @@ export struct Accounting {
   @State monthIncome: number = 0;
   @State monthBalance: number = 0;
   
-  // 输入栏相关状态
-  @State showInputBar: boolean = false;
+  // 记账对话框状态
+  @State showAddBillDialog: boolean = false;
+  
+  // AI记账相关状态
   @State inputText: string = '';
   @State isRecording: boolean = false;
   @State isProcessing: boolean = false;
@@ -43,15 +54,18 @@ export struct Accounting {
   @State isLongPressing: boolean = false; // 是否正在长按
   private longPressTimer: number = 0; // 长按计时器ID
   
+  // 手动记账相关状态
+  @State selectedType: BillType = BillType.EXPENSE;
+  @State selectedCategory: BillCategory = BillCategory.FOOD;
+  @State amountText: string = '';
+  @State description: string = '';
+  
   // 账单详情
   @State selectedBill: Bill | null = null;
   @State showBillDetail: boolean = false;
   
   // 历史账单分组数据
   @State historyBillGroups: BillGroup[] = [];
-  
-  // 手动记账弹窗
-  @State showManualBillSheet: boolean = false;
   
   // 月预算相关状态
   @State monthBudget: number = 0;
@@ -60,7 +74,31 @@ export struct Accounting {
   private readonly BUDGET_KEY: string = 'month_budget';
   
   // 统计页面状态
-  @State showStatistics: boolean = false;  private billService: BillService = BillService.getInstance();
+  @State showStatistics: boolean = false;
+
+  // 支出分类列表
+  private expenseCategories: CategoryItem[] = [
+    { category: BillCategory.FOOD, icon: '🍔', name: '餐饮' },
+    { category: BillCategory.TRANSPORT, icon: '🚗', name: '交通' },
+    { category: BillCategory.SHOPPING, icon: '🛍️', name: '购物' },
+    { category: BillCategory.ENTERTAINMENT, icon: '🎬', name: '娱乐' },
+    { category: BillCategory.MEDICAL, icon: '🏥', name: '医疗' },
+    { category: BillCategory.EDUCATION, icon: '📚', name: '教育' },
+    { category: BillCategory.HOUSING, icon: '🏠', name: '住房' },
+    { category: BillCategory.UTILITIES, icon: '💡', name: '水电' },
+    { category: BillCategory.OTHER_EXPENSE, icon: '📝', name: '其他' }
+  ];
+
+  // 收入分类列表
+  private incomeCategories: CategoryItem[] = [
+    { category: BillCategory.SALARY, icon: '💰', name: '工资' },
+    { category: BillCategory.BONUS, icon: '🎁', name: '奖金' },
+    { category: BillCategory.INVESTMENT, icon: '📈', name: '投资' },
+    { category: BillCategory.GIFT, icon: '🎀', name: '礼金' },
+    { category: BillCategory.OTHER_INCOME, icon: '📝', name: '其他' }
+  ];
+
+  private billService: BillService = BillService.getInstance();
   private aiService: MimoAIService = MimoAIService.getInstance();
   private audioRecorderService: AudioRecorderService = AudioRecorderService.getInstance();
   private speechRecognitionService: SpeechRecognitionService = SpeechRecognitionService.getInstance();
@@ -176,11 +214,16 @@ export struct Accounting {
   }
 
   /**
-   * 点击加号 - 展开输入栏
+   * 显示添加账单对话框
    */
-  onAddButtonClick(): void {
-    this.showInputBar = true;
+  openAddBillDialog(): void {
+    this.showAddBillDialog = true;
     this.inputText = '';
+    // 重置手动记账表单
+    this.selectedType = BillType.EXPENSE;
+    this.selectedCategory = BillCategory.FOOD;
+    this.amountText = '';
+    this.description = '';
   }
 
   /**
@@ -206,8 +249,7 @@ export struct Accounting {
 
       // 开始录音
       await this.audioRecorderService.startRecording();
-    this.isRecording = true;
-    this.showInputBar = true;
+      this.isRecording = true;
       this.recordingDuration = 0;
       
       // 开始语音识别
@@ -322,7 +364,6 @@ export struct Accounting {
       this.isRecording = false;
       this.stopRecordingTimer();
       this.recordingDuration = 0;
-      this.showInputBar = false;
       console.info('取消录音');
     } catch (error) {
       console.error('取消录音失败:', error);
@@ -369,7 +410,6 @@ export struct Accounting {
       
       // 清空输入
       this.inputText = '';
-      this.showInputBar = false;
     } catch (error) {
       console.error('AI识别失败:', error);
       // TODO: 显示错误提示
@@ -379,18 +419,19 @@ export struct Accounting {
   }
 
   /**
-   * 关闭输入栏
+   * 关闭添加账单对话框
    */
-  async onCloseInputBar(): Promise<void> {
+  async closeAddBillDialog(): Promise<void> {
     // 如果正在录音，先取消录音
     if (this.isRecording) {
       await this.cancelRecording();
     }
-    this.showInputBar = false;
+    this.showAddBillDialog = false;
     this.inputText = '';
     this.isRecording = false;
     this.stopRecordingTimer();
     this.recordingDuration = 0;
+    this.resetManualForm();
   }
 
   /**
@@ -436,19 +477,44 @@ export struct Accounting {
   }
 
   /**
-   * 手动记账保存回调
+   * 手动记账保存
    */
-  async onManualBillSave(bill: Bill): Promise<void> {
+  async saveManualBill(): Promise<void> {
+    const amount = parseFloat(this.amountText);
+    if (isNaN(amount) || amount <= 0) {
+      promptAction.showToast({ message: '请输入有效金额' });
+      return;
+    }
+
+    const bill = new Bill();
+    bill.type = this.selectedType;
+    bill.category = this.selectedCategory;
+    bill.amount = amount;
+    bill.description = this.description;
+    bill.date = new Date();
+
     try {
       await this.billService.createBill(bill);
       await this.loadBills();
       await this.loadStatistics();
       promptAction.showToast({ message: '账单已保存' });
+      await this.closeAddBillDialog();
     } catch (error) {
       console.error('保存账单失败:', error);
       promptAction.showToast({ message: '保存失败，请重试' });
     }
   }
+
+  /**
+   * 重置手动记账表单
+   */
+  resetManualForm(): void {
+    this.selectedType = BillType.EXPENSE;
+    this.selectedCategory = BillCategory.FOOD;
+    this.amountText = '';
+    this.description = '';
+  }
+
 
   build() {
     Stack() {
@@ -459,51 +525,46 @@ export struct Accounting {
         })
       } else {
         Column() {
-          // 顶部统计卡片
-          this.buildSummaryCard()
+          // 顶部统计卡片 - 使用 flexShrink 而不是固定高度，让内容完整显示
+          Column() {
+            this.buildSummaryCard()
+          }
+          .flexShrink(0)
           
-          // 今天的账单列表
-          this.buildTodayBillsList()
+          // 增加间距，让账单部分往下移动
+          Blank()
+            .height(8)
           
-          // 历史账单列表
-          this.buildHistoryBillsList()
+          // 账单列表区域 - 可滚动
+          Scroll() {
+            Column() {
+              // 今天的账单列表
+              this.buildTodayBillsList()
+              
+              // 历史账单列表
+              this.buildHistoryBillsList()
+            }
+            .width('100%')
+          }
+          .layoutWeight(1)
+          .width('100%')
+          .scrollBar(BarState.Auto)
         }
         .width('100%')
-        .flexGrow(1)
+        .height('100%')
         .backgroundColor(Constants.COLOR_BACKGROUND)
 
         // 右下角加号按钮
         this.buildAddButton()
 
-        // 输入栏遮罩层和输入栏（点击加号时显示）
-        if (this.showInputBar) {
-          // 半透明遮罩层
-          Column()
-            .width('100%')
-            .height('100%')
-            .backgroundColor('#000000')
-            .opacity(0.3)
-            .onClick(() => {
-              this.onCloseInputBar();
-            })
-
-          // 输入栏
-          this.buildInputBar()
+        // 添加账单对话框
+        if (this.showAddBillDialog) {
+          this.buildAddBillDialog()
         }
 
         // 账单详情弹窗
         if (this.showBillDetail && this.selectedBill) {
           this.buildBillDetail()
-        }
-        
-        // 手动记账弹窗
-        if (this.showManualBillSheet) {
-          ManualBillSheet({
-            isShow: $showManualBillSheet,
-            onSave: async (bill: Bill) => {
-              await this.onManualBillSave(bill);
-            }
-          })
         }
         
         // 预算设置弹窗
@@ -585,48 +646,85 @@ export struct Accounting {
         .alignItems(HorizontalAlign.End)
       }
       .width('100%')
-      .margin({ bottom: 20 })
+      .margin({ bottom: 24 })
 
       // 月预算进度条（可点击设置）
       Column() {
         Row() {
           if (this.monthBudget > 0) {
-            Text(`月预算${this.getBudgetPercentage().toFixed(0)}%`)
-              .fontSize(13)
-              .fontColor(Constants.COLOR_TEXT_SECONDARY)
+            Column() {
+              Text('月预算')
+                .fontSize(12)
+                .fontColor(Constants.COLOR_TEXT_SECONDARY)
+              Text(`${this.getBudgetPercentage().toFixed(0)}%`)
+                .fontSize(18)
+                .fontWeight(FontWeight.Bold)
+                .fontColor(Constants.COLOR_PRIMARY)
+                .margin({ top: 4 })
+            }
+            .alignItems(HorizontalAlign.Start)
           } else {
-            Text('点击设置月预算')
-              .fontSize(13)
-              .fontColor(Constants.COLOR_PRIMARY)
+            Column() {
+              Text('月预算')
+                .fontSize(12)
+                .fontColor(Constants.COLOR_TEXT_SECONDARY)
+              Text('点击设置')
+                .fontSize(14)
+                .fontColor(Constants.COLOR_PRIMARY)
+                .margin({ top: 4 })
+            }
+            .alignItems(HorizontalAlign.Start)
           }
           
           Blank()
           
           if (this.monthBudget > 0) {
-            Text(`剩余 ¥${this.getBudgetRemaining().toFixed(2)}`)
-              .fontSize(13)
-              .fontColor(this.getBudgetRemaining() > 0 ? Constants.COLOR_TEXT_SECONDARY : Constants.COLOR_DANGER)
+            Column() {
+              Text('剩余')
+                .fontSize(12)
+                .fontColor(Constants.COLOR_TEXT_SECONDARY)
+              Text(`¥${this.getBudgetRemaining().toFixed(2)}`)
+                .fontSize(18)
+                .fontWeight(FontWeight.Bold)
+                .fontColor(this.getBudgetRemaining() > 0 ? Constants.COLOR_SUCCESS : Constants.COLOR_DANGER)
+                .margin({ top: 4 })
+            }
+            .alignItems(HorizontalAlign.End)
           } else {
-            Text('⚙️')
-              .fontSize(14)
+            Button('⚙️ 设置')
+              .type(ButtonType.Normal)
+              .fontSize(13)
+              .fontColor('#FFFFFF')
+              .backgroundColor(Constants.COLOR_PRIMARY)
+              .borderRadius(16)
+              .padding({ left: 16, right: 16, top: 8, bottom: 8 })
+              .onClick(() => {
+                this.budgetInputText = '';
+                this.showBudgetDialog = true;
+              })
           }
         }
         .width('100%')
-        .margin({ bottom: 10 })
+        .margin({ bottom: 16 })
 
-        // 进度条（使用Row模拟）
-        Row() {
-          Row()
-            .width(`${this.monthBudget > 0 ? this.getBudgetPercentage() : 0}%`)
-            .height(8)
-            .backgroundColor(this.getBudgetPercentage() >= 100 ? Constants.COLOR_DANGER : Constants.COLOR_PRIMARY)
-            .borderRadius(4)
-        }
+        // 使用 Progress 组件显示进度条
+        Progress({
+          value: this.monthBudget > 0 ? this.getBudgetPercentage() : 0,
+          total: 100
+        })
+        .color(this.monthBudget > 0 && this.getBudgetPercentage() >= 100 ? Constants.COLOR_DANGER : Constants.COLOR_PRIMARY)
+        .style({
+          borderWidth: 0,
+          enableScanEffect: false,
+          fontColor: Color.Transparent,
+          showDefaultPercentage: false
+        })
         .width('100%')
-        .height(8)
-        .backgroundColor(Constants.COLOR_BORDER)
-        .borderRadius(4)
+        .height(12)
+        .margin({ top: 4 })
       }
+      .width('100%')
+      .padding({ top: 16, bottom: 16 })
       .onClick(() => {
         this.budgetInputText = this.monthBudget > 0 ? this.monthBudget.toString() : '';
         this.showBudgetDialog = true;
@@ -839,69 +937,395 @@ export struct Accounting {
    */
   @Builder
   buildAddButton() {
-    Column() {
-      // 手动记账按钮（在加号按钮上方）
-      Button('📝')
-        .type(ButtonType.Circle)
-        .width(48)
-        .height(48)
-        .fontSize(22)
-        .fontColor(Constants.COLOR_TEXT_ON_PRIMARY)
-        .backgroundColor(Constants.COLOR_SUCCESS)
-        .shadow({
-          radius: 8,
-          color: 'rgba(255, 167, 38, 0.4)',
-          offsetX: 0,
-          offsetY: 2
-        })
-        .margin({ bottom: 12 })
-        .onClick(() => {
-          this.showManualBillSheet = true;
-        })
-
-      // AI记账按钮
-      Button('+')
-        .type(ButtonType.Circle)
-        .width(60)
-        .height(60)
-        .fontSize(36)
-        .fontWeight(FontWeight.Medium)
-        .fontColor(Constants.COLOR_TEXT_ON_PRIMARY)
-        .backgroundColor(this.isRecording ? Constants.COLOR_DANGER : Constants.COLOR_PRIMARY)
-        .shadow({
-          radius: 12,
-          color: this.isRecording ? 'rgba(230, 81, 0, 0.4)' : 'rgba(255, 107, 53, 0.4)',
-          offsetX: 0,
-          offsetY: 4
-        })
-        .onClick(() => {
-          if (this.isRecording) {
-            this.stopRecording();
-          } else if (!this.isLongPressing) {
-            this.onAddButtonClick();
+    // AI记账按钮
+    Button('+')
+      .type(ButtonType.Circle)
+      .width(60)
+      .height(60)
+      .fontSize(36)
+      .fontWeight(FontWeight.Medium)
+      .fontColor('#FFFFFF')
+      .backgroundColor(this.isRecording ? Constants.COLOR_DANGER : Constants.COLOR_PRIMARY)
+      .shadow({
+        radius: 12,
+        color: this.isRecording ? 'rgba(230, 81, 0, 0.4)' : 'rgba(255, 107, 53, 0.4)',
+        offsetX: 0,
+        offsetY: 4
+      })
+      .position({ x: '100%', y: '100%' })
+      .translate({ x: -76, y: -76 })
+      .zIndex(20)
+      .onClick(() => {
+        if (this.isRecording) {
+          this.stopRecording();
+        } else if (!this.isLongPressing) {
+          this.openAddBillDialog();
+        }
+        this.isLongPressing = false;
+      })
+      .onTouch((event) => {
+        if (event.type === 0 && !this.isRecording) {
+          const timerId = setTimeout(() => {
+            this.isLongPressing = true;
+            this.onAddButtonLongPress();
+          }, 500);
+          this.longPressTimer = timerId as number;
+        } else if (event.type === 1 || event.type === 3) {
+          if (this.longPressTimer) {
+            clearTimeout(this.longPressTimer);
+            this.longPressTimer = 0;
           }
           this.isLongPressing = false;
-        })
-        .onTouch((event) => {
-          if (event.type === 0 && !this.isRecording) {
-            const timerId = setTimeout(() => {
-              this.isLongPressing = true;
-              this.onAddButtonLongPress();
-            }, 500);
-            this.longPressTimer = timerId as number;
-          } else if (event.type === 1 || event.type === 3) {
-            if (this.longPressTimer) {
-              clearTimeout(this.longPressTimer);
-              this.longPressTimer = 0;
-            }
-            this.isLongPressing = false;
-          }
-        })
-    }
-    .position({ x: '100%', y: '100%' })
-    .translate({ x: -76, y: -140 })
-    .zIndex(20)
+        }
+      })
   }
+
+  /**
+   * 获取当前分类列表
+   */
+  getCurrentCategories(): CategoryItem[] {
+    return this.selectedType === BillType.EXPENSE
+      ? this.expenseCategories
+      : this.incomeCategories;
+  }
+
+  /**
+   * 构建添加账单对话框（参考Tasks界面）
+   */
+  @Builder
+  buildAddBillDialog() {
+    Column() {
+      Column() {
+        // 对话框标题
+        Text('记账')
+          .fontSize(22)
+          .fontWeight(FontWeight.Bold)
+          .fontColor(Constants.COLOR_TEXT_PRIMARY)
+          .margin({ bottom: 20 })
+
+        // 可滚动内容区域
+        Scroll() {
+          Column() {
+            // 类型切换
+            Text('类型')
+              .fontSize(15)
+              .fontWeight(FontWeight.Medium)
+              .fontColor(Constants.COLOR_TEXT_PRIMARY)
+              .margin({ bottom: 8 })
+              .alignSelf(ItemAlign.Start)
+
+            Row() {
+              this.buildTypeButton('支出', BillType.EXPENSE)
+              this.buildTypeButton('收入', BillType.INCOME)
+            }
+            .width('100%')
+            .justifyContent(FlexAlign.Center)
+            .margin({ bottom: 20 })
+
+            // 金额输入
+            Text(this.selectedType === BillType.EXPENSE ? '支出金额' : '收入金额')
+              .fontSize(15)
+              .fontWeight(FontWeight.Medium)
+              .fontColor(Constants.COLOR_TEXT_PRIMARY)
+              .margin({ bottom: 8 })
+              .alignSelf(ItemAlign.Start)
+
+            Row() {
+              Text('¥')
+                .fontSize(32)
+                .fontWeight(FontWeight.Bold)
+                .fontColor(Constants.COLOR_TEXT_PRIMARY)
+
+              TextInput({ placeholder: '0.00', text: this.amountText })
+                .type(InputType.NUMBER_DECIMAL)
+                .fontSize(32)
+                .fontWeight(FontWeight.Bold)
+                .fontColor(Constants.COLOR_TEXT_PRIMARY)
+                .backgroundColor('transparent')
+                .layoutWeight(1)
+                .onChange((value: string) => {
+                  this.amountText = value;
+                })
+            }
+            .width('100%')
+            .justifyContent(FlexAlign.Center)
+            .margin({ bottom: 20 })
+
+            // 分类选择
+            Column() {
+              Text('选择分类')
+                .fontSize(15)
+                .fontWeight(FontWeight.Medium)
+                .fontColor(Constants.COLOR_TEXT_PRIMARY)
+                .margin({ bottom: 12 })
+                .alignSelf(ItemAlign.Start)
+
+              this.buildCategoryGrid()
+            }
+            .width('100%')
+            .margin({ bottom: 20 })
+
+            // 备注输入
+            Text('备注（可选）')
+              .fontSize(15)
+              .fontWeight(FontWeight.Medium)
+              .fontColor(Constants.COLOR_TEXT_PRIMARY)
+              .margin({ bottom: 8 })
+              .alignSelf(ItemAlign.Start)
+
+            TextInput({ placeholder: '添加备注', text: this.description })
+              .width('100%')
+              .height(44)
+              .fontSize(15)
+              .backgroundColor(Constants.COLOR_BACKGROUND)
+              .borderRadius(12)
+              .padding({ left: 12, right: 12 })
+              .onChange((value: string) => {
+                this.description = value;
+              })
+            .margin({ bottom: 24 })
+
+            // 分隔线
+            Divider()
+              .color(Constants.COLOR_DIVIDER)
+              .margin({ bottom: 16 })
+
+            // AI记账区域
+            Text('AI记账')
+              .fontSize(15)
+              .fontWeight(FontWeight.Medium)
+              .fontColor(Constants.COLOR_TEXT_PRIMARY)
+              .margin({ bottom: 8 })
+              .alignSelf(ItemAlign.Start)
+
+            // 录音状态显示
+            if (this.isRecording) {
+              Row() {
+                // 录音动画指示器
+                Column() {
+                  Text('●')
+                    .fontSize(20)
+                    .fontColor(Constants.COLOR_DANGER)
+                }
+                .width(24)
+                .height(24)
+                .justifyContent(FlexAlign.Center)
+                .animation({
+                  iterations: -1,
+                  duration: 1000,
+                  curve: Curve.EaseInOut
+                })
+
+                // 录音时长
+                Text(`录音中 ${this.formatDuration(this.recordingDuration)}`)
+                  .fontSize(15)
+                  .fontWeight(FontWeight.Medium)
+                  .fontColor(Constants.COLOR_DANGER)
+                  .margin({ left: 10 })
+
+                Blank()
+
+                // 停止录音按钮
+                Button('停止')
+                  .type(ButtonType.Normal)
+                  .height(36)
+                  .fontSize(14)
+                  .fontWeight(FontWeight.Medium)
+                  .backgroundColor(Constants.COLOR_DANGER)
+                  .fontColor('#FFFFFF')
+                  .borderRadius(18)
+                  .padding({ left: 16, right: 16 })
+                  .margin({ left: 8 })
+                  .onClick(() => {
+                    this.stopRecording();
+                  })
+              }
+              .width('100%')
+              .padding(14)
+              .backgroundColor(Constants.COLOR_BACKGROUND)
+              .borderRadius(12)
+              .margin({ bottom: 12 })
+            }
+
+            // AI输入栏
+            Row() {
+              // 输入框
+              TextInput({ 
+                placeholder: this.isRecording ? '正在录音...' : '语音或文字输入，如：午餐15元',
+                text: this.inputText
+              })
+                .layoutWeight(1)
+                .height(44)
+                .fontSize(15)
+                .backgroundColor(Constants.COLOR_BACKGROUND)
+                .borderRadius(22)
+                .padding({ left: 16, right: 16 })
+                .enabled(!this.isRecording)
+                .onChange((value: string) => {
+                  this.inputText = value;
+                })
+
+              // 录音按钮
+              Button('🎤')
+                .type(ButtonType.Circle)
+                .width(44)
+                .height(44)
+                .fontSize(20)
+                .backgroundColor(Constants.COLOR_BACKGROUND)
+                .fontColor(Constants.COLOR_PRIMARY)
+                .margin({ left: 8 })
+                .enabled(!this.isProcessing && !this.isRecording)
+                .onClick(() => {
+                  this.onAddButtonLongPress();
+                })
+
+              // 发送按钮
+              Button('➤')
+                .type(ButtonType.Circle)
+                .width(44)
+                .height(44)
+                .fontSize(20)
+                .fontWeight(FontWeight.Medium)
+                .backgroundColor(Constants.COLOR_PRIMARY)
+                .fontColor('#FFFFFF')
+                .margin({ left: 8 })
+                .enabled(!this.isProcessing && !this.isRecording && this.inputText.trim().length > 0)
+                .onClick(() => {
+                  this.onSendInput();
+                })
+            }
+            .width('100%')
+          }
+          .width('100%')
+        }
+        .height(400)
+
+        // 操作按钮行
+        Row() {
+          Button('取消')
+            .type(ButtonType.Normal)
+            .layoutWeight(1)
+            .height(48)
+            .fontSize(16)
+            .fontWeight(FontWeight.Medium)
+            .backgroundColor(Constants.COLOR_BACKGROUND)
+            .fontColor(Constants.COLOR_TEXT_SECONDARY)
+            .borderRadius(12)
+            .onClick(() => {
+              this.closeAddBillDialog();
+            })
+
+          Button('保存')
+            .type(ButtonType.Normal)
+            .layoutWeight(1)
+            .height(48)
+            .fontSize(16)
+            .fontWeight(FontWeight.Medium)
+            .backgroundColor(Constants.COLOR_PRIMARY)
+            .fontColor(Constants.COLOR_TEXT_ON_PRIMARY)
+            .borderRadius(12)
+            .margin({ left: 16 })
+            .shadow({
+              radius: 8,
+              color: 'rgba(255, 107, 53, 0.3)',
+              offsetX: 0,
+              offsetY: 2
+            })
+            .onClick(() => {
+              this.saveManualBill();
+            })
+        }
+        .width('100%')
+        .justifyContent(FlexAlign.SpaceBetween)
+        .margin({ top: 16 })
+      }
+      .width('90%')
+      .padding(24)
+      .backgroundColor('#FFFFFF')
+      .borderRadius(20)
+      .shadow({
+        radius: 20,
+        color: 'rgba(0, 0, 0, 0.15)',
+        offsetX: 0,
+        offsetY: 8
+      })
+    }
+    .width('100%')
+    .height('100%')
+    .backgroundColor('rgba(0, 0, 0, 0.5)')
+    .justifyContent(FlexAlign.Center)
+    .onClick(() => {
+      this.closeAddBillDialog();
+    })
+  }
+
+  /**
+   * 构建类型切换按钮
+   */
+  @Builder
+  buildTypeButton(label: string, type: BillType) {
+    Button(label)
+      .type(ButtonType.Normal)
+      .width(100)
+      .height(40)
+      .fontSize(15)
+      .fontWeight(FontWeight.Medium)
+      .backgroundColor(this.selectedType === type ? Constants.COLOR_PRIMARY : Constants.COLOR_BACKGROUND)
+      .fontColor(this.selectedType === type ? '#FFFFFF' : Constants.COLOR_TEXT_SECONDARY)
+      .borderRadius(20)
+      .margin({ left: 8, right: 8 })
+      .onClick(() => {
+        this.selectedType = type;
+        // 切换类型时重置分类
+        if (type === BillType.EXPENSE) {
+          this.selectedCategory = BillCategory.FOOD;
+        } else {
+          this.selectedCategory = BillCategory.SALARY;
+        }
+      })
+  }
+
+  /**
+   * 构建分类网格
+   */
+  @Builder
+  buildCategoryGrid() {
+    Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start }) {
+      ForEach(this.getCurrentCategories(), (item: CategoryItem) => {
+        Column() {
+          Column() {
+            Text(item.icon)
+              .fontSize(24)
+          }
+          .width(50)
+          .height(50)
+          .backgroundColor(this.selectedCategory === item.category
+            ? (this.selectedType === BillType.EXPENSE ? 'rgba(255, 107, 53, 0.15)' : 'rgba(255, 167, 38, 0.15)')
+            : Constants.COLOR_BACKGROUND)
+          .borderRadius(25)
+          .justifyContent(FlexAlign.Center)
+          .border({
+            width: this.selectedCategory === item.category ? 2 : 0,
+            color: this.selectedType === BillType.EXPENSE ? Constants.COLOR_PRIMARY : Constants.COLOR_SUCCESS
+          })
+
+          Text(item.name)
+            .fontSize(12)
+            .fontColor(this.selectedCategory === item.category
+              ? Constants.COLOR_TEXT_PRIMARY
+              : Constants.COLOR_TEXT_SECONDARY)
+            .margin({ top: 6 })
+        }
+        .width('33.33%')
+        .padding(8)
+        .onClick(() => {
+          this.selectedCategory = item.category;
+        })
+      })
+    }
+    .width('100%')
+  }
+
 
   /**
    * 构建输入栏
@@ -975,23 +1399,30 @@ export struct Accounting {
             this.inputText = value;
           })
 
-        // 发送按钮
-        Button('发送')
-          .type(ButtonType.Normal)
+        // 录音按钮
+        Button('🎤')
+          .type(ButtonType.Circle)
+          .width(44)
           .height(44)
-          .fontSize(15)
+          .fontSize(20)
+          .backgroundColor(Constants.COLOR_BACKGROUND)
+          .fontColor(Constants.COLOR_PRIMARY)
+          .margin({ left: 8 })
+          .enabled(!this.isProcessing && !this.isRecording)
+          .onClick(() => {
+            this.onAddButtonLongPress();
+          })
+
+        // 发送按钮（箭头）
+        Button('➤')
+          .type(ButtonType.Circle)
+          .width(44)
+          .height(44)
+          .fontSize(20)
           .fontWeight(FontWeight.Medium)
           .backgroundColor(Constants.COLOR_PRIMARY)
-          .fontColor(Constants.COLOR_TEXT_ON_PRIMARY)
-          .borderRadius(22)
-          .padding({ left: 20, right: 20 })
-          .margin({ left: 10 })
-          .shadow({
-            radius: 6,
-            color: 'rgba(255, 107, 53, 0.3)',
-            offsetX: 0,
-            offsetY: 2
-          })
+          .fontColor('#FFFFFF')
+          .margin({ left: 8 })
           .enabled(!this.isProcessing && !this.isRecording && this.inputText.trim().length > 0)
           .onClick(() => {
             this.onSendInput();
@@ -1007,7 +1438,7 @@ export struct Accounting {
           .height(36)
           .margin({ left: 10 })
           .onClick(() => {
-            this.onCloseInputBar();
+            this.closeAddBillDialog();
           })
       }
       .width('100%')
@@ -1021,7 +1452,7 @@ export struct Accounting {
     .borderRadius({ topLeft: 20, topRight: 20 })
     .alignItems(HorizontalAlign.Start)
     .position({ x: 0, y: '100%' })
-    .translate({ y: this.isRecording ? -200 : -140 })
+    .translate({ y: this.isRecording ? -260 : -180 })
     .zIndex(100)
     .shadow({
       radius: 16,

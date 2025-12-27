@@ -31,6 +31,7 @@ export struct CalendarNewPage {
   @State events: CalendarEvent[] = [];
   @State allTasks: Task[] = [];
   @State selectedDateTasks: Task[] = [];
+  @State selectedDateEvents: CalendarEvent[] = [];
   @State selectedCalendarInfo: MxnzpHolidayData | null = null;
   @State isLoading: boolean = false;
   @State showDetail: boolean = false;
@@ -88,6 +89,14 @@ export struct CalendarNewPage {
       return Utils.isSameDay(task.dueDate, this.selectedDate);
     });
     this.selectedDateTasks = [...filtered];
+  }
+
+  /**
+   * 更新选中日期的日程事件
+   */
+  updateSelectedDateEvents(): void {
+    const filtered = this.events.filter(event => event.isOnDate(this.selectedDate));
+    this.selectedDateEvents = [...filtered];
   }
 
   /**
@@ -341,6 +350,73 @@ export struct CalendarNewPage {
     await this.eventService.deleteEvent(event.id);
     await this.loadEvents();
     this.updateCalendarDays();
+    this.updateSelectedDateEvents();
+  }
+
+  /**
+   * 构建日程项
+   */
+  @Builder
+  buildEventItem(event: CalendarEvent) {
+    Row() {
+      // 时间
+      Column() {
+        if (event.isAllDay) {
+          Text('全天')
+            .fontSize(12)
+            .fontColor(Constants.COLOR_TEXT_SECONDARY)
+        } else {
+          Text(Utils.formatDate(event.startTime, 'HH:mm'))
+            .fontSize(14)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(Constants.COLOR_PRIMARY)
+          if (event.endTime) {
+            Text(Utils.formatDate(event.endTime, 'HH:mm'))
+              .fontSize(12)
+              .fontColor(Constants.COLOR_TEXT_SECONDARY)
+              .margin({ top: 2 })
+          }
+        }
+      }
+      .width(60)
+      .alignItems(HorizontalAlign.Center)
+
+      // 日程信息
+      Column() {
+        Text(event.title)
+          .fontSize(16)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(Constants.COLOR_TEXT_PRIMARY)
+          .maxLines(2)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+        
+        if (event.location) {
+          Text(`📍 ${event.location}`)
+            .fontSize(13)
+            .fontColor(Constants.COLOR_TEXT_SECONDARY)
+            .margin({ top: 4 })
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+        }
+      }
+      .alignItems(HorizontalAlign.Start)
+      .layoutWeight(1)
+      .margin({ left: 12 })
+
+      // 重要标记
+      if (event.priority) {
+        Text('⭐')
+          .fontSize(18)
+      }
+    }
+    .width('100%')
+    .padding(16)
+    .backgroundColor(Constants.COLOR_CARD_BACKGROUND)
+    .borderRadius(12)
+    .margin({ bottom: 8 })
+    .onClick(() => {
+      this.editEvent(event);
+    })
   }
 
   /**
@@ -501,11 +577,11 @@ export struct CalendarNewPage {
           Column() {
             Text(this.selectedCalendarInfo.typeDes)
               .fontSize(14)
-              .fontColor(this.selectedCalendarInfo.type === 0 ? Constants.COLOR_TEXT_SECONDARY : Constants.COLOR_PRIMARY)
+              .fontColor(this.selectedCalendarInfo.type === 0 ? Constants.COLOR_TEXT_SECONDARY : '#FFFFFF')
               .fontWeight(FontWeight.Medium)
           }
           .padding({ left: 12, right: 12, top: 6, bottom: 6 })
-          .backgroundColor(this.selectedCalendarInfo.type === 0 ? '#F5F5F5' : Constants.COLOR_PRIMARY_LIGHT)
+          .backgroundColor(this.selectedCalendarInfo.type === 0 ? '#F5F5F5' : Constants.COLOR_PRIMARY)
           .borderRadius(16)
         }
       }
@@ -563,20 +639,7 @@ export struct CalendarNewPage {
         .margin({ left: 16, right: 16 })
 
       // 任务列表
-      if (this.selectedDateTasks.length === 0) {
-        Column() {
-          Text('📝')
-            .fontSize(40)
-            .opacity(0.3)
-          Text('这一天没有任务')
-            .fontSize(14)
-            .fontColor(Constants.COLOR_TEXT_SECONDARY)
-            .margin({ top: 12 })
-        }
-        .width('100%')
-        .height(120)
-        .justifyContent(FlexAlign.Center)
-      } else {
+      if (this.selectedDateTasks.length > 0) {
         Row() {
           Text('任务列表')
             .fontSize(15)
@@ -592,30 +655,74 @@ export struct CalendarNewPage {
         .width('100%')
         .padding({ left: 16, right: 16, top: 12, bottom: 8 })
 
-        List() {
+        Column() {
           ForEach(this.selectedDateTasks, (task: Task) => {
-            ListItem() {
-              TaskItem({
-                task: task,
-                onComplete: (t: Task) => this.onTaskComplete(t),
-                onDelete: (t: Task) => this.onTaskDelete(t),
-                onTap: (t: Task) => {
-                  console.info('点击任务:', t.title);
-                }
-              })
-            }
+            TaskItem({
+              task: task,
+              onTap: (task: Task) => {
+                // 点击任务的处理（可以打开详情或编辑）
+              },
+              onComplete: (task: Task) => {
+                this.onTaskComplete(task);
+              },
+              onDelete: (task: Task) => {
+                this.onTaskDelete(task);
+              }
+            })
+            .margin({ bottom: 8 })
           })
         }
         .width('100%')
-        .layoutWeight(1)
-        .padding({ left: 16, right: 16 })
+        .padding({ left: 16, right: 16, bottom: 16 })
+      }
+
+      // 日程列表
+      if (this.selectedDateEvents.length > 0) {
+        Row() {
+          Text('日程列表')
+            .fontSize(15)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(Constants.COLOR_TEXT_PRIMARY)
+          
+          Blank()
+          
+          Text(`共 ${this.selectedDateEvents.length} 项`)
+            .fontSize(12)
+            .fontColor(Constants.COLOR_TEXT_SECONDARY)
+        }
+        .width('100%')
+        .padding({ left: 16, right: 16, top: this.selectedDateTasks.length > 0 ? 12 : 12, bottom: 8 })
+
+        Column() {
+          ForEach(this.selectedDateEvents, (event: CalendarEvent) => {
+            this.buildEventItem(event)
+          })
+        }
+        .width('100%')
+        .padding({ left: 16, right: 16, bottom: 16 })
+      }
+
+      // 如果没有任务和日程，显示空状态
+      if (this.selectedDateTasks.length === 0 && this.selectedDateEvents.length === 0) {
+        Column() {
+          Text('📅')
+            .fontSize(40)
+            .opacity(0.3)
+          Text('这一天没有任务和日程')
+            .fontSize(14)
+            .fontColor(Constants.COLOR_TEXT_SECONDARY)
+            .margin({ top: 12 })
+        }
+        .width('100%')
+        .height(120)
+        .justifyContent(FlexAlign.Center)
       }
     }
     .width('100%')
-    .layoutWeight(1)
     .backgroundColor(Constants.COLOR_CARD_BACKGROUND)
     .borderRadius({ topLeft: 20, topRight: 20 })
     .padding({ bottom: 16 })
+    .flexShrink(0)
   }
 
   build() {
@@ -688,24 +795,33 @@ export struct CalendarNewPage {
             onMonthSelect: (year: number, month: number) => this.onMonthSelect(year, month)
           })
         } else if (this.currentView === CalendarViewType.MONTH) {
-          Column() {
-            this.buildMonthView()
-            
-            // 详情区域
-            if (this.showDetail) {
-              this.buildDetailSection()
-            } else {
+          Scroll() {
+            Column() {
+              // 日历视图
               Column() {
-                Text('点击日期查看详情')
-                  .fontSize(14)
-                  .fontColor(Constants.COLOR_TEXT_SECONDARY)
+                this.buildMonthView()
               }
-              .width('100%')
-              .layoutWeight(1)
-              .justifyContent(FlexAlign.Center)
+              .margin({ bottom: 12 })
+              
+              // 详情区域
+              if (this.showDetail) {
+                this.buildDetailSection()
+              } else {
+                Column() {
+                  Text('点击日期查看详情')
+                    .fontSize(14)
+                    .fontColor(Constants.COLOR_TEXT_SECONDARY)
+                }
+                .width('100%')
+                .height(200)
+                .justifyContent(FlexAlign.Center)
+              }
             }
+            .width('100%')
           }
           .layoutWeight(1)
+          .scrollBar(BarState.Off)
+          .edgeEffect(EdgeEffect.Spring)
         } else if (this.currentView === CalendarViewType.WEEK) {
           WeekView({
             selectedDate: $selectedDate,

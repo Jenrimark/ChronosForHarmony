@@ -67,7 +67,7 @@ export struct ManualBillSheet {
           this.isShow = false;
         })
 
-      // 弹窗内容
+      // 弹窗内容 - 从底部弹出，紧贴导航栏
       Column() {
         // 标题栏
         Row() {
@@ -96,99 +96,108 @@ export struct ManualBillSheet {
         .width('100%')
         .padding({ left: 16, right: 16, top: 16, bottom: 12 })
 
-        // 类型切换
-        Row() {
-          this.buildTypeButton('支出', BillType.EXPENSE)
-          this.buildTypeButton('收入', BillType.INCOME)
-        }
-        .width('100%')
-        .padding({ left: 16, right: 16, bottom: 16 })
-        .justifyContent(FlexAlign.Center)
+        // 可滚动内容区域
+        Scroll() {
+          Column() {
+            // 类型切换
+            Row() {
+              this.buildTypeButton('支出', BillType.EXPENSE)
+              this.buildTypeButton('收入', BillType.INCOME)
+            }
+            .width('100%')
+            .padding({ left: 16, right: 16, bottom: 16 })
+            .justifyContent(FlexAlign.Center)
 
-        // 金额输入
-        Column() {
-          Text(this.selectedType === BillType.EXPENSE ? '支出金额' : '收入金额')
-            .fontSize(14)
-            .fontColor(Constants.COLOR_TEXT_SECONDARY)
-            .margin({ bottom: 8 })
+            // 金额输入
+            Column() {
+              Text(this.selectedType === BillType.EXPENSE ? '支出金额' : '收入金额')
+                .fontSize(14)
+                .fontColor(Constants.COLOR_TEXT_SECONDARY)
+                .margin({ bottom: 8 })
 
-          Row() {
-            Text('¥')
-              .fontSize(32)
-              .fontWeight(FontWeight.Bold)
-              .fontColor(Constants.COLOR_TEXT_PRIMARY)
+              Row() {
+                Text('¥')
+                  .fontSize(32)
+                  .fontWeight(FontWeight.Bold)
+                  .fontColor(Constants.COLOR_TEXT_PRIMARY)
 
-            TextInput({ placeholder: '0.00', text: this.amountText })
-              .type(InputType.NUMBER_DECIMAL)
-              .fontSize(32)
-              .fontWeight(FontWeight.Bold)
-              .fontColor(Constants.COLOR_TEXT_PRIMARY)
-              .backgroundColor('transparent')
-              .layoutWeight(1)
-              .onChange((value: string) => {
-                this.amountText = value;
+                TextInput({ placeholder: '0.00', text: this.amountText })
+                  .type(InputType.NUMBER_DECIMAL)
+                  .fontSize(32)
+                  .fontWeight(FontWeight.Bold)
+                  .fontColor(Constants.COLOR_TEXT_PRIMARY)
+                  .backgroundColor('transparent')
+                  .layoutWeight(1)
+                  .onChange((value: string) => {
+                    this.amountText = value;
+                  })
+              }
+              .width('100%')
+              .justifyContent(FlexAlign.Center)
+            }
+            .width('100%')
+            .padding({ left: 16, right: 16, bottom: 20 })
+
+            // 分类选择
+            Column() {
+              Text('选择分类')
+                .fontSize(14)
+                .fontColor(Constants.COLOR_TEXT_SECONDARY)
+                .margin({ bottom: 12 })
+                .alignSelf(ItemAlign.Start)
+
+              this.buildCategoryGrid()
+            }
+            .width('100%')
+            .padding({ left: 16, right: 16, bottom: 16 })
+
+            // 备注输入
+            Column() {
+              Text('备注')
+                .fontSize(14)
+                .fontColor(Constants.COLOR_TEXT_SECONDARY)
+                .margin({ bottom: 8 })
+                .alignSelf(ItemAlign.Start)
+
+              TextInput({ placeholder: '添加备注（可选）', text: this.description })
+                .width('100%')
+                .height(44)
+                .fontSize(15)
+                .backgroundColor(Constants.COLOR_BACKGROUND)
+                .borderRadius(8)
+                .padding({ left: 12, right: 12 })
+                .onChange((value: string) => {
+                  this.description = value;
+                })
+            }
+            .width('100%')
+            .padding({ left: 16, right: 16, bottom: 24 })
+
+            // 保存按钮
+            Button('保存账单')
+              .type(ButtonType.Normal)
+              .width('90%')
+              .height(50)
+              .fontSize(16)
+              .fontWeight(FontWeight.Medium)
+              .backgroundColor(Constants.COLOR_PRIMARY)
+              .fontColor('#FFFFFF')
+              .borderRadius(25)
+              .onClick(() => {
+                this.saveBill();
               })
           }
           .width('100%')
-          .justifyContent(FlexAlign.Center)
         }
+        .layoutWeight(1)
         .width('100%')
-        .padding({ left: 16, right: 16, bottom: 20 })
-
-        // 分类选择
-        Column() {
-          Text('选择分类')
-            .fontSize(14)
-            .fontColor(Constants.COLOR_TEXT_SECONDARY)
-            .margin({ bottom: 12 })
-            .alignSelf(ItemAlign.Start)
-
-          this.buildCategoryGrid()
-        }
-        .width('100%')
-        .padding({ left: 16, right: 16, bottom: 16 })
-
-        // 备注输入
-        Column() {
-          Text('备注')
-            .fontSize(14)
-            .fontColor(Constants.COLOR_TEXT_SECONDARY)
-            .margin({ bottom: 8 })
-            .alignSelf(ItemAlign.Start)
-
-          TextInput({ placeholder: '添加备注（可选）', text: this.description })
-            .width('100%')
-            .height(44)
-            .fontSize(15)
-            .backgroundColor(Constants.COLOR_BACKGROUND)
-            .borderRadius(8)
-            .padding({ left: 12, right: 12 })
-            .onChange((value: string) => {
-              this.description = value;
-            })
-        }
-        .width('100%')
-        .padding({ left: 16, right: 16, bottom: 24 })
-
-        // 保存按钮
-        Button('保存账单')
-          .type(ButtonType.Normal)
-          .width('90%')
-          .height(50)
-          .fontSize(16)
-          .fontWeight(FontWeight.Medium)
-          .backgroundColor(Constants.COLOR_PRIMARY)
-          .fontColor('#FFFFFF')
-          .borderRadius(25)
-          .onClick(() => {
-            this.saveBill();
-          })
       }
       .width('100%')
+      .height('80%')
       .backgroundColor(Constants.COLOR_CARD_BACKGROUND)
       .borderRadius({ topLeft: 20, topRight: 20 })
       .position({ x: 0, y: '100%' })
-      .translate({ y: -480 })
+      .translate({ y: -56 })
     }
     .width('100%')
     .height('100%')

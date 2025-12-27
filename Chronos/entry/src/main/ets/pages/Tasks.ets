@@ -374,56 +374,60 @@ export struct Tasks {
         .padding({ left: 16, right: 16, top: 8, bottom: 12 })
         .justifyContent(FlexAlign.Start)
 
-        // 任务列表
-        if (this.filteredTasks.length === 0) {
-          Column() {
-            Text(this.searchKeyword ? '未找到匹配的任务' : '暂无任务')
-              .fontSize(16)
-              .fontColor(Constants.COLOR_TEXT_SECONDARY)
-          }
-          .width('100%')
-          .layoutWeight(1)
-          .justifyContent(FlexAlign.Center)
-        } else {
-          List() {
-            ForEach(this.filteredTasks, (task: Task) => {
-              ListItem() {
+        // 任务列表 - 可滚动区域
+        Scroll() {
+          if (this.filteredTasks.length === 0) {
+            Column() {
+              Text(this.searchKeyword ? '未找到匹配的任务' : '暂无任务')
+                .fontSize(16)
+                .fontColor(Constants.COLOR_TEXT_SECONDARY)
+            }
+            .width('100%')
+            .height('100%')
+            .justifyContent(FlexAlign.Center)
+            .padding({ top: 100 })
+          } else {
+            Column() {
+              ForEach(this.filteredTasks, (task: Task) => {
                 TaskItem({
                   task: task,
                   onComplete: (t: Task) => this.onTaskComplete(t),
                   onDelete: (t: Task) => this.onTaskDelete(t),
                   onTap: (t: Task) => this.onTaskTap(t)
                 })
-              }
-            })
+              })
+            }
+            .width('100%')
+            .padding({ left: 16, right: 16, bottom: 80 })
           }
-          .width('100%')
-          .layoutWeight(1)
-          .padding({ left: 16, right: 16 })
         }
-
-        // 添加按钮 - 悬浮样式
-        Button('+')
-          .type(ButtonType.Circle)
-          .width(60)
-          .height(60)
-          .fontSize(36)
-          .fontWeight(FontWeight.Medium)
-          .fontColor(Constants.COLOR_TEXT_ON_PRIMARY)
-          .backgroundColor(Constants.COLOR_PRIMARY)
-          .shadow({
-            radius: 12,
-            color: 'rgba(255, 107, 53, 0.4)',
-            offsetX: 0,
-            offsetY: 4
-          })
-          .margin({ right: 20, bottom: 20 })
-          .alignSelf(ItemAlign.End)
-          .onClick(() => this.showAddTaskDialog())
+        .width('100%')
+        .layoutWeight(1)
+        .scrollBar(BarState.Auto)
       }
       .width('100%')
-      .flexGrow(1)
+      .height('100%')
       .backgroundColor(Constants.COLOR_BACKGROUND)
+
+      // 添加按钮 - 悬浮在最上层
+      Button('+')
+        .type(ButtonType.Circle)
+        .width(60)
+        .height(60)
+        .fontSize(36)
+        .fontWeight(FontWeight.Medium)
+        .fontColor('#FFFFFF')
+        .backgroundColor(Constants.COLOR_PRIMARY)
+        .shadow({
+          radius: 12,
+          color: 'rgba(255, 107, 53, 0.4)',
+          offsetX: 0,
+          offsetY: 4
+        })
+        .position({ x: '100%', y: '100%' })
+        .translate({ x: -80, y: -80 })
+        .zIndex(1000)
+        .onClick(() => this.showAddTaskDialog())
 
       // 添加任务对话框
       if (this.showAddDialog) {
@@ -872,8 +876,8 @@ export struct Tasks {
           selectedDate: this.tempSelectedDate,
           tasks: [],
           holidays: [],
-          selectedDateChanged: $tempSelectedDate,
-          monthChangeTrigger: $monthChangeTrigger
+          selectedDateChanged: this.tempSelectedDate,
+          monthChangeTrigger: this.monthChangeTrigger
         })
         .width('100%')
         .margin({ bottom: 20 })

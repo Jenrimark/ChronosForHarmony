@@ -99,7 +99,7 @@ export struct DateCell {
       return Constants.COLOR_TEXT_TERTIARY;
     }
     if (this.day.isSelected) {
-      return Constants.COLOR_PRIMARY_DARK;
+      return '#FFFFFF'; // 选中时白色字体
     }
     if (this.day.isToday) {
       return Constants.COLOR_PRIMARY;
@@ -120,7 +120,7 @@ export struct DateCell {
    */
   getBackgroundColor(): ResourceColor {
     if (this.day.isSelected) {
-      return Constants.COLOR_PRIMARY_LIGHT;
+      return Constants.COLOR_PRIMARY; // 选中时使用主橙色
     }
     if (this.day.isToday) {
       return '#FFF0E8';

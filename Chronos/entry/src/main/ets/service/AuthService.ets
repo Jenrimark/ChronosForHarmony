@@ -4,6 +4,9 @@ import { BusinessError } from '@kit.BasicServicesKit';
 import { common } from '@kit.AbilityKit';
 import { buffer } from '@kit.ArkTS';
 import { preferences } from '@kit.ArkData';
+import { authentication } from '@kit.AccountKit';
+import { util } from '@kit.ArkTS';
+import { UIContext } from '@kit.ArkUI';
 
 const TAG = 'AuthService';
 const PREFERENCES_NAME = 'user_preferences';
@@ -198,6 +201,100 @@ export class AuthService {
       hilog.info(0x0000, TAG, '用户信息已更新 - 昵称: %{public}s', this.currentUser.displayName);
       // 保存到本地缓存
       await this.saveUserInfoToCache();
+    }
+  }
+
+  /**
+   * 通过Account Kit获取用户头像昵称
+   * @param uiContext UIContext对象，用于创建AuthenticationController
+   */
+  async fetchUserProfileWithAccountKit(uiContext: UIContext): Promise<boolean> {
+    try {
+      hilog.info(0x0000, TAG, '开始通过Account Kit获取头像昵称...');
+      
+      // 创建授权请求
+      const authRequest = new authentication.HuaweiIDProvider().createAuthorizationWithHuaweiIDRequest();
+      // 获取头像昵称需要传profile scope
+      authRequest.scopes = ['profile'];
+      // 元服务需传入supportAtomicService参数并设置为true
+      authRequest.supportAtomicService = true;
+      // 若开发者需要进行服务端开发以获取头像昵称，则需传如下permission获取authorizationCode
+      authRequest.permissions = ['serviceauthcode'];
+      // 用户是否需要登录授权，该值为true且用户未登录或未授权时，会拉起用户登录或授权页面
+      authRequest.forceAuthorization = true;
+      // 用于防跨站点请求伪造
+      authRequest.state = util.generateRandomUUID();
+
+      // 创建AuthenticationController - 需要传入Context，通过UIContext的getHostContext()获取
+      const controller = new authentication.AuthenticationController(uiContext.getHostContext());
+      
+      // 执行授权请求
+      const data = await controller.executeRequest(authRequest);
+      const authorizationWithHuaweiIDResponse = data as authentication.AuthorizationWithHuaweiIDResponse;
+      
+      // 验证state
+      const state = authorizationWithHuaweiIDResponse.state;
+      if (state && authRequest.state !== state) {
+        hilog.error(0x0000, TAG, '授权失败：state不匹配，response state: %{public}s', state);
+        return false;
+      }
+
+      hilog.info(0x0000, TAG, '授权成功');
+      
+      // 解析头像昵称
+      const authorizationWithHuaweiIDCredential = authorizationWithHuaweiIDResponse?.data;
+      const avatarUri = authorizationWithHuaweiIDCredential?.avatarUri;
+      const nickName = authorizationWithHuaweiIDCredential?.nickName;
+      
+      hilog.info(0x0000, TAG, '获取到头像: %{public}s, 昵称: %{public}s', 
+        avatarUri || '无', nickName || '无');
+
+      // 更新用户信息
+      if (this.currentUser) {
+        if (nickName && nickName.trim().length > 0) {
+          this.currentUser.displayName = nickName;
+        }
+        if (avatarUri && avatarUri.trim().length > 0) {
+          this.currentUser.avatarUri = avatarUri;
+        }
+        // 保存到本地缓存
+        await this.saveUserInfoToCache();
+        hilog.info(0x0000, TAG, '用户头像昵称已更新');
+        return true;
+      } else {
+        hilog.warn(0x0000, TAG, '当前没有登录用户，无法更新头像昵称');
+        return false;
+      }
+    } catch (error) {
+      const err = error as BusinessError;
+      this.handleAccountKitError(err);
+      return false;
+    }
+  }
+
+  /**
+   * 处理Account Kit错误
+   */
+  private handleAccountKitError(error: BusinessError): void {
+    const ERROR_CODE_LOGIN_OUT = 1001502001; // 账号未登录
+    const ERROR_CODE_NETWORK_ERROR = 1001502005; // 网络错误
+    const ERROR_CODE_USER_CANCEL = 1001502012; // 用户取消授权
+    const ERROR_CODE_SYSTEM_SERVICE = 12300001; // 系统服务异常
+    const ERROR_CODE_REQUEST_REFUSE = 1001500002; // 重复请求
+
+    if (error.code === ERROR_CODE_LOGIN_OUT) {
+      hilog.error(0x0000, TAG, '用户未登录华为账号，请登录华为账号并重试');
+    } else if (error.code === ERROR_CODE_NETWORK_ERROR) {
+      hilog.error(0x0000, TAG, '网络异常，请检查当前网络状态并重试');
+    } else if (error.code === ERROR_CODE_USER_CANCEL) {
+      hilog.warn(0x0000, TAG, '用户取消授权');
+    } else if (error.code === ERROR_CODE_SYSTEM_SERVICE) {
+      hilog.error(0x0000, TAG, '系统服务异常，请稍后重试');
+    } else if (error.code === ERROR_CODE_REQUEST_REFUSE) {
+      hilog.warn(0x0000, TAG, '重复请求，无需处理');
+    } else {
+      hilog.error(0x0000, TAG, '获取头像昵称失败: Code: %{public}s, Message: %{public}s',
+        String(error.code), String(error.message));
     }
   }
 

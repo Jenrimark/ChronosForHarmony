@@ -162,10 +162,12 @@ export struct DateCell {
             .margin({ left: this.day.eventCount > 0 ? 2 : 0 })
         }
         // 节假日标记
+        // dayType: 0=工作日, 1=休息日, 2=节假日
+        // 只有休息日和节假日才显示标记
         if (this.day.holiday && (this.day.holiday.dayType === 1 || this.day.holiday.dayType === 2)) {
-          Text(this.day.holiday.dayType === 2 ? '休' : '班')
+          Text('休')
             .fontSize(8)
-            .fontColor(this.day.holiday.dayType === 2 ? Constants.COLOR_DANGER : Constants.COLOR_WARNING)
+            .fontColor(Constants.COLOR_DANGER)
             .margin({ left: (this.day.taskCount > 0 || this.day.eventCount > 0) ? 2 : 0 })
         }
       }

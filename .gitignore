@@ -21,6 +21,8 @@ Thumbs.db
 # ============================================
 # 后端 (Spring Boot / Maven)
 # ============================================
+
+Back/
 Back/target/
 Back/.mvn/
 Back/mvnw

@@ -525,10 +525,15 @@ export struct CalendarPage {
       .width('100%')
       .padding({ left: 16, right: 16, top: 16, bottom: 8 })
 
-      // 宜忌信息
-      if (this.selectedCalendarInfo && (this.selectedCalendarInfo.suit || this.selectedCalendarInfo.avoid)) {
-        Column() {
-          if (this.selectedCalendarInfo.suit) {
+      // 宜忌信息（API数据源时显示）
+      // 简化条件：只要有suit或avoid字段且不为空就显示
+      if (this.selectedCalendarInfo) {
+        const hasSuit = this.selectedCalendarInfo.suit && this.selectedCalendarInfo.suit.trim().length > 0;
+        const hasAvoid = this.selectedCalendarInfo.avoid && this.selectedCalendarInfo.avoid.trim().length > 0;
+        
+        if (hasSuit || hasAvoid) {
+          Column() {
+            if (hasSuit) {
             Row() {
               Text('宜')
                 .fontSize(12)
@@ -536,11 +541,11 @@ export struct CalendarPage {
                 .backgroundColor(Constants.COLOR_SUCCESS)
                 .padding({ left: 6, right: 6, top: 2, bottom: 2 })
                 .borderRadius(4)
-              Text(this.selectedCalendarInfo.suit.replace(/\./g, ' '))
+              Text(this.selectedCalendarInfo.suit.replace(/\./g, ' ').trim())
                 .fontSize(12)
                 .fontColor(Constants.COLOR_TEXT_SECONDARY)
                 .margin({ left: 8 })
-                .maxLines(1)
+                .maxLines(2)
                 .textOverflow({ overflow: TextOverflow.Ellipsis })
                 .layoutWeight(1)
             }
@@ -548,7 +553,7 @@ export struct CalendarPage {
             .margin({ bottom: 4 })
           }
           
-          if (this.selectedCalendarInfo.avoid) {
+          if (hasAvoid) {
             Row() {
               Text('忌')
                 .fontSize(12)
@@ -556,11 +561,11 @@ export struct CalendarPage {
                 .backgroundColor(Constants.COLOR_DANGER)
                 .padding({ left: 6, right: 6, top: 2, bottom: 2 })
                 .borderRadius(4)
-              Text(this.selectedCalendarInfo.avoid.replace(/\./g, ' '))
+              Text(this.selectedCalendarInfo.avoid.replace(/\./g, ' ').trim())
                 .fontSize(12)
                 .fontColor(Constants.COLOR_TEXT_SECONDARY)
                 .margin({ left: 8 })
-                .maxLines(1)
+                .maxLines(2)
                 .textOverflow({ overflow: TextOverflow.Ellipsis })
                 .layoutWeight(1)
             }
@@ -569,6 +574,7 @@ export struct CalendarPage {
         }
         .width('100%')
         .padding({ left: 16, right: 16, bottom: 12 })
+        }
       }
 
       Divider()

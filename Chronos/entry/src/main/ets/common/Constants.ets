@@ -78,8 +78,14 @@ export class Constants {
   static readonly TIANAPI_HOLIDAY_URL: string = 'https://apis.tianapi.com/jiejiari/index';
   
   // mxnzp API配置（节假日及万年历接口）
-  static readonly MXNZP_APP_ID: string = 'ngeorpqtkeijibqu';
-  static readonly MXNZP_APP_SECRET: string = 'ZWJlWXFzc21KNjYzVG9iakdBT3cydz09';
-  static readonly MXNZP_HOLIDAY_URL: string = 'https://www.mxnzp.com/api/holiday/single';
+  static readonly MXNZP_APP_ID: string = 'fjltrolmimk0nafq';
+  static readonly MXNZP_APP_SECRET: string = 'S7ckQECIjhoMcDxBOyRSRXlafe0VxCBZ';
+  static readonly MXNZP_HOLIDAY_URL: string = 'https://www.mxnzp.com/api/holiday/list/year';
+  static readonly MXNZP_SINGLE_URL: string = 'https://www.mxnzp.com/api/holiday/single';
+  
+  // 数据源配置
+  static readonly PREF_CALENDAR_DATA_SOURCE: string = 'calendar_data_source'; // 0=本地数据, 1=API数据
+  static readonly DATA_SOURCE_LOCAL: number = 0;  // 本地数据
+  static readonly DATA_SOURCE_API: number = 1;     // API数据
 }
 

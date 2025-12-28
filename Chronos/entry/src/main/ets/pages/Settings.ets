@@ -1,5 +1,6 @@
 import { Constants } from '../common/Constants';
 import { AuthService, UserInfo } from '../service/AuthService';
+import { HolidayService } from '../service/HolidayService';
 import { promptAction, UIContext } from '@kit.ArkUI';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { BusinessError } from '@kit.BasicServicesKit';
@@ -17,13 +18,57 @@ export struct Settings {
   @State userInfo: UserInfo | null = null;
   @State isLoading: boolean = false;
   @State cacheSize: string = '计算中...';
+  @State calendarDataSource: number = Constants.DATA_SOURCE_LOCAL; // 0=本地数据, 1=API数据
+  @State isSwitchingDataSource: boolean = false; // 切换数据源时的加载状态
 
   private authService: AuthService = AuthService.getInstance();
+  private holidayService: HolidayService = HolidayService.getInstance();
 
   aboutToAppear() {
     // 异步加载用户信息，确保 AuthService 已初始化
     this.initAndLoadUserInfo();
     this.calculateCacheSize();
+    this.loadCalendarDataSource();
+  }
+
+  /**
+   * 加载日历数据源设置
+   */
+  loadCalendarDataSource(): void {
+    this.calendarDataSource = this.holidayService.getDataSource();
+  }
+
+  /**
+   * 切换日历数据源
+   */
+  async switchCalendarDataSource(value: boolean): Promise<void> {
+    const newSource = value ? Constants.DATA_SOURCE_API : Constants.DATA_SOURCE_LOCAL;
+    
+    if (newSource === this.calendarDataSource) {
+      return; // 没有变化，不需要切换
+    }
+
+    this.isSwitchingDataSource = true;
+    
+    try {
+      await this.holidayService.setDataSource(newSource);
+      this.calendarDataSource = newSource;
+      
+      const sourceName = newSource === Constants.DATA_SOURCE_LOCAL ? '本地数据' : 'API数据';
+      promptAction.showToast({ 
+        message: `已切换为${sourceName}，请刷新日历查看效果`,
+        duration: 2000
+      });
+      
+      hilog.info(0x0000, 'Settings', `日历数据源已切换为: ${sourceName}`);
+    } catch (error) {
+      console.error('切换数据源失败:', error);
+      promptAction.showToast({ message: '切换失败，请重试' });
+      // 恢复原状态
+      this.calendarDataSource = this.holidayService.getDataSource();
+    } finally {
+      this.isSwitchingDataSource = false;
+    }
   }
 
   /**
@@ -347,6 +392,11 @@ export struct Settings {
 
         // 设置项列表
         Column() {
+          // 日历数据源
+          this.buildDataSourceSwitchItem()
+
+          Divider().color('#E5E5EA').margin({ left: 16, right: 16 })
+
           // 数据管理
           this.buildSettingItem('数据管理', '备份和恢复数据', () => {
             this.showDataManagement();
@@ -419,5 +469,39 @@ export struct Settings {
     .width('100%')
     .padding(16)
     .onClick(() => onClick())
+  }
+
+  @Builder
+  buildDataSourceSwitchItem() {
+    Row() {
+      Column() {
+        Text('日历数据源')
+          .fontSize(16)
+          .fontColor(Constants.COLOR_TEXT_PRIMARY)
+        Text(this.calendarDataSource === Constants.DATA_SOURCE_LOCAL 
+          ? '使用本地日历数据（离线可用）' 
+          : '使用API日历数据（需要网络，数据更准确）')
+          .fontSize(14)
+          .fontColor(Constants.COLOR_TEXT_SECONDARY)
+          .margin({ top: 4 })
+      }
+      .alignItems(HorizontalAlign.Start)
+      .layoutWeight(1)
+
+      if (this.isSwitchingDataSource) {
+        LoadingProgress()
+          .width(20)
+          .height(20)
+      } else {
+        Toggle({ type: ToggleType.Switch, isOn: this.calendarDataSource === Constants.DATA_SOURCE_API })
+          .selectedColor(Constants.COLOR_PRIMARY)
+          .switchPointColor(Color.White)
+          .onChange((isOn: boolean) => {
+            this.switchCalendarDataSource(isOn);
+          })
+      }
+    }
+    .width('100%')
+    .padding(16)
   }
 }

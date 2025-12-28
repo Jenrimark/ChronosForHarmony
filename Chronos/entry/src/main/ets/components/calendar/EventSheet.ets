@@ -619,41 +619,73 @@ export struct EventSheet {
               }
             })
           } else {
-            // 非全天模式，日期和时间在同一排显示（使用DatePicker同时选择日期和时间）
-            DatePicker({
-              start: new Date('1970-1-1'),
-              selected: this.isEditingStart ? this.startTime : this.endTime
-            })
-            .onChange((value: DatePickerValue) => {
-              const year = value.year;
-              const month = value.month - 1;
-              const day = value.day;
-              // DatePicker在非全天模式下应该返回hour和minute
-              const hour = value.hour !== undefined ? value.hour : (this.isEditingStart ? this.startTime.getHours() : this.endTime.getHours());
-              const minute = value.minute !== undefined ? value.minute : (this.isEditingStart ? this.startTime.getMinutes() : this.endTime.getMinutes());
-              const selectedDateTime = new Date(year, month, day, hour, minute);
-              if (this.isEditingStart) {
-                this.startTime = selectedDateTime;
-                if (this.endTime <= this.startTime) {
-                  this.endTime = new Date(this.startTime);
-                  this.endTime.setHours(this.startTime.getHours() + 1);
+            // 非全天模式，需要同时选择日期和时间
+            Row() {
+              // 日期选择器
+              DatePicker({
+                start: new Date('1970-1-1'),
+                selected: this.isEditingStart ? this.startTime : this.endTime
+              })
+              .onChange((value: DatePickerValue) => {
+                const year = value.year;
+                const month = value.month - 1;
+                const day = value.day;
+                const currentTime = this.isEditingStart ? this.startTime : this.endTime;
+                const hour = currentTime.getHours();
+                const minute = currentTime.getMinutes();
+                const selectedDateTime = new Date(year, month, day, hour, minute);
+                if (this.isEditingStart) {
+                  this.startTime = selectedDateTime;
+                  if (this.endTime <= this.startTime) {
+                    this.endTime = new Date(this.startTime);
+                    this.endTime.setHours(this.startTime.getHours() + 1);
+                  }
+                } else {
+                  this.endTime = selectedDateTime;
+                  if (this.endTime <= this.startTime) {
+                    this.endTime = new Date(this.startTime);
+                    this.endTime.setHours(this.startTime.getHours() + 1);
+                  }
                 }
-              } else {
-                this.endTime = selectedDateTime;
-                if (this.endTime <= this.startTime) {
-                  this.endTime = new Date(this.startTime);
-                  this.endTime.setHours(this.startTime.getHours() + 1);
+              })
+              .layoutWeight(1)
+              
+              // 时间选择器
+              TimePicker({
+                selected: this.isEditingStart ? this.startTime : this.endTime
+              })
+              .onChange((value: TimePickerResult) => {
+                const currentDate = this.isEditingStart ? this.startTime : this.endTime;
+                const year = currentDate.getFullYear();
+                const month = currentDate.getMonth();
+                const day = currentDate.getDate();
+                const selectedDateTime = new Date(year, month, day, value.hour, value.minute);
+                if (this.isEditingStart) {
+                  this.startTime = selectedDateTime;
+                  if (this.endTime <= this.startTime) {
+                    this.endTime = new Date(this.startTime);
+                    this.endTime.setHours(this.startTime.getHours() + 1);
+                  }
+                } else {
+                  this.endTime = selectedDateTime;
+                  if (this.endTime <= this.startTime) {
+                    this.endTime = new Date(this.startTime);
+                    this.endTime.setHours(this.startTime.getHours() + 1);
+                  }
                 }
-              }
-            })
+              })
+              .layoutWeight(1)
+            }
+            .width('100%')
+            .height('100%')
           }
         }
         .width('100%')
-        .height(400)
+        .height(this.isAllDay ? 400 : 500)
         .backgroundColor(Constants.COLOR_CARD_BACKGROUND)
         .borderRadius({ topLeft: 20, topRight: 20 })
         .position({ x: 0, y: '100%' })
-        .translate({ y: -400 })
+        .translate({ y: this.isAllDay ? -400 : -500 })
         .zIndex(1000)
       }
     }

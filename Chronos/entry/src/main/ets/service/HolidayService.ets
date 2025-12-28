@@ -1,5 +1,10 @@
 import util from '@ohos.util';
+import { preferences } from '@kit.ArkData';
+import { http } from '@kit.NetworkKit';
+import { BusinessError } from '@kit.BasicServicesKit';
+import { Context } from '@kit.AbilityKit';
 import { Holiday, HolidayType, MxnzpHolidayData } from '../model/Holiday';
+import { Constants } from '../common/Constants';
 
 /**
  * 公历日期接口
@@ -43,7 +48,16 @@ interface ConstellationInfo {
 }
 
 /**
- * 节假日服务类 - 从本地 JSON 文件读取万年历信息
+ * mxnzp API响应格式
+ */
+interface MxnzpYearResponse {
+  code: number;
+  msg: string;
+  data?: MxnzpHolidayData[];
+}
+
+/**
+ * 节假日服务类 - 支持本地数据和API数据两种数据源
  */
 export class HolidayService {
   private static instance: HolidayService;
@@ -53,9 +67,13 @@ export class HolidayService {
   private localCalendarData: LocalCalendarData[] = [];
   private localDataMap: Map<string, LocalCalendarData> = new Map();
   private context: Context | null = null;
+  private dataSource: number = Constants.DATA_SOURCE_LOCAL; // 默认使用本地数据
+  private preferencesStore: preferences.Preferences | null = null;
+  private yearDataCache: Map<number, MxnzpHolidayData[]> = new Map(); // 按年份缓存API数据
 
-
-  private constructor() {}
+  private constructor() {
+    this.initPreferences();
+  }
 
   static getInstance(): HolidayService {
     if (!HolidayService.instance) {
@@ -65,10 +83,68 @@ export class HolidayService {
   }
 
   /**
+   * 初始化Preferences
+   */
+  private async initPreferences(): Promise<void> {
+    if (!this.context) {
+      // 如果context未设置，使用默认值
+      this.dataSource = Constants.DATA_SOURCE_LOCAL;
+      return;
+    }
+
+    try {
+      this.preferencesStore = await preferences.getPreferences(this.context, 'chronos_prefs');
+      // 读取数据源配置
+      const savedSource = await this.preferencesStore.get(Constants.PREF_CALENDAR_DATA_SOURCE, Constants.DATA_SOURCE_LOCAL);
+      this.dataSource = savedSource as number;
+      console.info(`HolidayService: 数据源设置为 ${this.dataSource === Constants.DATA_SOURCE_LOCAL ? '本地数据' : 'API数据'}`);
+    } catch (error) {
+      console.error('HolidayService: 初始化Preferences失败:', error);
+      this.dataSource = Constants.DATA_SOURCE_LOCAL; // 默认使用本地数据
+    }
+  }
+
+  /**
    * 设置应用上下文（用于读取资源文件）
    */
-  setContext(context: Context): void {
+  async setContext(context: Context): Promise<void> {
     this.context = context;
+    // 重新初始化Preferences
+    await this.initPreferences();
+  }
+
+  /**
+   * 获取当前数据源
+   */
+  getDataSource(): number {
+    return this.dataSource;
+  }
+
+  /**
+   * 设置数据源
+   * @param source 0=本地数据, 1=API数据
+   */
+  async setDataSource(source: number): Promise<void> {
+    if (source !== Constants.DATA_SOURCE_LOCAL && source !== Constants.DATA_SOURCE_API) {
+      console.error('HolidayService: 无效的数据源:', source);
+      return;
+    }
+
+    this.dataSource = source;
+    
+    // 保存到Preferences
+    if (this.preferencesStore) {
+      try {
+        await this.preferencesStore.put(Constants.PREF_CALENDAR_DATA_SOURCE, source);
+        await this.preferencesStore.flush();
+        console.info(`HolidayService: 数据源已切换为 ${source === Constants.DATA_SOURCE_LOCAL ? '本地数据' : 'API数据'}`);
+      } catch (error) {
+        console.error('HolidayService: 保存数据源配置失败:', error);
+      }
+    }
+
+    // 清空缓存，强制重新加载
+    this.clearCache();
   }
 
   /**
@@ -207,12 +283,23 @@ export class HolidayService {
    * 将本地数据转换为 MxnzpHolidayData 格式（兼容现有代码）
    */
   private convertToMxnzpFormat(localData: LocalCalendarData, dateKey: string): MxnzpHolidayData {
-    const weekDay = this.weekDayToNumber(localData.day);
-    const isWeekendDay = this.isWeekend(weekDay);
+    // 解析日期，直接判断星期几（更可靠）
+    const dateParts = dateKey.split('-');
+    const year = parseInt(dateParts[0]);
+    const month = parseInt(dateParts[1]) - 1; // 月份从0开始
+    const day = parseInt(dateParts[2]);
+    const date = new Date(year, month, day);
+    const jsWeekDay = date.getDay(); // JavaScript的getDay(): 0=周日, 6=周六
+    
+    // 判断是否是周末：周六(6)或周日(0)
+    const isWeekendDay = jsWeekDay === 0 || jsWeekDay === 6;
     
     // 判断类型：周末为休息日(1)，工作日为(0)
     const type = isWeekendDay ? 1 : 0;
     const typeDes = isWeekendDay ? '休息日' : '工作日';
+    
+    // 转换星期几为1-7格式（周一=1, 周日=7）
+    const weekDay = jsWeekDay === 0 ? 7 : jsWeekDay;
     
     const solarTermValue = localData.solarTerm ? localData.solarTerm : '无';
 
@@ -247,18 +334,27 @@ export class HolidayService {
       return this.holidaysCache.get(dateKey) as Holiday;
     }
 
-    // 确保本地数据已加载
-    await this.loadLocalData();
+    let mxnzpData: MxnzpHolidayData | null = null;
 
-    // 从本地数据查找
-    const localData = this.localDataMap.get(dateKey);
-    if (!localData) {
-      console.warn(`HolidayService: 未找到日期 ${dateKey} 的本地数据`);
+    // 根据数据源选择获取方式
+    if (this.dataSource === Constants.DATA_SOURCE_API) {
+      // 使用API获取数据
+      mxnzpData = await this.getDataFromAPI(date);
+    } else {
+      // 使用本地数据
+      await this.loadLocalData();
+      const localData = this.localDataMap.get(dateKey);
+      if (localData) {
+        mxnzpData = this.convertToMxnzpFormat(localData, dateKey);
+      } else {
+        console.warn(`HolidayService: 未找到日期 ${dateKey} 的本地数据`);
+      }
+    }
+
+    if (!mxnzpData) {
       return null;
     }
 
-    // 转换为兼容格式
-    const mxnzpData = this.convertToMxnzpFormat(localData, dateKey);
     const holiday = this.parseHolidayData(mxnzpData);
     
     // 缓存结果
@@ -269,17 +365,145 @@ export class HolidayService {
   }
 
   /**
+   * 从API获取数据
+   */
+  private async getDataFromAPI(date: Date): Promise<MxnzpHolidayData | null> {
+    const dateKey = this.getDateKey(date);
+    const year = date.getFullYear();
+
+    try {
+      // 检查年份缓存
+      if (!this.yearDataCache.has(year)) {
+        // 加载整年数据
+        await this.loadYearDataFromAPI(year);
+      }
+
+      const yearData = this.yearDataCache.get(year);
+      if (!yearData) {
+        console.warn(`HolidayService: 未找到 ${year} 年的API数据`);
+        // API失败时，降级到本地数据
+        return await this.getDataFromLocal(date);
+      }
+
+      // 查找指定日期的数据
+      const dayData = yearData.find(item => item.date === dateKey);
+      if (dayData) {
+        // API返回的数据应该包含suit和avoid字段
+        // 确保这些字段存在，如果API没有返回则使用空字符串
+        const result: MxnzpHolidayData = {
+          date: dayData.date,
+          weekDay: dayData.weekDay,
+          yearTips: dayData.yearTips || '',
+          type: dayData.type,
+          detailsType: dayData.detailsType,
+          typeDes: dayData.typeDes || '',
+          chineseZodiac: dayData.chineseZodiac || '',
+          solarTerms: dayData.solarTerms || '',
+          lunarCalendar: dayData.lunarCalendar || '',
+          suit: dayData.suit || '',  // 宜事项
+          avoid: dayData.avoid || '', // 忌事项
+          dayOfYear: dayData.dayOfYear || 0,
+          weekOfYear: dayData.weekOfYear || 0,
+          constellation: dayData.constellation || ''
+        };
+        
+        // 调试日志：检查suit和avoid字段
+        console.info(`HolidayService: ${dateKey} API数据 - suit: "${result.suit}", avoid: "${result.avoid}"`);
+        console.info(`HolidayService: ${dateKey} 完整数据:`, JSON.stringify(result));
+        
+        return result;
+      }
+
+      console.warn(`HolidayService: 未找到日期 ${dateKey} 的API数据`);
+      // API数据中找不到，降级到本地数据
+      return await this.getDataFromLocal(date);
+    } catch (error) {
+      console.error(`HolidayService: 从API获取数据失败:`, error);
+      // API失败时，降级到本地数据
+      return await this.getDataFromLocal(date);
+    }
+  }
+
+  /**
+   * 从本地数据获取（降级方案）
+   */
+  private async getDataFromLocal(date: Date): Promise<MxnzpHolidayData | null> {
+    const dateKey = this.getDateKey(date);
+    await this.loadLocalData();
+    const localData = this.localDataMap.get(dateKey);
+    if (localData) {
+      return this.convertToMxnzpFormat(localData, dateKey);
+    }
+    return null;
+  }
+
+  /**
+   * 从API加载整年数据
+   */
+  private async loadYearDataFromAPI(year: number): Promise<void> {
+    try {
+      const url = `${Constants.MXNZP_HOLIDAY_URL}/${year}?ignoreHoliday=false&app_id=${Constants.MXNZP_APP_ID}&app_secret=${Constants.MXNZP_APP_SECRET}`;
+      
+      console.info(`HolidayService: 正在从API加载 ${year} 年数据...`);
+      
+      const httpRequest = http.createHttp();
+      const response = await httpRequest.request(url, {
+        method: http.RequestMethod.GET,
+        connectTimeout: 10000,
+        readTimeout: 10000
+      });
+
+      if (response.responseCode !== 200) {
+        throw new Error(`API请求失败，状态码: ${response.responseCode}`);
+      }
+
+      const responseText = await response.result.toString();
+      const data: MxnzpYearResponse = JSON.parse(responseText);
+
+      if (data.code !== 1 || !data.data) {
+        throw new Error(`API返回错误: ${data.msg || '未知错误'}`);
+      }
+
+      // 调试：打印API返回的原始数据结构（前3条）
+      console.info(`HolidayService: API返回数据示例（前3条）:`);
+      for (let i = 0; i < Math.min(3, data.data.length); i++) {
+        const item = data.data[i];
+        console.info(`HolidayService: [${i}] date: ${item.date}, suit: "${item.suit}", avoid: "${item.avoid}"`);
+        console.info(`HolidayService: [${i}] 完整数据:`, JSON.stringify(item));
+      }
+
+      // 缓存整年数据
+      this.yearDataCache.set(year, data.data);
+      console.info(`HolidayService: 成功加载 ${year} 年数据，共 ${data.data.length} 条`);
+
+      httpRequest.destroy();
+    } catch (error) {
+      console.error(`HolidayService: 加载 ${year} 年API数据失败:`, error);
+      // ArkTS要求throw只能抛出Error类型
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      throw new Error(`加载 ${year} 年API数据失败: ${errorMessage}`);
+    }
+  }
+
+  /**
    * 获取指定日期的万年历信息
    */
   async getCalendarInfo(date: Date): Promise<MxnzpHolidayData | null> {
     const dateKey = this.getDateKey(date);
     
     if (this.calendarCache.has(dateKey)) {
-      return this.calendarCache.get(dateKey) as MxnzpHolidayData;
+      const cached = this.calendarCache.get(dateKey) as MxnzpHolidayData;
+      console.info(`HolidayService: ${dateKey} 从缓存获取 - suit: "${cached.suit}", avoid: "${cached.avoid}"`);
+      return cached;
     }
 
+    // 如果缓存中没有，先获取数据
     await this.getHolidayByDate(date);
-    return this.calendarCache.get(dateKey) || null;
+    const result = this.calendarCache.get(dateKey) || null;
+    if (result) {
+      console.info(`HolidayService: ${dateKey} 获取后 - suit: "${result.suit}", avoid: "${result.avoid}"`);
+    }
+    return result;
   }
 
   /**
@@ -354,8 +578,8 @@ export class HolidayService {
       solarTerms: data.solarTerms,
       constellation: data.constellation,
       chineseZodiac: data.chineseZodiac,
-      suit: data.suit,
-      avoid: data.avoid,
+      suit: data.suit || '',  // 确保有值，API返回的宜事项
+      avoid: data.avoid || '', // 确保有值，API返回的忌事项
       yearTips: data.yearTips,
       weekDay: data.weekDay
     });
@@ -367,6 +591,8 @@ export class HolidayService {
   clearCache(): void {
     this.holidaysCache.clear();
     this.calendarCache.clear();
+    this.yearDataCache.clear(); // 同时清空API年份缓存
+    console.info('HolidayService: 缓存已清空');
   }
 
   /**

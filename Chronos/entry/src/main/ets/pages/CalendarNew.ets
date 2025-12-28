@@ -112,31 +112,13 @@ export struct CalendarNewPage {
     return this.solarTermsList.includes(solarTerms);
   }
 
-  /**
-   * 完成任务
-   */
-  async onTaskComplete(task: Task): Promise<void> {
-    if (task.status === Constants.TASK_STATUS_COMPLETED) {
-      await this.taskService.uncompleteTask(task);
-    } else {
-      await this.taskService.completeTask(task);
-    }
-    await this.loadTasks();
-  }
-
-  /**
-   * 删除任务
-   */
-  async onTaskDelete(task: Task): Promise<void> {
-    await this.taskService.deleteTask(task);
-    await this.loadTasks();
-  }
 
   /**
    * 加载日程事件
    */
   async loadEvents(): Promise<void> {
     this.events = await this.eventService.getAllEvents();
+    this.updateSelectedDateEvents();
   }
 
   /**
@@ -166,7 +148,17 @@ export struct CalendarNewPage {
    */
   async loadSelectedDateInfo(): Promise<void> {
     this.selectedCalendarInfo = await this.holidayService.getCalendarInfo(this.selectedDate);
+    
+    // 调试日志
+    if (this.selectedCalendarInfo) {
+      console.info(`CalendarNew: 选中日期信息 - suit: "${this.selectedCalendarInfo.suit}", avoid: "${this.selectedCalendarInfo.avoid}"`);
+      console.info(`CalendarNew: 完整calendarInfo:`, JSON.stringify(this.selectedCalendarInfo));
+    } else {
+      console.warn('CalendarNew: selectedCalendarInfo 为 null');
+    }
+    
     this.updateSelectedDateTasks();
+    this.updateSelectedDateEvents();
     this.showDetail = true;
   }
 
@@ -407,7 +399,21 @@ export struct CalendarNewPage {
       if (event.priority) {
         Text('⭐')
           .fontSize(18)
+          .margin({ right: 8 })
       }
+
+      // 删除按钮
+      Button() {
+        Text('🗑️')
+          .fontSize(18)
+      }
+      .type(ButtonType.Normal)
+      .backgroundColor(Color.Transparent)
+      .width(40)
+      .height(40)
+      .onClick(() => {
+        this.onEventDelete(event);
+      })
     }
     .width('100%')
     .padding(16)
@@ -417,6 +423,34 @@ export struct CalendarNewPage {
     .onClick(() => {
       this.editEvent(event);
     })
+  }
+
+  /**
+   * 删除日程
+   */
+  async onEventDelete(event: CalendarEvent): Promise<void> {
+    await this.deleteEvent(event);
+  }
+
+  /**
+   * 完成任务
+   */
+  async onTaskComplete(task: Task): Promise<void> {
+    task.status = Constants.TASK_STATUS_COMPLETED;
+    await this.taskService.updateTask(task);
+    await this.loadTasks();
+    this.updateSelectedDateTasks();
+    this.updateCalendarDays();
+  }
+
+  /**
+   * 删除任务
+   */
+  async onTaskDelete(task: Task): Promise<void> {
+    await this.taskService.deleteTask(task.localId);
+    await this.loadTasks();
+    this.updateSelectedDateTasks();
+    this.updateCalendarDays();
   }
 
   /**
@@ -588,10 +622,12 @@ export struct CalendarNewPage {
       .width('100%')
       .padding({ left: 16, right: 16, top: 16, bottom: 8 })
 
-      // 宜忌信息
-      if (this.selectedCalendarInfo && (this.selectedCalendarInfo.suit || this.selectedCalendarInfo.avoid)) {
+      // 宜忌信息（API数据源时显示）
+      if (this.selectedCalendarInfo && 
+          (this.selectedCalendarInfo.suit && this.selectedCalendarInfo.suit.trim() || 
+           this.selectedCalendarInfo.avoid && this.selectedCalendarInfo.avoid.trim())) {
         Column() {
-          if (this.selectedCalendarInfo.suit) {
+          if (this.selectedCalendarInfo.suit && this.selectedCalendarInfo.suit.trim()) {
             Row() {
               Text('宜')
                 .fontSize(12)
@@ -599,11 +635,11 @@ export struct CalendarNewPage {
                 .backgroundColor(Constants.COLOR_SUCCESS)
                 .padding({ left: 6, right: 6, top: 2, bottom: 2 })
                 .borderRadius(4)
-              Text(this.selectedCalendarInfo.suit.replace(/\./g, ' '))
+              Text(this.selectedCalendarInfo.suit.replace(/\./g, ' ').trim())
                 .fontSize(12)
                 .fontColor(Constants.COLOR_TEXT_SECONDARY)
                 .margin({ left: 8 })
-                .maxLines(1)
+                .maxLines(2)
                 .textOverflow({ overflow: TextOverflow.Ellipsis })
                 .layoutWeight(1)
             }
@@ -611,7 +647,7 @@ export struct CalendarNewPage {
             .margin({ bottom: 4 })
           }
           
-          if (this.selectedCalendarInfo.avoid) {
+          if (this.selectedCalendarInfo.avoid && this.selectedCalendarInfo.avoid.trim()) {
             Row() {
               Text('忌')
                 .fontSize(12)
@@ -619,11 +655,11 @@ export struct CalendarNewPage {
                 .backgroundColor(Constants.COLOR_DANGER)
                 .padding({ left: 6, right: 6, top: 2, bottom: 2 })
                 .borderRadius(4)
-              Text(this.selectedCalendarInfo.avoid.replace(/\./g, ' '))
+              Text(this.selectedCalendarInfo.avoid.replace(/\./g, ' ').trim())
                 .fontSize(12)
                 .fontColor(Constants.COLOR_TEXT_SECONDARY)
                 .margin({ left: 8 })
-                .maxLines(1)
+                .maxLines(2)
                 .textOverflow({ overflow: TextOverflow.Ellipsis })
                 .layoutWeight(1)
             }
@@ -637,6 +673,32 @@ export struct CalendarNewPage {
       Divider()
         .color(Constants.COLOR_DIVIDER)
         .margin({ left: 16, right: 16 })
+
+      // 日程列表（在任务列表之前）
+      if (this.selectedDateEvents.length > 0) {
+        Row() {
+          Text('日程安排')
+            .fontSize(15)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(Constants.COLOR_TEXT_PRIMARY)
+          
+          Blank()
+          
+          Text(`共 ${this.selectedDateEvents.length} 项`)
+            .fontSize(12)
+            .fontColor(Constants.COLOR_TEXT_SECONDARY)
+        }
+        .width('100%')
+        .padding({ left: 16, right: 16, top: 12, bottom: 8 })
+
+        Column() {
+          ForEach(this.selectedDateEvents, (event: CalendarEvent) => {
+            this.buildEventItem(event)
+          })
+        }
+        .width('100%')
+        .padding({ left: 16, right: 16, bottom: 16 })
+      }
 
       // 任务列表
       if (this.selectedDateTasks.length > 0) {
@@ -653,7 +715,7 @@ export struct CalendarNewPage {
             .fontColor(Constants.COLOR_TEXT_SECONDARY)
         }
         .width('100%')
-        .padding({ left: 16, right: 16, top: 12, bottom: 8 })
+        .padding({ left: 16, right: 16, top: this.selectedDateEvents.length > 0 ? 12 : 12, bottom: 8 })
 
         Column() {
           ForEach(this.selectedDateTasks, (task: Task) => {
@@ -670,32 +732,6 @@ export struct CalendarNewPage {
               }
             })
             .margin({ bottom: 8 })
-          })
-        }
-        .width('100%')
-        .padding({ left: 16, right: 16, bottom: 16 })
-      }
-
-      // 日程列表
-      if (this.selectedDateEvents.length > 0) {
-        Row() {
-          Text('日程列表')
-            .fontSize(15)
-            .fontWeight(FontWeight.Medium)
-            .fontColor(Constants.COLOR_TEXT_PRIMARY)
-          
-          Blank()
-          
-          Text(`共 ${this.selectedDateEvents.length} 项`)
-            .fontSize(12)
-            .fontColor(Constants.COLOR_TEXT_SECONDARY)
-        }
-        .width('100%')
-        .padding({ left: 16, right: 16, top: this.selectedDateTasks.length > 0 ? 12 : 12, bottom: 8 })
-
-        Column() {
-          ForEach(this.selectedDateEvents, (event: CalendarEvent) => {
-            this.buildEventItem(event)
           })
         }
         .width('100%')

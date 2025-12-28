@@ -27,7 +27,7 @@ export default class EntryAbility extends UIAbility {
     await this.initAGC();
     
     // 初始化HolidayService的Context（用于读取本地万年历数据）
-    HolidayService.getInstance().setContext(this.context);
+    await HolidayService.getInstance().setContext(this.context);
     hilog.info(DOMAIN, TAG, 'HolidayService Context已设置');
     
     // 初始化EventService（日程服务）

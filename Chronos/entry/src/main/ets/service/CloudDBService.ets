@@ -97,6 +97,19 @@ export class CloudDBService {
     }
   }
 
+  /**
+   * 关闭 Cloud DB 服务（清理资源）
+   */
+  async close(): Promise<void> {
+    try {
+      hilog.info(DOMAIN, TAG, '关闭 Cloud DB 服务');
+      this.isInitialized = false;
+    } catch (err) {
+      const error = err as Error;
+      hilog.error(DOMAIN, TAG, '关闭 Cloud DB 服务失败: %{public}s', error.message);
+    }
+  }
+
   // ==================== 任务操作 ====================
 
   async upsertTask(task: TaskCloudDBInternal): Promise<number> {

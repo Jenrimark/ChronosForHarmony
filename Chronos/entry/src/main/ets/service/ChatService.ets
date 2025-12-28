@@ -1,5 +1,8 @@
 import { http } from '@kit.NetworkKit';
 import { Constants } from '../common/Constants';
+import { BillType, Bill } from '../model/Bill';
+import { Task } from '../model/Task';
+import { CalendarEvent } from '../model/CalendarEvent';
 
 /**
  * 聊天消息接口
@@ -344,6 +347,162 @@ export class ChatService {
       fullResponse += chunk;
     });
     return fullResponse;
+  }
+
+  /**
+   * 更新系统消息，包含用户的所有数据
+   */
+  updateSystemMessageWithData(
+    tasks: Task[],
+    events: CalendarEvent[],
+    bills: Bill[]
+  ): void {
+    let systemContent = '你是辰序助手，一个智能的生活管理助手。你可以帮助用户管理任务、记账、提供建议等。请用友好、专业的语气回复用户。\n\n';
+    
+    systemContent += '以下是用户当前的本地数据库内容，你可以随时查询和使用这些信息来回答用户的问题：\n\n';
+    
+    // 任务列表
+    systemContent += '=== 任务列表 ===\n';
+    if (tasks.length === 0) {
+      systemContent += '暂无任务。\n';
+    } else {
+      tasks.forEach((task, index) => {
+        const statusText = task.status === 'completed' ? '已完成' : 
+                          task.status === 'in_progress' ? '进行中' : '待办';
+        const priorityText = task.priority === 3 ? '高' : 
+                             task.priority === 2 ? '中' : '低';
+        const dueDateText = task.dueDate ? 
+          `截止日期：${this.formatDateForAI(new Date(task.dueDate))}` : '无截止日期';
+        systemContent += `${index + 1}. ${task.title || '无标题'}\n`;
+        if (task.description) {
+          systemContent += `   描述：${task.description}\n`;
+        }
+        systemContent += `   状态：${statusText} | 优先级：${priorityText} | ${dueDateText}\n`;
+        if (task.tags && task.tags.length > 0) {
+          systemContent += `   标签：${task.tags.join(', ')}\n`;
+        }
+        systemContent += '\n';
+      });
+    }
+    
+    systemContent += '\n=== 日程安排 ===\n';
+    if (events.length === 0) {
+      systemContent += '暂无日程。\n';
+    } else {
+      events.forEach((event, index) => {
+        // 处理startTime和endTime（可能是Date对象或时间戳）
+        const startDate = event.startTime instanceof Date ? event.startTime : new Date(event.startTime);
+        const endDate = event.endTime instanceof Date ? event.endTime : new Date(event.endTime);
+        const timeText = event.isAllDay ? 
+          `全天：${this.formatDateForAI(startDate)}` :
+          `${this.formatDateForAI(startDate)} ${this.formatTimeForAI(startDate)} - ${this.formatTimeForAI(endDate)}`;
+        systemContent += `${index + 1}. ${event.title || '无标题'}\n`;
+        systemContent += `   时间：${timeText}\n`;
+        if (event.location) {
+          systemContent += `   地点：${event.location}\n`;
+        }
+        if (event.reminder && event.reminder !== 'none') {
+          systemContent += `   提醒：${event.reminder}\n`;
+        }
+        if (event.repeatRule && event.repeatRule !== 'none') {
+          systemContent += `   重复：${event.repeatRule}\n`;
+        }
+        systemContent += '\n';
+      });
+    }
+    
+    systemContent += '\n=== 记账信息 ===\n';
+    if (bills.length === 0) {
+      systemContent += '暂无账单记录。\n';
+    } else {
+      // 按日期分组显示
+      const billsByDate = new Map<string, Bill[]>();
+      bills.forEach(bill => {
+        const dateKey = this.formatDateForAI(new Date(bill.date));
+        if (!billsByDate.has(dateKey)) {
+          billsByDate.set(dateKey, []);
+        }
+        const dateBills = billsByDate.get(dateKey);
+        if (dateBills) {
+          dateBills.push(bill);
+        }
+      });
+      
+      const sortedDates = Array.from(billsByDate.keys()).sort().reverse(); // 最新的在前
+      sortedDates.forEach(date => {
+        const dateBills = billsByDate.get(date);
+        if (!dateBills) {
+          return;
+        }
+        systemContent += `${date}：\n`;
+        dateBills.forEach((bill, index) => {
+          // Bill对象有isIncome方法
+          const isIncome = bill.isIncome();
+          const typeText = isIncome ? '收入' : '支出';
+          const categoryText = this.getCategoryName(bill.category || '');
+          systemContent += `   ${index + 1}. ${typeText} ¥${bill.amount.toFixed(2)} - ${categoryText}`;
+          if (bill.description) {
+            systemContent += ` (${bill.description})`;
+          }
+          systemContent += '\n';
+        });
+        systemContent += '\n';
+      });
+    }
+    
+    systemContent += '\n请根据以上信息回答用户的问题。如果用户询问具体的数据，请准确引用上述信息。';
+    
+    // 更新系统消息
+    if (this.conversationHistory.length > 0 && this.conversationHistory[0].role === 'system') {
+      this.conversationHistory[0].content = systemContent;
+    } else {
+      this.conversationHistory.unshift({
+        role: 'system',
+        content: systemContent
+      });
+    }
+  }
+  
+  /**
+   * 格式化日期用于AI显示
+   */
+  private formatDateForAI(date: Date): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+  
+  /**
+   * 格式化时间用于AI显示
+   */
+  private formatTimeForAI(date: Date): string {
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${hours}:${minutes}`;
+  }
+  
+  /**
+   * 获取分类名称
+   */
+  private getCategoryName(category: string): string {
+    const categoryMap: Map<string, string> = new Map([
+      ['food', '餐饮'],
+      ['transport', '交通'],
+      ['shopping', '购物'],
+      ['entertainment', '娱乐'],
+      ['medical', '医疗'],
+      ['education', '教育'],
+      ['housing', '住房'],
+      ['utilities', '水电'],
+      ['salary', '工资'],
+      ['bonus', '奖金'],
+      ['investment', '投资'],
+      ['gift', '礼金'],
+      ['other_expense', '其他支出'],
+      ['other_income', '其他收入']
+    ]);
+    return categoryMap.get(category) || category;
   }
 
   /**

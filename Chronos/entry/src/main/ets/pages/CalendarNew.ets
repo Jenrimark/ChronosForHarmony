@@ -112,6 +112,25 @@ export struct CalendarNewPage {
     return this.solarTermsList.includes(solarTerms);
   }
 
+  /**
+   * 完成任务
+   */
+  async onTaskComplete(task: Task): Promise<void> {
+    if (task.status === Constants.TASK_STATUS_COMPLETED) {
+      await this.taskService.uncompleteTask(task);
+    } else {
+      await this.taskService.completeTask(task);
+    }
+    await this.loadTasks();
+  }
+
+  /**
+   * 删除任务
+   */
+  async onTaskDelete(task: Task): Promise<void> {
+    await this.taskService.deleteTask(task);
+    await this.loadTasks();
+  }
 
   /**
    * 加载日程事件
@@ -399,21 +418,7 @@ export struct CalendarNewPage {
       if (event.priority) {
         Text('⭐')
           .fontSize(18)
-          .margin({ right: 8 })
       }
-
-      // 删除按钮
-      Button() {
-        Text('🗑️')
-          .fontSize(18)
-      }
-      .type(ButtonType.Normal)
-      .backgroundColor(Color.Transparent)
-      .width(40)
-      .height(40)
-      .onClick(() => {
-        this.onEventDelete(event);
-      })
     }
     .width('100%')
     .padding(16)
@@ -423,34 +428,6 @@ export struct CalendarNewPage {
     .onClick(() => {
       this.editEvent(event);
     })
-  }
-
-  /**
-   * 删除日程
-   */
-  async onEventDelete(event: CalendarEvent): Promise<void> {
-    await this.deleteEvent(event);
-  }
-
-  /**
-   * 完成任务
-   */
-  async onTaskComplete(task: Task): Promise<void> {
-    task.status = Constants.TASK_STATUS_COMPLETED;
-    await this.taskService.updateTask(task);
-    await this.loadTasks();
-    this.updateSelectedDateTasks();
-    this.updateCalendarDays();
-  }
-
-  /**
-   * 删除任务
-   */
-  async onTaskDelete(task: Task): Promise<void> {
-    await this.taskService.deleteTask(task.localId);
-    await this.loadTasks();
-    this.updateSelectedDateTasks();
-    this.updateCalendarDays();
   }
 
   /**

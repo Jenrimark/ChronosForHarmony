@@ -228,7 +228,11 @@ export struct BillStatistics {
     
     // 统计每日数据
     bills.forEach(bill => {
-      const dateStr = Utils.formatDate(bill.date, 'YYYY-MM-DD');
+      // 确保账单日期是Date对象
+      const billDate = bill.date instanceof Date ? bill.date : new Date(bill.date);
+      // 重置时间部分，只比较日期
+      const normalizedBillDate = new Date(billDate.getFullYear(), billDate.getMonth(), billDate.getDate());
+      const dateStr = Utils.formatDate(normalizedBillDate, 'YYYY-MM-DD');
       const stats = dailyMap.get(dateStr);
       if (stats) {
         if (bill.isExpense()) {
@@ -236,11 +240,16 @@ export struct BillStatistics {
         } else {
           stats.income += bill.amount;
         }
+      } else {
+        // 如果找不到匹配的日期，可能是账单日期在范围外，记录日志
+        console.warn(`BillStatistics: 账单日期 ${dateStr} 不在统计范围内 (${Utils.formatDate(this.startDate, 'YYYY-MM-DD')} ~ ${Utils.formatDate(this.endDate, 'YYYY-MM-DD')})`);
       }
     });
     
-    // 转换为数组
-    this.dailyStats = Array.from(dailyMap.values());
+    // 转换为数组并按日期排序
+    this.dailyStats = Array.from(dailyMap.values()).sort((a, b) => {
+      return a.date.localeCompare(b.date);
+    });
   }
 
   /**
@@ -268,7 +277,9 @@ export struct BillStatistics {
    */
   getMaxDailyExpense(): number {
     let max = 0;
-    this.dailyStats.forEach(stats => {
+    const displayStats = this.getDisplayStats();
+    
+    displayStats.forEach(stats => {
       if (stats.expense > max) max = stats.expense;
     });
     return max > 0 ? max : 100;
@@ -736,6 +747,25 @@ export struct BillStatistics {
   }
 
   /**
+   * 获取要显示的统计数据
+   */
+  getDisplayStats(): DailyStats[] {
+    if (this.period === 'year') {
+      // 年视图：显示每月的数据（按月汇总）
+      return this.getMonthlyStats();
+    } else if (this.period === 'month') {
+      // 月视图：显示最近30天或全部天数（最多显示30个点）
+      return this.dailyStats.length > 30 ? this.dailyStats.slice(-30) : this.dailyStats;
+    } else if (this.period === 'week') {
+      // 周视图：显示全部7天
+      return this.dailyStats;
+    } else {
+      // 自定义视图：如果超过30天，只显示最近30天，否则显示全部
+      return this.dailyStats.length > 30 ? this.dailyStats.slice(-30) : this.dailyStats;
+    }
+  }
+
+  /**
    * 构建消费趋势
    */
   @Builder
@@ -748,38 +778,73 @@ export struct BillStatistics {
         .width('100%')
         .margin({ bottom: 16 })
       
-      // 简易柱状图
-      Row() {
-        ForEach(this.dailyStats.slice(-7), (stats: DailyStats) => {
-          Column() {
-            // 柱子
-            Column()
-              .width(24)
-              .height(`${Math.max((stats.expense / this.getMaxDailyExpense()) * 100, 5)}%`)
-              .backgroundColor(Constants.COLOR_PRIMARY)
-              .borderRadius({ topLeft: 4, topRight: 4 })
-            
-            // 日期标签
-            Text(stats.dateLabel)
-              .fontSize(10)
-              .fontColor(Constants.COLOR_TEXT_SECONDARY)
-              .margin({ top: 4 })
-          }
-          .layoutWeight(1)
+      if (this.getDisplayStats().length === 0) {
+        Text('暂无数据')
+          .fontSize(14)
+          .fontColor(Constants.COLOR_TEXT_SECONDARY)
+          .width('100%')
           .height(120)
-          .justifyContent(FlexAlign.End)
-          .alignItems(HorizontalAlign.Center)
-        })
+          .textAlign(TextAlign.Center)
+      } else {
+        // 简易柱状图
+        Row() {
+          ForEach(this.getDisplayStats(), (stats: DailyStats) => {
+            Column() {
+              // 柱子
+              Column()
+                .width(24)
+                .height(`${Math.max((stats.expense / this.getMaxDailyExpense()) * 100, 5)}%`)
+                .backgroundColor(Constants.COLOR_PRIMARY)
+                .borderRadius({ topLeft: 4, topRight: 4 })
+              
+              // 日期标签
+              Text(stats.dateLabel)
+                .fontSize(10)
+                .fontColor(Constants.COLOR_TEXT_SECONDARY)
+                .margin({ top: 4 })
+            }
+            .layoutWeight(1)
+            .height(120)
+            .justifyContent(FlexAlign.End)
+            .alignItems(HorizontalAlign.Center)
+          })
+        }
+        .width('100%')
+        .height(140)
+        .padding({ top: 20 })
       }
-      .width('100%')
-      .height(140)
-      .padding({ top: 20 })
     }
     .width('100%')
     .padding(16)
     .backgroundColor(Constants.COLOR_CARD_BACKGROUND)
     .borderRadius(12)
     .margin({ left: 16, right: 16, top: 12 })
+  }
+  
+  /**
+   * 获取月度统计数据（用于年视图）
+   */
+  getMonthlyStats(): DailyStats[] {
+    const monthlyMap: Map<string, DailyStats> = new Map();
+    
+    // 按月汇总
+    this.dailyStats.forEach(stat => {
+      const monthKey = stat.date.substring(0, 7); // YYYY-MM
+      const existing = monthlyMap.get(monthKey);
+      if (existing) {
+        existing.expense += stat.expense;
+        existing.income += stat.income;
+      } else {
+        monthlyMap.set(monthKey, {
+          date: monthKey,
+          dateLabel: monthKey.substring(5), // MM
+          expense: stat.expense,
+          income: stat.income
+        });
+      }
+    });
+    
+    return Array.from(monthlyMap.values()).sort((a, b) => a.date.localeCompare(b.date));
   }
 
 

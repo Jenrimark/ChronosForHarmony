@@ -1,5 +1,8 @@
 import { Constants } from '../common/Constants';
 import { ChatService } from '../service/ChatService';
+import { TaskService } from '../service/TaskService';
+import { EventService } from '../service/EventService';
+import { BillService } from '../service/BillService';
 import { NormalMsgView } from '../components/chat/NormalMsgView';
 import { ChatInputView } from '../components/chat/ChatInputView';
 import { MsgTimeView } from '../components/chat/MsgTimeView';
@@ -20,18 +23,73 @@ export struct Chat {
   private scroller: Scroller = new Scroller();
 
   private chatService: ChatService = ChatService.getInstance();
+  private taskService: TaskService = TaskService.getInstance();
+  private eventService: EventService = EventService.getInstance();
+  private billService: BillService = BillService.getInstance();
+  @State isLoadingData: boolean = true;
 
-  aboutToAppear() {
+  async aboutToAppear() {
     // 初始化欢迎消息
     this.messages = [
       {
         id: 1,
-        content: '你好！我是辰序助手，很高兴为你服务！😊\n\n无论你是想管理日常任务、记录收支、规划日程，还是需要一些实用建议，我都可以帮你。\n\n今天有什么我可以协助你的吗？',
+        content: '你好！我是辰序助手，很高兴为你服务！😊\n\n正在加载你的数据...',
         isUser: false,
         timestamp: new Date(),
         sendStatus: MsgSendStatus.success
       }
     ];
+    
+    // 加载所有数据并更新系统消息
+    await this.loadUserData();
+  }
+  
+  /**
+   * 加载用户的所有数据并更新AI系统消息
+   */
+  async loadUserData(): Promise<void> {
+    try {
+      this.isLoadingData = true;
+      
+      // 并行加载所有数据
+      const tasksPromise = this.taskService.getAllTasks();
+      const eventsPromise = this.eventService.getAllEvents();
+      const billsPromise = this.billService.getAllBills();
+      const results = await Promise.all([tasksPromise, eventsPromise, billsPromise]);
+      const tasks = results[0];
+      const events = results[1];
+      const bills = results[2];
+      
+      console.info(`Chat: 加载数据完成 - 任务: ${tasks.length}, 日程: ${events.length}, 账单: ${bills.length}`);
+      
+      // 更新ChatService的系统消息，包含所有数据
+      this.chatService.updateSystemMessageWithData(tasks, events, bills);
+      
+      // 更新欢迎消息
+      this.messages = [
+        {
+          id: 1,
+          content: `你好！我是辰序助手，很高兴为你服务！😊\n\n我已经了解了你的数据：\n• 任务：${tasks.length} 个\n• 日程：${events.length} 个\n• 账单：${bills.length} 条\n\n无论你是想管理日常任务、记录收支、规划日程，还是需要一些实用建议，我都可以帮你。你可以随时问我关于你的任务、日程或账单的问题！\n\n今天有什么我可以协助你的吗？`,
+          isUser: false,
+          timestamp: new Date(),
+          sendStatus: MsgSendStatus.success
+        }
+      ];
+    } catch (error) {
+      console.error('Chat: 加载用户数据失败:', error);
+      // 即使加载失败，也显示欢迎消息
+      this.messages = [
+        {
+          id: 1,
+          content: '你好！我是辰序助手，很高兴为你服务！😊\n\n无论你是想管理日常任务、记录收支、规划日程，还是需要一些实用建议，我都可以帮你。\n\n今天有什么我可以协助你的吗？',
+          isUser: false,
+          timestamp: new Date(),
+          sendStatus: MsgSendStatus.success
+        }
+      ];
+    } finally {
+      this.isLoadingData = false;
+    }
   }
 
   /**

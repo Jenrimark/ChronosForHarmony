@@ -1,0 +1,839 @@
+Ôr@Ÿªassertions¤code´customTransformCache¬dependencies¢id¤meta±moduleSideEffects¬originalCode±originalSourcemap«resolvedIds®sourcemapChainµsyntheticNamedExportsµtransformDependencies®transformFiles¨cacheAstÔrAÚ4&import auth from '@hw-agconnect/auth';
+import hilog from "@ohos.hilog";
+import buffer from "@ohos.buffer";
+import preferences from "@ohos.data.preferences";
+import authentication from "@hms.core.authentication";
+import util from "@ohos.util";
+const TAG = 'AuthService';
+const PREFERENCES_NAME = 'user_preferences';
+const KEY_USER_INFO = 'user_info';
+/**
+ * åä¸ºè´¦å·è®¤è¯æœåŠ¡
+ */
+export class AuthService {
+    constructor() {
+        this.currentUser = null;
+        this.context = null;
+        this.isInitialized = false;
+        this.dataPreferences = null;
+    }
+    static getInstance() {
+        if (!AuthService.instance) {
+            AuthService.instance = new AuthService();
+        }
+        return AuthService.instance;
+    }
+    /**
+     * è®¾ç½® Context å¹¶åˆå§‹åŒ–
+     */
+    async setContext(context) {
+        this.context = context;
+        // åˆå§‹åŒ– Preferences
+        try {
+            this.dataPreferences = await preferences.getPreferences(context, PREFERENCES_NAME);
+            hilog.info(0x0000, TAG, 'Preferences åˆå§‹åŒ–æˆåŠŸ');
+            // åŠ è½½ç¼“å­˜çš„ç”¨æˆ·ä¿¡æ¯
+            await this.loadCachedUserInfo();
+        }
+        catch (error) {
+            hilog.error(0x0000, TAG, 'Preferences åˆå§‹åŒ–å¤±è´¥: %{public}s', String(error));
+        }
+    }
+    /**
+     * ä»æœ¬åœ°ç¼“å­˜åŠ è½½ç”¨æˆ·ä¿¡æ¯
+     */
+    async loadCachedUserInfo() {
+        try {
+            if (!this.dataPreferences) {
+                return;
+            }
+            const userInfoStr = await this.dataPreferences.get(KEY_USER_INFO, '');
+            if (userInfoStr) {
+                const userInfo = JSON.parse(userInfoStr);
+                this.currentUser = userInfo;
+                hilog.info(0x0000, TAG, 'ä»ç¼“å­˜åŠ è½½ç”¨æˆ·ä¿¡æ¯æˆåŠŸ: %{public}s', userInfo.displayName);
+            }
+        }
+        catch (error) {
+            hilog.error(0x0000, TAG, 'åŠ è½½ç¼“å­˜ç”¨æˆ·ä¿¡æ¯å¤±è´¥: %{public}s', String(error));
+        }
+    }
+    /**
+     * ä¿å­˜ç”¨æˆ·ä¿¡æ¯åˆ°æœ¬åœ°ç¼“å­˜
+     */
+    async saveUserInfoToCache() {
+        try {
+            if (!this.dataPreferences || !this.currentUser) {
+                return;
+            }
+            const userInfoStr = JSON.stringify(this.currentUser);
+            await this.dataPreferences.put(KEY_USER_INFO, userInfoStr);
+            await this.dataPreferences.flush();
+            hilog.info(0x0000, TAG, 'ç”¨æˆ·ä¿¡æ¯å·²ä¿å­˜åˆ°ç¼“å­˜');
+        }
+        catch (error) {
+            hilog.error(0x0000, TAG, 'ä¿å­˜ç”¨æˆ·ä¿¡æ¯åˆ°ç¼“å­˜å¤±è´¥: %{public}s', String(error));
+        }
+    }
+    /**
+     * æ¸…é™¤ç¼“å­˜çš„ç”¨æˆ·ä¿¡æ¯
+     */
+    async clearCachedUserInfo() {
+        try {
+            if (!this.dataPreferences) {
+                return;
+            }
+            await this.dataPreferences.delete(KEY_USER_INFO);
+            await this.dataPreferences.flush();
+            hilog.info(0x0000, TAG, 'ç¼“å­˜çš„ç”¨æˆ·ä¿¡æ¯å·²æ¸…é™¤');
+        }
+        catch (error) {
+            hilog.error(0x0000, TAG, 'æ¸…é™¤ç¼“å­˜ç”¨æˆ·ä¿¡æ¯å¤±è´¥: %{public}s', String(error));
+        }
+    }
+    /**
+     * åˆå§‹åŒ– Auth SDK
+     */
+    initAuth() {
+        if (this.isInitialized) {
+            return true;
+        }
+        if (!this.context) {
+            hilog.error(0x0000, TAG, 'Context æœªè®¾ç½®ï¼Œæ— æ³•åˆå§‹åŒ– Auth');
+            return false;
+        }
+        try {
+            const file = this.context.resourceManager.getRawFileContentSync('agconnect-services.json');
+            const str = buffer.from(file).toString();
+            auth.init(this.context, str);
+            this.isInitialized = true;
+            hilog.info(0x0000, TAG, 'Auth SDK åˆå§‹åŒ–æˆåŠŸ');
+            return true;
+        }
+        catch (error) {
+            const err = error;
+            hilog.error(0x0000, TAG, 'Auth SDK åˆå§‹åŒ–å¤±è´¥: %{public}s', String(err.message));
+            return false;
+        }
+    }
+    /**
+     * åä¸ºè´¦å·ç™»å½•ï¼ˆåŸºç¡€ç™»å½•ï¼Œä¸è·å–å¤´åƒæ˜µç§°ï¼‰
+     */
+    async login() {
+        try {
+            hilog.info(0x0000, TAG, 'å¼€å§‹åä¸ºè´¦å·ç™»å½•...');
+            // ç¡®ä¿ Auth SDK å·²åˆå§‹åŒ–
+            const initialized = this.initAuth();
+            if (!initialized) {
+                hilog.error(0x0000, TAG, 'Auth SDK æœªåˆå§‹åŒ–');
+                return null;
+            }
+            // æ£€æŸ¥æ˜¯å¦å·²ç™»å½•
+            hilog.info(0x0000, TAG, 'æ£€æŸ¥å½“å‰ç™»å½•çŠ¶æ€...');
+            const currentUser = await auth.getCurrentUser();
+            if (currentUser !== null) {
+                hilog.info(0x0000, TAG, 'ç”¨æˆ·å·²ç™»å½•ï¼Œå…ˆé€€å‡º...');
+                await auth.signOut();
+            }
+            // æ‰§è¡Œç™»å½•
+            hilog.info(0x0000, TAG, 'æ‰§è¡Œåä¸ºè´¦å·ç™»å½•...');
+            const signInResult = await auth.signIn({
+                autoCreateUser: true,
+                credentialInfo: {
+                    kind: 'hwid'
+                }
+            });
+            const user = signInResult.getUser();
+            this.currentUser = {
+                uid: user.getUid(),
+                displayName: user.getDisplayName() || 'åä¸ºç”¨æˆ·',
+                avatarUri: user.getPhotoUrl() || '',
+                email: user.getEmail() || '',
+                phone: user.getPhone() || ''
+            };
+            hilog.info(0x0000, TAG, 'ç™»å½•æˆåŠŸ, uid: %{public}s', this.currentUser.uid);
+            // ä¿å­˜åˆ°æœ¬åœ°ç¼“å­˜
+            await this.saveUserInfoToCache();
+            return this.currentUser;
+        }
+        catch (error) {
+            const err = error;
+            hilog.error(0x0000, TAG, 'ç™»å½•å¤±è´¥: Code: %{public}s, Message: %{public}s', String(err.code), String(err.message));
+            return null;
+        }
+    }
+    /**
+     * æ›´æ–°ç”¨æˆ·å¤´åƒæ˜µç§°ï¼ˆä»å¤–éƒ¨è®¾ç½®ï¼‰
+     */
+    async updateUserProfile(displayName, avatarUri) {
+        if (this.currentUser) {
+            this.currentUser.displayName = displayName || this.currentUser.displayName;
+            this.currentUser.avatarUri = avatarUri || this.currentUser.avatarUri;
+            hilog.info(0x0000, TAG, 'ç”¨æˆ·ä¿¡æ¯å·²æ›´æ–° - æ˜µç§°: %{public}s', this.currentUser.displayName);
+            // ä¿å­˜åˆ°æœ¬åœ°ç¼“å­˜
+            await this.saveUserInfoToCache();
+        }
+    }
+    /**
+     * é€šè¿‡Account Kitè·å–ç”¨æˆ·å¤´åƒæ˜µç§°
+     * @param uiContext UIContextå¯¹è±¡ï¼Œç”¨äºåˆ›å»ºAuthenticationController
+     */
+    async fetchUserProfileWithAccountKit(uiContext) {
+        try {
+            hilog.info(0x0000, TAG, 'å¼€å§‹é€šè¿‡Account Kitè·å–å¤´åƒæ˜µç§°...');
+            // åˆ›å»ºæˆæƒè¯·æ±‚
+            const authRequest = new authentication.HuaweiIDProvider().createAuthorizationWithHuaweiIDRequest();
+            // è·å–å¤´åƒæ˜µç§°éœ€è¦ä¼ profile scope
+            authRequest.scopes = ['profile'];
+            // å…ƒæœåŠ¡éœ€ä¼ å…¥supportAtomicServiceå‚æ•°å¹¶è®¾ç½®ä¸ºtrue
+            authRequest.supportAtomicService = true;
+            // è‹¥å¼€å‘è€…éœ€è¦è¿›è¡ŒæœåŠ¡ç«¯å¼€å‘ä»¥è·å–å¤´åƒæ˜µç§°ï¼Œåˆ™éœ€ä¼ å¦‚ä¸‹permissionè·å–authorizationCode
+            authRequest.permissions = ['serviceauthcode'];
+            // ç”¨æˆ·æ˜¯å¦éœ€è¦ç™»å½•æˆæƒï¼Œè¯¥å€¼ä¸ºtrueä¸”ç”¨æˆ·æœªç™»å½•æˆ–æœªæˆæƒæ—¶ï¼Œä¼šæ‹‰èµ·ç”¨æˆ·ç™»å½•æˆ–æˆæƒé¡µé¢
+            authRequest.forceAuthorization = true;
+            // ç”¨äºé˜²è·¨ç«™ç‚¹è¯·æ±‚ä¼ªé€ 
+            authRequest.state = util.generateRandomUUID();
+            // åˆ›å»ºAuthenticationController - éœ€è¦ä¼ å…¥Contextï¼Œé€šè¿‡UIContextçš„getHostContext()è·å–
+            const controller = new authentication.AuthenticationController(uiContext.getHostContext());
+            // æ‰§è¡Œæˆæƒè¯·æ±‚
+            const data = await controller.executeRequest(authRequest);
+            const authorizationWithHuaweiIDResponse = data;
+            // éªŒè¯state
+            const state = authorizationWithHuaweiIDResponse.state;
+            if (state && authRequest.state !== state) {
+                hilog.error(0x0000, TAG, 'æˆæƒå¤±è´¥ï¼šstateä¸åŒ¹é…ï¼Œresponse state: %{public}s', state);
+                return false;
+            }
+            hilog.info(0x0000, TAG, 'æˆæƒæˆåŠŸ');
+            // è§£æå¤´åƒæ˜µç§°
+            const authorizationWithHuaweiIDCredential = authorizationWithHuaweiIDResponse?.data;
+            const avatarUri = authorizationWithHuaweiIDCredential?.avatarUri;
+            const nickName = authorizationWithHuaweiIDCredential?.nickName;
+            hilog.info(0x0000, TAG, 'è·å–åˆ°å¤´åƒ: %{public}s, æ˜µç§°: %{public}s', avatarUri || 'æ— ', nickName || 'æ— ');
+            // æ›´æ–°ç”¨æˆ·ä¿¡æ¯
+            if (this.currentUser) {
+                if (nickName && nickName.trim().length > 0) {
+                    this.currentUser.displayName = nickName;
+                }
+                if (avatarUri && avatarUri.trim().length > 0) {
+                    this.currentUser.avatarUri = avatarUri;
+                }
+                // ä¿å­˜åˆ°æœ¬åœ°ç¼“å­˜
+                await this.saveUserInfoToCache();
+                hilog.info(0x0000, TAG, 'ç”¨æˆ·å¤´åƒæ˜µç§°å·²æ›´æ–°');
+                return true;
+            }
+            else {
+                hilog.warn(0x0000, TAG, 'å½“å‰æ²¡æœ‰ç™»å½•ç”¨æˆ·ï¼Œæ— æ³•æ›´æ–°å¤´åƒæ˜µç§°');
+                return false;
+            }
+        }
+        catch (error) {
+            const err = error;
+            this.handleAccountKitError(err);
+            return false;
+        }
+    }
+    /**
+     * å¤„ç†Account Kité”™è¯¯
+     */
+    handleAccountKitError(error) {
+        const ERROR_CODE_LOGIN_OUT = 1001502001; // è´¦å·æœªç™»å½•
+        const ERROR_CODE_NETWORK_ERROR = 1001502005; // ç½‘ç»œé”™è¯¯
+        const ERROR_CODE_USER_CANCEL = 1001502012; // ç”¨æˆ·å–æ¶ˆæˆæƒ
+        const ERROR_CODE_SYSTEM_SERVICE = 12300001; // ç³»ç»ŸæœåŠ¡å¼‚å¸¸
+        const ERROR_CODE_REQUEST_REFUSE = 1001500002; // é‡å¤è¯·æ±‚
+        if (error.code === ERROR_CODE_LOGIN_OUT) {
+            hilog.error(0x0000, TAG, 'ç”¨æˆ·æœªç™»å½•åä¸ºè´¦å·ï¼Œè¯·ç™»å½•åä¸ºè´¦å·å¹¶é‡è¯•');
+        }
+        else if (error.code === ERROR_CODE_NETWORK_ERROR) {
+            hilog.error(0x0000, TAG, 'ç½‘ç»œå¼‚å¸¸ï¼Œè¯·æ£€æŸ¥å½“å‰ç½‘ç»œçŠ¶æ€å¹¶é‡è¯•');
+        }
+        else if (error.code === ERROR_CODE_USER_CANCEL) {
+            hilog.warn(0x0000, TAG, 'ç”¨æˆ·å–æ¶ˆæˆæƒ');
+        }
+        else if (error.code === ERROR_CODE_SYSTEM_SERVICE) {
+            hilog.error(0x0000, TAG, 'ç³»ç»ŸæœåŠ¡å¼‚å¸¸ï¼Œè¯·ç¨åé‡è¯•');
+        }
+        else if (error.code === ERROR_CODE_REQUEST_REFUSE) {
+            hilog.warn(0x0000, TAG, 'é‡å¤è¯·æ±‚ï¼Œæ— éœ€å¤„ç†');
+        }
+        else {
+            hilog.error(0x0000, TAG, 'è·å–å¤´åƒæ˜µç§°å¤±è´¥: Code: %{public}s, Message: %{public}s', String(error.code), String(error.message));
+        }
+    }
+    /**
+     * è·å–å½“å‰ç™»å½•ç”¨æˆ·
+     */
+    async getCurrentUserAsync() {
+        try {
+            const initialized = this.initAuth();
+            if (!initialized) {
+                return null;
+            }
+            const user = await auth.getCurrentUser();
+            if (user) {
+                // å¦‚æœå·²æœ‰ç¼“å­˜çš„ç”¨æˆ·ä¿¡æ¯ï¼Œä½¿ç”¨ç¼“å­˜
+                if (this.currentUser && this.currentUser.uid === user.getUid()) {
+                    return this.currentUser;
+                }
+                this.currentUser = {
+                    uid: user.getUid(),
+                    displayName: user.getDisplayName() || 'åä¸ºç”¨æˆ·',
+                    avatarUri: user.getPhotoUrl() || '',
+                    email: user.getEmail() || '',
+                    phone: user.getPhone() || ''
+                };
+                hilog.info(0x0000, TAG, 'è·å–å½“å‰ç”¨æˆ·æˆåŠŸ, uid: %{public}s', this.currentUser.uid);
+                return this.currentUser;
+            }
+            hilog.info(0x0000, TAG, 'å½“å‰æ²¡æœ‰ç™»å½•ç”¨æˆ·');
+            return null;
+        }
+        catch (error) {
+            const err = error;
+            hilog.error(0x0000, TAG, 'è·å–å½“å‰ç”¨æˆ·å¤±è´¥: %{public}s', String(err.message));
+            return null;
+        }
+    }
+    /**
+     * é€€å‡ºç™»å½•
+     */
+    async logout() {
+        try {
+            const initialized = this.initAuth();
+            if (!initialized) {
+                return false;
+            }
+            await auth.signOut();
+            this.currentUser = null;
+            // æ¸…é™¤æœ¬åœ°ç¼“å­˜
+            await this.clearCachedUserInfo();
+            hilog.info(0x0000, TAG, 'é€€å‡ºç™»å½•æˆåŠŸ');
+            return true;
+        }
+        catch (error) {
+            const err = error;
+            hilog.error(0x0000, TAG, 'é€€å‡ºç™»å½•å¤±è´¥: %{public}s', String(err.message));
+            return false;
+        }
+    }
+    /**
+     * è·å–å½“å‰ç”¨æˆ·ï¼ˆåŒæ­¥ï¼‰
+     */
+    getCurrentUser() {
+        return this.currentUser;
+    }
+    /**
+     * æ˜¯å¦å·²ç™»å½•
+     */
+    isLoggedIn() {
+        return this.currentUser !== null;
+    }
+}
+//# sourceMappingURL=AuthService.js.mapÂ–²@hw-agconnect/authÙb hvigor_ignore_D:_My_Study_A_deveco_DevEco Studio_sdk_default_openharmony_ets_api_@ohos.hilog.d.tsÙc hvigor_ignore_D:_My_Study_A_deveco_DevEco Studio_sdk_default_openharmony_ets_api_@ohos.buffer.d.tsÙm hvigor_ignore_D:_My_Study_A_deveco_DevEco Studio_sdk_default_openharmony_ets_api_@ohos.data.preferences.d.tsÙg hvigor_ignore_D:_My_Study_A_deveco_DevEco Studio_sdk_default_hms_ets_api_@hms.core.authentication.d.tsÙa hvigor_ignore_D:_My_Study_A_deveco_DevEco Studio_sdk_default_openharmony_ets_api_@ohos.util.d.tsÙBE:\CODE\Chronos\Chronos\entry\src\main\ets\service\AuthService.etsÔrBœªmoduleName±isLocalDependency¯isNodeEntryFile§pkgPath±belongProjectPath§pkgNameªpkgVersion±dependencyPkgInfo¯hostModulesInfo°belongModulePath§checker¬shouldEmitJs¥entryÃÂ½E:\CODE\Chronos\Chronos\entry·E:\CODE\Chronos\Chronos¥entry¥1.0.0Ô  ’ÔrC’²hostDependencyName®hostModuleName¶../service/AuthService¥entryC¶../service/AuthService¥entry½E:\CODE\Chronos\Chronos\entryÔrDÜ ®¬getNodeCount²getIdentifierCount®getSymbolCount¬getTypeCountµgetInstantiationCountµgetRelationCacheSizes±isUndefinedSymbol±isArgumentsSymbol¯isUnknownSymbol¯getMergedSymbol®getDiagnostics´getGlobalDiagnostics´getRecursionIdentity¶getUnmatchedProperties¹getTypeOfSymbolAtLocation¯getTypeOfSymbolÙ(getSymbolsOfParameterPropertyDeclaration·getDeclaredTypeOfSymbol³getPropertiesOfType±getPropertyOfTypeÙ"getPrivateIdentifierPropertyOfType·getTypeOfPropertyOfType²getIndexInfoOfType³getIndexInfosOfTypeºgetIndexInfosOfIndexSymbol³getSignaturesOfType²getIndexTypeOfType¬getIndexType¬getBaseTypes¸getBaseTypeOfLiteralType®getWidenedType³getTypeFromTypeNode°getParameterTypeÙ$getParameterIdentifierNameAtPosition¸getPromisedTypeOfPromise®getAwaitedType¸getReturnTypeOfSignature®isNullableType¯getNullableType²getNonNullableType²getNonOptionalType°getTypeArguments®typeToTypeNodeÙ$indexInfoToIndexSignatureDeclaration¿signatureToSignatureDeclaration²symbolToEntityName²symbolToExpression¬symbolToNodeÙ!symbolToTypeParameterDeclarations¼symbolToParameterDeclarationºtypeParameterToDeclaration±getSymbolsInScope³getSymbolAtLocation·getIndexInfosAtLocationÙ!getShorthandAssignmentValueSymbolÙ#getExportSpecifierLocalTargetSymbol·getExportSymbolOfSymbol±getTypeAtLocationÙ tryGetTypeAtLocationWithoutCheckºgetTypeOfAssignmentPatternÙ*getPropertySymbolOfDestructuringAssignment±signatureToString¬typeToString®symbolToStringµtypePredicateToString®writeSignature©writeType«writeSymbol²writeTypePredicate¼getAugmentedPropertiesOfType®getRootSymbols²getSymbolOfExpando±getContextualTypeÙ(getContextualTypeForObjectLiteralElementÙ#getContextualTypeForArgumentAtIndexÙ getContextualTypeForJsxAttribute²isContextSensitiveÙ!getTypeOfPropertyOfContextualTypeµgetFullyQualifiedNameÙ#tryGetResolvedSignatureWithoutCheck´getResolvedSignatureÙ/getResolvedSignatureForStringLiteralCompletionsÙ$getResolvedSignatureForSignatureHelpµgetExpandedParameters¹hasEffectiveRestParameterºcontainsArgumentsReference°getConstantValueµisValidPropertyAccessÙ#isValidPropertyAccessForCompletions»getSignatureFromDeclarationºisImplementationOfOverload¹getImmediateAliasedSymbol°getAliasedSymbol¯getEmitResolver²getExportsOfModule¿getExportsAndPropertiesOfModuleÙ forEachExportAndPropertyOfModule¯getSymbolWalker±getAmbientModules¹getJsxIntrinsicTagNamesAt³isOptionalParameter»tryGetMemberInModuleExportsÙ(tryGetMemberInModuleExportsAndProperties´tryFindAmbientModuleÙ(tryFindAmbientModuleWithoutAugmentations¯getApparentType¬getUnionType²isTypeAssignableTo³createAnonymousType¯createSignature¬createSymbol¯createIndexInfoªgetAnyType­getStringType­getNumberType±createPromiseType¯createArrayType¹getElementTypeOfArrayType®getBooleanType¬getFalseType«getTrueType«getVoidType°getUndefinedType«getNullType¯getESSymbolType¬getNeverType¯getOptionalType®getPromiseType²getPromiseLikeType´getAsyncIterableType²isSymbolAccessible«isArrayType«isTupleType¯isArrayLikeTypeÙ#isTypeInvalidDueToUnionDiscriminantºgetExactOptionalProperties¿getAllPossiblePropertiesOfTypesÙ(getSuggestedSymbolForNonexistentPropertyÙ#getSuggestionForNonexistentPropertyÙ,getSuggestedSymbolForNonexistentJSXAttributeÙ&getSuggestedSymbolForNonexistentSymbolÙ!getSuggestionForNonexistentSymbolÙ&getSuggestedSymbolForNonexistentModuleÙ!getSuggestionForNonexistentExportÙ+getSuggestedSymbolForNonexistentClassMember·getBaseConstraintOfType»getDefaultFromTypeParameter«resolveName¯getJsxNamespaceµgetJsxFragmentFactory¸getAccessibleSymbolChain»getTypePredicateOfSignature¹resolveExternalModuleName»resolveExternalModuleSymbol°tryGetThisTypeAt¹getTypeArgumentConstraint¸getSuggestionDiagnostics¸runWithCancellationTokenÙ3getLocalTypeParametersOfClassOrInterfaceOrTypeAlias´isDeclarationVisible´isPropertyAccessible»getTypeOnlyAliasDeclaration¿getMemberOverrideModifierStatusÙ!isTypeParameterPossiblyReferenced²getConstEnumRelate´clearConstEnumRelateµdeleteConstEnumRelateÙ$getTypeArgumentsForResolvedSignatureµgetCheckedSourceFilesÙ"collectHaveTsNoCheckFilesForLinter·clearQualifiedNameCache®isStaticRecord²isStaticSourceFile³createIntrinsicTypeÔ  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  ÃÃÚ0bimport auth from '@hw-agconnect/auth';
+import { hilog } from '@kit.PerformanceAnalysisKit';
+import { BusinessError } from '@kit.BasicServicesKit';
+import { common } from '@kit.AbilityKit';
+import { buffer } from '@kit.ArkTS';
+import { preferences } from '@kit.ArkData';
+import { authentication } from '@kit.AccountKit';
+import { util } from '@kit.ArkTS';
+import { UIContext } from '@kit.ArkUI';
+
+const TAG = 'AuthService';
+const PREFERENCES_NAME = 'user_preferences';
+const KEY_USER_INFO = 'user_info';
+
+/**
+ * ç”¨æˆ·ä¿¡æ¯æ¥å£
+ */
+export interface UserInfo {
+  uid: string;
+  displayName: string;
+  avatarUri: string;
+  email: string;
+  phone: string;
+}
+
+/**
+ * åä¸ºè´¦å·è®¤è¯æœåŠ¡
+ */
+export class AuthService {
+  private static instance: AuthService;
+  private currentUser: UserInfo | null = null;
+  private context: common.UIAbilityContext | null = null;
+  private isInitialized: boolean = false;
+  private dataPreferences: preferences.Preferences | null = null;
+
+  private constructor() {}
+
+  static getInstance(): AuthService {
+    if (!AuthService.instance) {
+      AuthService.instance = new AuthService();
+    }
+    return AuthService.instance;
+  }
+
+  /**
+   * è®¾ç½® Context å¹¶åˆå§‹åŒ–
+   */
+  async setContext(context: common.UIAbilityContext): Promise<void> {
+    this.context = context;
+    // åˆå§‹åŒ– Preferences
+    try {
+      this.dataPreferences = await preferences.getPreferences(context, PREFERENCES_NAME);
+      hilog.info(0x0000, TAG, 'Preferences åˆå§‹åŒ–æˆåŠŸ');
+      // åŠ è½½ç¼“å­˜çš„ç”¨æˆ·ä¿¡æ¯
+      await this.loadCachedUserInfo();
+    } catch (error) {
+      hilog.error(0x0000, TAG, 'Preferences åˆå§‹åŒ–å¤±è´¥: %{public}s', String(error));
+    }
+  }
+
+  /**
+   * ä»æœ¬åœ°ç¼“å­˜åŠ è½½ç”¨æˆ·ä¿¡æ¯
+   */
+  private async loadCachedUserInfo(): Promise<void> {
+    try {
+      if (!this.dataPreferences) {
+        return;
+      }
+      const userInfoStr = await this.dataPreferences.get(KEY_USER_INFO, '') as string;
+      if (userInfoStr) {
+        const userInfo: UserInfo = JSON.parse(userInfoStr) as UserInfo;
+        this.currentUser = userInfo;
+        hilog.info(0x0000, TAG, 'ä»ç¼“å­˜åŠ è½½ç”¨æˆ·ä¿¡æ¯æˆåŠŸ: %{public}s', userInfo.displayName);
+      }
+    } catch (error) {
+      hilog.error(0x0000, TAG, 'åŠ è½½ç¼“å­˜ç”¨æˆ·ä¿¡æ¯å¤±è´¥: %{public}s', String(error));
+    }
+  }
+
+  /**
+   * ä¿å­˜ç”¨æˆ·ä¿¡æ¯åˆ°æœ¬åœ°ç¼“å­˜
+   */
+  private async saveUserInfoToCache(): Promise<void> {
+    try {
+      if (!this.dataPreferences || !this.currentUser) {
+        return;
+      }
+      const userInfoStr = JSON.stringify(this.currentUser);
+      await this.dataPreferences.put(KEY_USER_INFO, userInfoStr);
+      await this.dataPreferences.flush();
+      hilog.info(0x0000, TAG, 'ç”¨æˆ·ä¿¡æ¯å·²ä¿å­˜åˆ°ç¼“å­˜');
+    } catch (error) {
+      hilog.error(0x0000, TAG, 'ä¿å­˜ç”¨æˆ·ä¿¡æ¯åˆ°ç¼“å­˜å¤±è´¥: %{public}s', String(error));
+    }
+  }
+
+  /**
+   * æ¸…é™¤ç¼“å­˜çš„ç”¨æˆ·ä¿¡æ¯
+   */
+  private async clearCachedUserInfo(): Promise<void> {
+    try {
+      if (!this.dataPreferences) {
+        return;
+      }
+      await this.dataPreferences.delete(KEY_USER_INFO);
+      await this.dataPreferences.flush();
+      hilog.info(0x0000, TAG, 'ç¼“å­˜çš„ç”¨æˆ·ä¿¡æ¯å·²æ¸…é™¤');
+    } catch (error) {
+      hilog.error(0x0000, TAG, 'æ¸…é™¤ç¼“å­˜ç”¨æˆ·ä¿¡æ¯å¤±è´¥: %{public}s', String(error));
+    }
+  }
+
+  /**
+   * åˆå§‹åŒ– Auth SDK
+   */
+  private initAuth(): boolean {
+    if (this.isInitialized) {
+      return true;
+    }
+
+    if (!this.context) {
+      hilog.error(0x0000, TAG, 'Context æœªè®¾ç½®ï¼Œæ— æ³•åˆå§‹åŒ– Auth');
+      return false;
+    }
+
+    try {
+      const file: Uint8Array = this.context.resourceManager.getRawFileContentSync('agconnect-services.json');
+      const str: string = buffer.from(file).toString();
+      
+      auth.init(this.context, str);
+      this.isInitialized = true;
+      hilog.info(0x0000, TAG, 'Auth SDK åˆå§‹åŒ–æˆåŠŸ');
+      return true;
+    } catch (error) {
+      const err = error as BusinessError;
+      hilog.error(0x0000, TAG, 'Auth SDK åˆå§‹åŒ–å¤±è´¥: %{public}s', String(err.message));
+      return false;
+    }
+  }
+
+  /**
+   * åä¸ºè´¦å·ç™»å½•ï¼ˆåŸºç¡€ç™»å½•ï¼Œä¸è·å–å¤´åƒæ˜µç§°ï¼‰
+   */
+  async login(): Promise<UserInfo | null> {
+    try {
+      hilog.info(0x0000, TAG, 'å¼€å§‹åä¸ºè´¦å·ç™»å½•...');
+      
+      // ç¡®ä¿ Auth SDK å·²åˆå§‹åŒ–
+      const initialized = this.initAuth();
+      if (!initialized) {
+        hilog.error(0x0000, TAG, 'Auth SDK æœªåˆå§‹åŒ–');
+        return null;
+      }
+
+      // æ£€æŸ¥æ˜¯å¦å·²ç™»å½•
+      hilog.info(0x0000, TAG, 'æ£€æŸ¥å½“å‰ç™»å½•çŠ¶æ€...');
+      const currentUser = await auth.getCurrentUser();
+      if (currentUser !== null) {
+        hilog.info(0x0000, TAG, 'ç”¨æˆ·å·²ç™»å½•ï¼Œå…ˆé€€å‡º...');
+        await auth.signOut();
+      }
+
+      // æ‰§è¡Œç™»å½•
+      hilog.info(0x0000, TAG, 'æ‰§è¡Œåä¸ºè´¦å·ç™»å½•...');
+      const signInResult = await auth.signIn({
+        autoCreateUser: true,
+        credentialInfo: {
+          kind: 'hwid'
+        }
+      });
+
+      const user = signInResult.getUser();
+      
+      this.currentUser = {
+        uid: user.getUid(),
+        displayName: user.getDisplayName() || 'åä¸ºç”¨æˆ·',
+        avatarUri: user.getPhotoUrl() || '',
+        email: user.getEmail() || '',
+        phone: user.getPhone() || ''
+      };
+
+      hilog.info(0x0000, TAG, 'ç™»å½•æˆåŠŸ, uid: %{public}s', this.currentUser.uid);
+      // ä¿å­˜åˆ°æœ¬åœ°ç¼“å­˜
+      await this.saveUserInfoToCache();
+      return this.currentUser;
+    } catch (error) {
+      const err = error as BusinessError;
+      hilog.error(0x0000, TAG, 'ç™»å½•å¤±è´¥: Code: %{public}s, Message: %{public}s', 
+        String(err.code), String(err.message));
+      return null;
+    }
+  }
+
+  /**
+   * æ›´æ–°ç”¨æˆ·å¤´åƒæ˜µç§°ï¼ˆä»å¤–éƒ¨è®¾ç½®ï¼‰
+   */
+  async updateUserProfile(displayName: string, avatarUri: string): Promise<void> {
+    if (this.currentUser) {
+      this.currentUser.displayName = displayName || this.currentUser.displayName;
+      this.currentUser.avatarUri = avatarUri || this.currentUser.avatarUri;
+      hilog.info(0x0000, TAG, 'ç”¨æˆ·ä¿¡æ¯å·²æ›´æ–° - æ˜µç§°: %{public}s', this.currentUser.displayName);
+      // ä¿å­˜åˆ°æœ¬åœ°ç¼“å­˜
+      await this.saveUserInfoToCache();
+    }
+  }
+
+  /**
+   * é€šè¿‡Account Kitè·å–ç”¨æˆ·å¤´åƒæ˜µç§°
+   * @param uiContext UIContextå¯¹è±¡ï¼Œç”¨äºåˆ›å»ºAuthenticationController
+   */
+  async fetchUserProfileWithAccountKit(uiContext: UIContext): Promise<boolean> {
+    try {
+      hilog.info(0x0000, TAG, 'å¼€å§‹é€šè¿‡Account Kitè·å–å¤´åƒæ˜µç§°...');
+      
+      // åˆ›å»ºæˆæƒè¯·æ±‚
+      const authRequest = new authentication.HuaweiIDProvider().createAuthorizationWithHuaweiIDRequest();
+      // è·å–å¤´åƒæ˜µç§°éœ€è¦ä¼ profile scope
+      authRequest.scopes = ['profile'];
+      // å…ƒæœåŠ¡éœ€ä¼ å…¥supportAtomicServiceå‚æ•°å¹¶è®¾ç½®ä¸ºtrue
+      authRequest.supportAtomicService = true;
+      // è‹¥å¼€å‘è€…éœ€è¦è¿›è¡ŒæœåŠ¡ç«¯å¼€å‘ä»¥è·å–å¤´åƒæ˜µç§°ï¼Œåˆ™éœ€ä¼ å¦‚ä¸‹permissionè·å–authorizationCode
+      authRequest.permissions = ['serviceauthcode'];
+      // ç”¨æˆ·æ˜¯å¦éœ€è¦ç™»å½•æˆæƒï¼Œè¯¥å€¼ä¸ºtrueä¸”ç”¨æˆ·æœªç™»å½•æˆ–æœªæˆæƒæ—¶ï¼Œä¼šæ‹‰èµ·ç”¨æˆ·ç™»å½•æˆ–æˆæƒé¡µé¢
+      authRequest.forceAuthorization = true;
+      // ç”¨äºé˜²è·¨ç«™ç‚¹è¯·æ±‚ä¼ªé€ 
+      authRequest.state = util.generateRandomUUID();
+
+      // åˆ›å»ºAuthenticationController - éœ€è¦ä¼ å…¥Contextï¼Œé€šè¿‡UIContextçš„getHostContext()è·å–
+      const controller = new authentication.AuthenticationController(uiContext.getHostContext());
+      
+      // æ‰§è¡Œæˆæƒè¯·æ±‚
+      const data = await controller.executeRequest(authRequest);
+      const authorizationWithHuaweiIDResponse = data as authentication.AuthorizationWithHuaweiIDResponse;
+      
+      // éªŒè¯state
+      const state = authorizationWithHuaweiIDResponse.state;
+      if (state && authRequest.state !== state) {
+        hilog.error(0x0000, TAG, 'æˆæƒå¤±è´¥ï¼šstateä¸åŒ¹é…ï¼Œresponse state: %{public}s', state);
+        return false;
+      }
+
+      hilog.info(0x0000, TAG, 'æˆæƒæˆåŠŸ');
+      
+      // è§£æå¤´åƒæ˜µç§°
+      const authorizationWithHuaweiIDCredential = authorizationWithHuaweiIDResponse?.data;
+      const avatarUri = authorizationWithHuaweiIDCredential?.avatarUri;
+      const nickName = authorizationWithHuaweiIDCredential?.nickName;
+      
+      hilog.info(0x0000, TAG, 'è·å–åˆ°å¤´åƒ: %{public}s, æ˜µç§°: %{public}s', 
+        avatarUri || 'æ— ', nickName || 'æ— ');
+
+      // æ›´æ–°ç”¨æˆ·ä¿¡æ¯
+      if (this.currentUser) {
+        if (nickName && nickName.trim().length > 0) {
+          this.currentUser.displayName = nickName;
+        }
+        if (avatarUri && avatarUri.trim().length > 0) {
+          this.currentUser.avatarUri = avatarUri;
+        }
+        // ä¿å­˜åˆ°æœ¬åœ°ç¼“å­˜
+        await this.saveUserInfoToCache();
+        hilog.info(0x0000, TAG, 'ç”¨æˆ·å¤´åƒæ˜µç§°å·²æ›´æ–°');
+        return true;
+      } else {
+        hilog.warn(0x0000, TAG, 'å½“å‰æ²¡æœ‰ç™»å½•ç”¨æˆ·ï¼Œæ— æ³•æ›´æ–°å¤´åƒæ˜µç§°');
+        return false;
+      }
+    } catch (error) {
+      const err = error as BusinessError;
+      this.handleAccountKitError(err);
+      return false;
+    }
+  }
+
+  /**
+   * å¤„ç†Account Kité”™è¯¯
+   */
+  private handleAccountKitError(error: BusinessError): void {
+    const ERROR_CODE_LOGIN_OUT = 1001502001; // è´¦å·æœªç™»å½•
+    const ERROR_CODE_NETWORK_ERROR = 1001502005; // ç½‘ç»œé”™è¯¯
+    const ERROR_CODE_USER_CANCEL = 1001502012; // ç”¨æˆ·å–æ¶ˆæˆæƒ
+    const ERROR_CODE_SYSTEM_SERVICE = 12300001; // ç³»ç»ŸæœåŠ¡å¼‚å¸¸
+    const ERROR_CODE_REQUEST_REFUSE = 1001500002; // é‡å¤è¯·æ±‚
+
+    if (error.code === ERROR_CODE_LOGIN_OUT) {
+      hilog.error(0x0000, TAG, 'ç”¨æˆ·æœªç™»å½•åä¸ºè´¦å·ï¼Œè¯·ç™»å½•åä¸ºè´¦å·å¹¶é‡è¯•');
+    } else if (error.code === ERROR_CODE_NETWORK_ERROR) {
+      hilog.error(0x0000, TAG, 'ç½‘ç»œå¼‚å¸¸ï¼Œè¯·æ£€æŸ¥å½“å‰ç½‘ç»œçŠ¶æ€å¹¶é‡è¯•');
+    } else if (error.code === ERROR_CODE_USER_CANCEL) {
+      hilog.warn(0x0000, TAG, 'ç”¨æˆ·å–æ¶ˆæˆæƒ');
+    } else if (error.code === ERROR_CODE_SYSTEM_SERVICE) {
+      hilog.error(0x0000, TAG, 'ç³»ç»ŸæœåŠ¡å¼‚å¸¸ï¼Œè¯·ç¨åé‡è¯•');
+    } else if (error.code === ERROR_CODE_REQUEST_REFUSE) {
+      hilog.warn(0x0000, TAG, 'é‡å¤è¯·æ±‚ï¼Œæ— éœ€å¤„ç†');
+    } else {
+      hilog.error(0x0000, TAG, 'è·å–å¤´åƒæ˜µç§°å¤±è´¥: Code: %{public}s, Message: %{public}s',
+        String(error.code), String(error.message));
+    }
+  }
+
+  /**
+   * è·å–å½“å‰ç™»å½•ç”¨æˆ·
+   */
+  async getCurrentUserAsync(): Promise<UserInfo | null> {
+    try {
+      const initialized = this.initAuth();
+      if (!initialized) {
+        return null;
+      }
+
+      const user = await auth.getCurrentUser();
+      if (user) {
+        // å¦‚æœå·²æœ‰ç¼“å­˜çš„ç”¨æˆ·ä¿¡æ¯ï¼Œä½¿ç”¨ç¼“å­˜
+        if (this.currentUser && this.currentUser.uid === user.getUid()) {
+          return this.currentUser;
+        }
+        
+        this.currentUser = {
+          uid: user.getUid(),
+          displayName: user.getDisplayName() || 'åä¸ºç”¨æˆ·',
+          avatarUri: user.getPhotoUrl() || '',
+          email: user.getEmail() || '',
+          phone: user.getPhone() || ''
+        };
+        hilog.info(0x0000, TAG, 'è·å–å½“å‰ç”¨æˆ·æˆåŠŸ, uid: %{public}s', this.currentUser.uid);
+        return this.currentUser;
+      }
+      hilog.info(0x0000, TAG, 'å½“å‰æ²¡æœ‰ç™»å½•ç”¨æˆ·');
+      return null;
+    } catch (error) {
+      const err = error as BusinessError;
+      hilog.error(0x0000, TAG, 'è·å–å½“å‰ç”¨æˆ·å¤±è´¥: %{public}s', String(err.message));
+      return null;
+    }
+  }
+
+  /**
+   * é€€å‡ºç™»å½•
+   */
+  async logout(): Promise<boolean> {
+    try {
+      const initialized = this.initAuth();
+      if (!initialized) {
+        return false;
+      }
+
+      await auth.signOut();
+      this.currentUser = null;
+      // æ¸…é™¤æœ¬åœ°ç¼“å­˜
+      await this.clearCachedUserInfo();
+      hilog.info(0x0000, TAG, 'é€€å‡ºç™»å½•æˆåŠŸ');
+      return true;
+    } catch (error) {
+      const err = error as BusinessError;
+      hilog.error(0x0000, TAG, 'é€€å‡ºç™»å½•å¤±è´¥: %{public}s', String(err.message));
+      return false;
+    }
+  }
+
+  /**
+   * è·å–å½“å‰ç”¨æˆ·ï¼ˆåŒæ­¥ï¼‰
+   */
+  getCurrentUser(): UserInfo | null {
+    return this.currentUser;
+  }
+
+  /**
+   * æ˜¯å¦å·²ç™»å½•
+   */
+  isLoggedIn(): boolean {
+    return this.currentUser !== null;
+  }
+}
+ÀÔrE–«@ohos.hilog¬@ohos.buffer¶@ohos.data.preferences¸@hms.core.authenticationª@ohos.util²@hw-agconnect/authÔrF—ªassertions¨external¢id¤meta±moduleSideEffectsªresolvedByµsyntheticNamedExportsAÃÙb hvigor_ignore_D:_My_Study_A_deveco_DevEco Studio_sdk_default_openharmony_ets_api_@ohos.hilog.d.tsAÃªoh-resolveÂFAÃÙc hvigor_ignore_D:_My_Study_A_deveco_DevEco Studio_sdk_default_openharmony_ets_api_@ohos.buffer.d.tsÔrG‘¯hostModulesInfo‘C¬@ohos.buffer¥entryÃªoh-resolveÂFAÃÙm hvigor_ignore_D:_My_Study_A_deveco_DevEco Studio_sdk_default_openharmony_ets_api_@ohos.data.preferences.d.tsAÃªoh-resolveÂFAÃÙg hvigor_ignore_D:_My_Study_A_deveco_DevEco Studio_sdk_default_hms_ets_api_@hms.core.authentication.d.tsG‘C¸@hms.core.authentication¥entryÃªoh-resolveÂFAÃÙa hvigor_ignore_D:_My_Study_A_deveco_DevEco Studio_sdk_default_openharmony_ets_api_@ohos.util.d.tsAÃªoh-resolveÂFAÃ²@hw-agconnect/authG‘C²@hw-agconnect/auth¥entryÃªoh-resolveÂ“ÔrH–§version¤fileªsourceRoot§sources¥names¨mappings®AuthService.js ‘¯AuthService.etsÜM–”    ”  ”  ”  ”%  %”&  &–”   ” 	” ” ” 3”  4–”   ” 	” ” ”! #”" $–”   ” 	” ” ”0 *”1 +–”   ” 	” ” ”5 0”6 1–”   ” 	” ” ” !” "–”  
+ ” 
+”	 
+	” 
+” 
+” 
+–”   ” ” ” ”+ +”, ,–”   ” ” ” ”! !”" "‘”   ‘” ””   ” ” ” ‘” #•” 
+” ” )” -”  .•” 
+” ” 4” 8” 9•”  
+”  ”  #”"  (”#  )•” !
+” !” !<”# !Ì@”$ !ÌA’” #” #”” %”
+ %” %	” %—” &” &” &	” &” &”! &”# &™” '” '” '”  '”# '”' '!”2 ',”4 '.”5 '/‘”	 (–” )” )” )” )”# )”$ ) ’” *” *‘” ,‘” .–” /”	 /”
+ /” /” /” /3—” 0” 0” 0	” 0” 0” 0” 0’” 1” 1’” 2” 2Ÿ” 3” 3
+” 3”  3”# 3”) 3#”4 3.”5 3/”ÌC 3=”ÌD 3>”ÌK 3ÌE”ÌM 3ÌG”Ì] 3ÌW”Ì^ 3ÌX”Ì_ 3ÌYœ” 4” 4” 4” 4” 4” 4” 4”" 4”$ 4”7 41”8 42”9 43’” 5” 5—” 6” 6” 6” 6”) 6#”+ 6%”, 6&‘”	 7”” 7” 7” 7” 7Ü ” 8” 8” 8” 8” 8” 8”  8”# 8”% 8”ÌD 8>”ÌF 8Ì@”ÌL 8ÌF”ÌM 8ÌG”ÌR 8ÌL”ÌS 8ÌM”ÌT 8ÌN”ÌU 8ÌO‘”	 9’” :” :‘” <‘” >”” ?
+”	 ?”
+ ?” ?"’” Ì@” Ì@—” ÌA” ÌA
+” ÌA” ÌA” ÌA”% ÌA”' ÌA!’” ÌB” ÌB‘” ÌCÜ ” ÌD” ÌD” ÌD”  ÌD”& ÌD ”* ÌD$”+ ÌD%”: ÌD4”; ÌD5”> ÌD8”? ÌD9”ÌL ÌDÌF”ÌN ÌDÌH”ÌP ÌDÌJ”ÌQ ÌDÌU”ÌR ÌDÌV”” ÌE” ÌE
+” ÌE” ÌE›” ÌF” ÌF” ÌF”! ÌF#”% ÌF'”& ÌF(”+ ÌF-”, ÌF.”7 ÌF9”8 ÌFÌF”9 ÌFÌG—” ÌG” ÌG” ÌG”  ÌG”# ÌG”+ ÌG#”, ÌG$Ü ” ÌH” ÌH” ÌH” ÌH” ÌH”! ÌH”# ÌH”& ÌH”( ÌH ”ÌA ÌH9”ÌC ÌH;”ÌK ÌHÌC”ÌL ÌHÌD”ÌW ÌHÌO”ÌX ÌHÌP”ÌY ÌHÌQ‘” ÌI‘”	 ÌJ”” ÌJ” ÌJ” ÌJ” ÌJÜ ” ÌK” ÌK” ÌK” ÌK” ÌK” ÌK”  ÌK”# ÌK”% ÌK”= ÌK7”? ÌK9”ÌE ÌK?”ÌF ÌKÌ@”ÌK ÌKÌE”ÌL ÌKÌF”ÌM ÌKÌG”ÌN ÌKÌH‘”	 ÌL’” ÌM” ÌM‘” ÌO‘” ÌQ”” ÌR
+”	 ÌR”
+ ÌR” ÌR#’” ÌS” ÌSœ” ÌT” ÌT
+” ÌT” ÌT” ÌT”% ÌT”) ÌT#”* ÌT$”. ÌT(”/ ÌT)”: ÌT4”< ÌT6’” ÌU” ÌU‘” ÌV” ÌW” ÌW” ÌW”  ÌW”$ ÌW”% ÌW”. ÌW(”/ ÌW)”3 ÌW-”4 ÌW.”? ÌW9”Ì@ ÌW:”ÌA ÌW;” ÌX” ÌX” ÌX” ÌX”& ÌX ”' ÌX!”* ÌX$”+ ÌX%”8 ÌX2”: ÌX4”ÌE ÌX?”ÌF ÌXÌ@”ÌG ÌXÌA™” ÌY” ÌY” ÌY” ÌY”& ÌY ”' ÌY!”, ÌY&”. ÌY(”/ ÌY)œ” ÌZ” ÌZ” ÌZ” ÌZ” ÌZ” ÌZ” ÌZ”" ÌZ”$ ÌZ”0 ÌZ*”1 ÌZ+”2 ÌZ,‘”	 Ì[”” Ì[” Ì[” Ì[” Ì[Ü ” Ì\” Ì\” Ì\” Ì\” Ì\” Ì\”  Ì\”# Ì\”% Ì\”> Ì\8”Ì@ Ì\:”ÌF Ì\Ì@”ÌG Ì\ÌA”ÌL Ì\ÌF”ÌM Ì\ÌG”ÌN Ì\ÌH”ÌO Ì\ÌI‘”	 Ì]’” Ì^” Ì^‘” Ì`‘” Ìb”” Ìc
+”	 Ìc”
+ Ìc” Ìc#’” Ìd” Ìd—” Ìe” Ìe
+” Ìe” Ìe” Ìe”% Ìe”' Ìe!’” Ìf” Ìf‘” Ìg›” Ìh” Ìh” Ìh” Ìh”& Ìh ”' Ìh!”- Ìh'”. Ìh(”; Ìh5”< Ìh6”= Ìh7™” Ìi” Ìi” Ìi” Ìi”& Ìi ”' Ìi!”, Ìi&”. Ìi(”/ Ìi)œ” Ìj” Ìj” Ìj” Ìj” Ìj” Ìj” Ìj”" Ìj”$ Ìj”0 Ìj*”1 Ìj+”2 Ìj,‘”	 Ìk”” Ìk” Ìk” Ìk” ÌkÜ ” Ìl” Ìl” Ìl” Ìl” Ìl” Ìl”  Ìl”# Ìl”% Ìl”= Ìl7”? Ìl9”ÌE Ìl?”ÌF ÌlÌ@”ÌK ÌlÌE”ÌL ÌlÌF”ÌM ÌlÌG”ÌN ÌlÌH‘”	 Ìm’” Ìn” Ìn‘” Ìp‘” Ìr’” Ìs
+” Ìs–” Ìt” Ìt” Ìt” Ìt” Ìt”  Ìt”” Ìu” Ìu” Ìu” Ìu‘”	 Ìv—” Ìx” Ìx” Ìx	” Ìx” Ìx” Ìx” Ìxœ” Ìy” Ìy” Ìy” Ìy” Ìy” Ìy”  Ìy”# Ìy”% Ìy”= Ìy7”> Ìy8”? Ìy9”” Ìz” Ìz” Ìz” Ìz‘”	 Ì{’” Ì}” Ì}Ÿ” Ì~” Ì~” Ì~” Ì~” Ì~#” Ì~$”% Ì~+”& Ì~,”5 Ì~;”6 Ì~<”ÌK Ì~ÌQ”ÌL Ì~ÌR”Ìe Ì~Ìk”Ìf Ì~Ìl”Ìg Ì~Ìm” Ì” Ì” Ì” Ì” Ì ” Ì!”# Ì%”$ Ì&”( Ì*”) Ì+”* Ì,”2 Ì4”4 Ì6”5 Ì7œ” Ì” Ì
+” Ì” Ì” Ì” Ì” Ì”" Ì”$ Ì”' Ì!”( Ì"”) Ì#—” Ì‚” Ì‚
+” Ì‚” Ì‚”! Ì‚”% Ì‚”& Ì‚ œ” Ìƒ” Ìƒ” Ìƒ” Ìƒ” Ìƒ” Ìƒ” Ìƒ”" Ìƒ”$ Ìƒ”4 Ìƒ.”5 Ìƒ/”6 Ìƒ0”” Ì„” Ì„” Ì„” Ì„‘”	 Ì…”” Ì…” Ì…” Ì…” Ì…–” Ì†” Ì†” Ì†” Ì†” Ì†(” Ì†)Ü ” Ì‡” Ì‡” Ì‡” Ì‡” Ì‡” Ì‡”  Ì‡”# Ì‡”% Ì‡”ÌA Ì‡;”ÌC Ì‡=”ÌI Ì‡ÌC”ÌJ Ì‡ÌD”ÌM Ì‡ÌG”ÌN Ì‡ÌH”ÌU Ì‡ÌO”ÌV Ì‡ÌP”ÌW Ì‡ÌQ”ÌX Ì‡ÌR”” Ìˆ” Ìˆ” Ìˆ” Ìˆ‘”	 Ì‰’” ÌŠ” ÌŠ‘” ÌŒ‘” Ì”” Ì”	 Ì”
+ Ì” Ì’” Ì” Ìœ” Ì‘” Ì‘” Ì‘” Ì‘” Ì‘” Ì‘” Ì‘”" Ì‘”$ Ì‘”1 Ì‘+”2 Ì‘,”3 Ì‘-’” Ì“” Ì“™” Ì”” Ì”” Ì””  Ì””$ Ì””% Ì””- Ì”'”/ Ì”)”0 Ì”*•” Ì•” Ì•
+” Ì•” Ì•” Ì•œ” Ì–” Ì–” Ì–” Ì–” Ì–”" Ì–”$ Ì–”' Ì–”) Ì–!”8 Ì–0”9 Ì–1”: Ì–2”” Ì—” Ì—” Ì—” Ì—‘” Ì˜’” Ìš” Ìšœ” Ì›” Ì›” Ì›” Ì›” Ì›” Ì›” Ì›”" Ì›”$ Ì›”1 Ì›+”2 Ì›,”3 Ì›-š” Ìœ” Ìœ” Ìœ”  Ìœ”& Ìœ ”* Ìœ$”+ Ìœ%”9 Ìœ3”; Ìœ5”< Ìœ6–” Ì” Ì
+” Ì”  Ì”$ Ì”& Ì œ” Ì” Ì” Ì” Ì” Ì”! Ì”# Ì”& Ì”( Ì ”6 Ì.”7 Ì/”8 Ì0—” ÌŸ” ÌŸ” ÌŸ” ÌŸ”" ÌŸ”$ ÌŸ”% ÌŸ‘” Ì ’” Ì¢” Ì¢œ” Ì£” Ì£” Ì£” Ì£” Ì£” Ì£” Ì£”" Ì£”$ Ì£”1 Ì£+”2 Ì£,”3 Ì£-™” Ì¤” Ì¤” Ì¤”! Ì¤”' Ì¤!”+ Ì¤%”, Ì¤&”2 Ì¤,”3 Ì¤-”” Ì¥” Ì¥”  Ì¥”$ Ì¥“” Ì¦” Ì¦”  Ì¦”” Ì§
+” Ì§” Ì§”  Ì§‘” Ì¨	“” Ì©” Ì©” Ì©	™” Ì«” Ì«” Ì«” Ì«”% Ì«”& Ì« ”- Ì«'”/ Ì«)”0 Ì«*•” Ì­” Ì­
+” Ì­” Ì­” Ì­—” Ì®” Ì®” Ì®” Ì®” Ì®”  Ì®”" Ì®™” Ì¯” Ì¯” Ì¯”! Ì¯”" Ì¯”0 Ì¯(”2 Ì¯*”6 Ì¯.”< Ì¯4™” Ì°” Ì°” Ì°” Ì°”  Ì°”+ Ì°#”- Ì°%”1 Ì°)”3 Ì°+™” Ì±” Ì±” Ì±” Ì±” Ì±”$ Ì±”& Ì±”* Ì±"”, Ì±$™” Ì²” Ì²” Ì²” Ì²” Ì²”$ Ì²”& Ì²”* Ì²"”, Ì²$’” Ì³” Ì³Ü ” Ìµ” Ìµ” Ìµ” Ìµ” Ìµ” Ìµ” Ìµ”" Ìµ”$ Ìµ”; Ìµ5”= Ìµ7”ÌA Ìµ;”ÌB Ìµ<”ÌM ÌµÌG”ÌN ÌµÌH”ÌQ ÌµÌK”ÌR ÌµÌL”ÌS ÌµÌM’” Ì¶” Ì¶—” Ì·” Ì·” Ì·” Ì·”* Ì·$”, Ì·&”- Ì·'–” Ì¸” Ì¸” Ì¸” Ì¸”# Ì¸”$ Ì¸‘”	 Ì¹”” Ì¹” Ì¹” Ì¹” Ì¹–” Ìº” Ìº” Ìº” Ìº” Ìº(” Ìº)Ü ” Ì»” Ì»” Ì»” Ì»” Ì»” Ì»”  Ì»”# Ì»”% Ì»”ÌR Ì»ÌL”ÌT Ì¼”ÌZ Ì¼”Ì[ Ì¼”Ì^ Ì¼”Ì_ Ì¼”Ìc Ì¼”Ìd Ì¼”Ìf Ì¼”Ìl Ì¼ ”Ìm Ì¼!”Ìp Ì¼$”Ìq Ì¼%”Ìx Ì¼,”Ìy Ì¼-”Ìz Ì¼.”Ì{ Ì¼/”” Ì½” Ì½” Ì½” Ì½‘”	 Ì¾’” Ì¿” Ì¿‘” ÌÁ‘” ÌÃ˜” ÌÄ”	 ÌÄ”
+ ÌÄ” ÌÄ” ÌÄ”' ÌÄ-”) ÌÄ/”2 ÌÄÌ@–” ÌÅ” ÌÅ” ÌÅ” ÌÅ” ÌÅ” ÌÅŸ” ÌÆ” ÌÆ
+” ÌÆ” ÌÆ” ÌÆ”( ÌÆ"”+ ÌÆ%”6 ÌÆ0”: ÌÆ4”> ÌÆ8”? ÌÆ9”ÌJ ÌÆÌD”ÌK ÌÆÌE”ÌV ÌÆÌP”ÌW ÌÆÌQŸ” ÌÇ” ÌÇ
+” ÌÇ” ÌÇ” ÌÇ”& ÌÇ ”) ÌÇ#”2 ÌÇ,”6 ÌÇ0”: ÌÇ4”; ÌÇ5”ÌF ÌÇÌ@”ÌG ÌÇÌA”ÌP ÌÇÌJ”ÌQ ÌÇÌKÜ ” ÌÈ” ÌÈ” ÌÈ” ÌÈ” ÌÈ” ÌÈ” ÌÈ”" ÌÈ”$ ÌÈ”> ÌÈ8”Ì@ ÌÈ:”ÌD ÌÈ>”ÌE ÌÈ?”ÌP ÌÈÌJ”ÌQ ÌÈÌK”Ì\ ÌÈÌV”Ì] ÌÈÌW”Ì^ ÌÈÌX’” ÌÉ” ÌÉ—” ÌÊ” ÌÊ” ÌÊ” ÌÊ”* ÌÊ$”, ÌÊ&”- ÌÊ'‘”	 ÌË’” ÌÌ” ÌÌ‘” ÌÎ‘” ÌÑ–” ÌÒ”	 ÌÒ”
+ ÌÒ”( ÌÒ&”) ÌÒ'”2 ÌÒ;’” ÌÓ” ÌÓœ” ÌÔ” ÌÔ” ÌÔ” ÌÔ” ÌÔ” ÌÔ” ÌÔ”" ÌÔ”$ ÌÔ”> ÌÔ8”? ÌÔ9”Ì@ ÌÔ:’” ÌÖ” ÌÖ” Ì×” Ì×” Ì×”  Ì×”$ Ì×”2 Ì×,”3 Ì×-”ÌC Ì×=”ÌE Ì×?”ÌF Ì×Ì@”Ìl Ì×Ìf”Ìn Ì×Ìh”Ìo Ì×Ìi’” ÌØ”% ÌØ™” ÌÙ” ÌÙ” ÌÙ” ÌÙ”! ÌÙ”" ÌÙ”+ ÌÙ%”, ÌÙ&”- ÌÙ'’” ÌÚ”3 ÌÚ-—” ÌÛ” ÌÛ” ÌÛ”, ÌÛ&”/ ÌÛ)”3 ÌÛ-”4 ÌÛ.’” ÌÜ”ÌF ÌÜÌ@™” Ìİ” Ìİ” Ìİ”# Ìİ”& Ìİ ”' Ìİ!”8 Ìİ2”9 Ìİ3”: Ìİ4’” ÌŞ”9 ÌŞ3—” Ìß” Ìß” Ìß”* Ìß$”- Ìß'”1 Ìß+”2 Ìß,’” Ìà” Ìàš” Ìá” Ìá” Ìá” Ìá”  Ìá”$ Ìá”% Ìá”7 Ìá1”9 Ìá3”: Ìá4’” Ìã”ÌV ÌãÌPŸ” Ìä” Ìä” Ìä” Ìä”# Ìä”1 Ìä+”2 Ìä,”ÌJ ÌäÌD”ÌK ÌäÌE”ÌT ÌäÌN”ÌU ÌäÌO”Ìc ÌäÌ]”Ìe ÌäÌ_”Ìf ÌäÌ`”Ìg ÌäÌa’” Ìæ” Ìæœ” Ìç” Ìç” Ìç” Ìç” Ìç”) Ìç#”* Ìç$”8 Ìç2”9 Ìç3”ÌD Ìç>”ÌE Ìç?”ÌF ÌçÌ@–” Ìè” Ìè”3 Ìè-”6 Ìè0”: ÌèÌh”; ÌèÌi’” Ìê” Ìê˜” Ìë” Ìë” Ìë” Ìë”; Ìë5”< Ìë6”ÌA Ìë;”ÌB Ìë<š” Ìì” Ìì
+” Ìì” Ìì”$ Ìì”% Ìì”* Ìì$”/ Ìì)”4 Ìì.”6 Ìì0” Ìí” Ìí” Ìí” Ìí” Ìí”" Ìí”$ Ìí”' Ìí”) Ìí!”ÌS ÌíÌK”ÌU ÌíÌM”ÌZ ÌíÌR”Ì[ ÌíÌS”Ì\ ÌíÌT”” Ìî” Ìî” Ìî” Ìî‘” Ìïœ” Ìñ” Ìñ” Ìñ” Ìñ” Ìñ” Ìñ” Ìñ”" Ìñ”$ Ìñ”* Ìñ$”+ Ìñ%”, Ìñ&’” Ìó” Ìó˜” Ìô” Ìô”5 Ìô/”8 Ìô2”ÌY ÌôÌS”Ì[ ÌôÌU”Ì_ ÌôÌY”Ì` ÌôÌZ˜” Ìõ” Ìõ” Ìõ” Ìõ”ÌA Ìõ;”ÌC Ìõ=”ÌL ÌõÌF”ÌM ÌõÌG˜” Ìö” Ìö” Ìö” Ìö”Ì@ Ìö:”ÌB Ìö<”ÌJ ÌöÌD”ÌK ÌöÌEÜ ” Ìø” Ìø” Ìø” Ìø” Ìø” Ìø” Ìø”" Ìø”$ Ìø”ÌG ÌøÌA”ÌI Ìù”ÌR Ìù”ÌV Ìù”ÌY Ìù”Ì[ Ìù”Ìc Ìù"”Ìg Ìù&”Ìj Ìù)”Ìk Ìù*”Ìl Ìù+’” Ìû” Ìû–” Ìü” Ìü
+” Ìü” Ìü”  Ìü”" Ìü” Ìı” Ìı” Ìı”  Ìı”( Ìı ”) Ìı!”- Ìı%”/ Ìı'”0 Ìı(”6 Ìı.”9 Ìı1”: Ìı2”< Ìı4™” Ìş
+” Ìş” Ìş”$ Ìş”% Ìş”0 Ìş&”3 Ìş)”; Ìş1”< Ìş2‘” Ìÿ	” Í ” Í ” Í ”! Í ”* Í "”+ Í #”/ Í '”1 Í )”2 Í *”8 Í 0”; Í 3”< Í 4”> Í 6™” Í
+” Í” Í”$ Í”% Í”. Í$”1 Í'”: Í0”; Í1‘” Í	’” Í” Í—” Í” Í” Í” Í”. Í&”0 Í(”1 Í)œ” Í” Í” Í” Í” Í”! Í”# Í”& Í”( Í ”3 Í+”4 Í,”5 Í-”” Í” Í” Í” Í‘” Í‘” Íœ” Í” Í” Í” Í” Í”! Í”# Í”& Í”( Í ”; Í3”< Í4”= Í5”” Í	” Í	” Í	” Í	‘” Í
+‘”	 Í”” Í” Í” Í” Í–” Í” Í” Í” Í” Í(” Í)˜” Í” Í
+” Í”& Í ”' Í!”* Í$”+ Í%”, Í&”” Í” Í” Í” Í‘”	 Í’” Í” Í‘” Í‘” Í”” Í
+” Í” Í ” Í4˜” Í” Í
+”" Í”% Í!”/ Í+”0 Í,”1 Í-”9 Í5˜” Í” Í
+”& Í"”) Í%”3 Í/”4 Í0”5 Í1”< Í8˜” Í” Í
+”$ Í ”' Í#”1 Í-”2 Í.”3 Í/”< Í8˜” Í” Í
+”' Í#”* Í&”2 Í.”3 Í/”4 Í0”= Í9˜” Í” Í
+”' Í#”* Í&”4 Í0”5 Í1”6 Í2”= Í9˜” Í” Í” Í” Í” Í” Í”/ Í+”1 Í-œ” Í” Í” Í” Í” Í” Í”  Í”# Í”% Í”; Í5”< Í6”= Í7‘”	 Í˜” Í” Í” Í” Í” Í”  Í”8 Í6”: Í8œ” Í” Í” Í” Í” Í” Í”  Í”# Í”% Í”8 Í2”9 Í3”: Í4‘”	 Í ˜” Í ” Í ” Í ” Í ” Í ”  Í ”6 Í 4”8 Í 6œ” Í!” Í!” Í!” Í!” Í!” Í!” Í!”" Í!”$ Í!”, Í!&”- Í!'”. Í!(‘”	 Í"˜” Í"” Í"” Í"” Í"” Í"”  Í"”9 Í"7”; Í"9œ” Í#” Í#” Í#” Í#” Í#” Í#”  Í#”# Í#”% Í#”3 Í#-”4 Í#.”5 Í#/‘”	 Í$˜” Í$” Í$” Í$” Í$” Í$”  Í$”9 Í$7”; Í$9œ” Í%” Í%” Í%” Í%” Í%” Í%” Í%”" Í%”$ Í%”/ Í%)”0 Í%*”1 Í%+‘”	 Í&‘” Í&Ü ” Í'” Í'” Í'” Í'” Í'” Í'”  Í'”# Í'”% Í'”ÌV Í'ÌP”ÌX Í(”Ì^ Í(”Ì_ Í(”Ìd Í(”Ìe Í(”Ìi Í(”Ìj Í(”Ìl Í(”Ìr Í("”Ìs Í(#”Ìx Í((”Ìy Í()”Ì€ Í(0”Ì Í(1”Ì‚ Í(2”Ìƒ Í(3‘”	 Í)’” Í*” Í*‘” Í,‘” Í.”” Í/”	 Í/”
+ Í/” Í/’” Í0” Í0™” Í1” Í1” Í1”  Í1”$ Í1”% Í1”- Í1'”/ Í1)”0 Í1*•” Í2” Í2
+” Í2” Í2” Í2”” Í3” Í3” Í3” Í3‘” Í4š” Í6” Í6” Í6” Í6” Í6”# Í6”$ Í6”2 Í6,”4 Í6.”5 Í6/”” Í7” Í7
+” Í7” Í7’” Í8”# Í8Ü ” Í9” Í9” Í9” Í9”$ Í9”( Í9 ”, Í9$”- Í9%”8 Í90”9 Í91”< Í94”ÌA Í99”ÌE Í9=”ÌF Í9>”ÌL Í9ÌD”ÌN Í9ÌF”ÌP Í9ÌH–” Í:
+” Í:” Í:”  Í:”+ Í:!”, Í:"‘” Í;	•” Í=” Í=” Í=”  Í=”# Í=—” Í>
+” Í>” Í>” Í>” Í>”$ Í>”& Í>™” Í?
+” Í?”! Í?”% Í?”& Í?”4 Í?*”6 Í?,”: Í?0”Ì@ Í?6™” Í@
+” Í@” Í@”# Í@”$ Í@”/ Í@%”1 Í@'”5 Í@+”7 Í@-™” ÍA
+” ÍA” ÍA” ÍA”  ÍA”( ÍA”* ÍA ”. ÍA$”0 ÍA&™” ÍB
+” ÍB” ÍB” ÍB”  ÍB”( ÍB”* ÍB ”. ÍB$”0 ÍB&’” ÍC	” ÍC
+Ü ” ÍD” ÍD” ÍD” ÍD” ÍD”! ÍD”# ÍD”& ÍD”( ÍD ”ÌC ÍD;”ÌE ÍD=”ÌI ÍDÌA”ÌJ ÍDÌB”ÌU ÍDÌM”ÌV ÍDÌN”ÌY ÍDÌQ”ÌZ ÍDÌR”Ì[ ÍDÌS–” ÍE” ÍE” ÍE” ÍE”' ÍE”( ÍE ‘” ÍFœ” ÍG” ÍG” ÍG” ÍG” ÍG” ÍG” ÍG”" ÍG”$ ÍG”. ÍG(”/ ÍG)”0 ÍG*”” ÍH” ÍH” ÍH” ÍH‘”	 ÍI”” ÍI” ÍI” ÍI” ÍI–” ÍJ” ÍJ” ÍJ” ÍJ” ÍJ(” ÍJ)Ü ” ÍK” ÍK” ÍK” ÍK” ÍK” ÍK”  ÍK”# ÍK”% ÍK”; ÍK5”= ÍK7”ÌC ÍK=”ÌD ÍK>”ÌG ÍKÌA”ÌH ÍKÌB”ÌO ÍKÌI”ÌP ÍKÌJ”ÌQ ÍKÌK”ÌR ÍKÌL”” ÍL” ÍL” ÍL” ÍL‘”	 ÍM’” ÍN” ÍN‘” ÍP‘” ÍR”” ÍS”	 ÍS”
+ ÍS” ÍS’” ÍT” ÍT™” ÍU” ÍU” ÍU”  ÍU”$ ÍU”% ÍU”- ÍU'”/ ÍU)”0 ÍU*•” ÍV” ÍV
+” ÍV” ÍV” ÍV”” ÍW” ÍW” ÍW” ÍW‘” ÍX—” ÍZ” ÍZ” ÍZ” ÍZ” ÍZ”  ÍZ”! ÍZ—” Í[” Í[
+” Í[” Í[” Í[”# Í[”$ Í[’” Í\” Í\—” Í]” Í]” Í]” Í]”* Í]$”, Í]&”- Í]'œ” Í^” Í^” Í^” Í^” Í^” Í^” Í^”" Í^”$ Í^”, Í^&”- Í^'”. Í^(”” Í_” Í_” Í_” Í_‘”	 Í`”” Í`” Í`” Í`” Í`–” Ía” Ía” Ía” Ía” Ía(” Ía)Ü ” Íb” Íb” Íb” Íb” Íb” Íb”  Íb”# Íb”% Íb”9 Íb3”; Íb5”ÌA Íb;”ÌB Íb<”ÌE Íb?”ÌF ÍbÌ@”ÌM ÍbÌG”ÌN ÍbÌH”ÌO ÍbÌI”ÌP ÍbÌJ”” Íc” Íc” Íc” Íc‘”	 Íd’” Íe” Íe‘” Íg‘” Íi’” Íj” Íj–” Ík” Ík” Ík” Ík” Ík”  Ík’” Íl” Íl‘” Ín‘” Íp’” Íq” Íq˜” Ír” Ír” Ír” Ír” Ír”$ Ír ”( Ír$”) Ír%’” Ís” Ís‘” ÍtÔrI–§version¤file§sources®sourcesContent¥names¨mappingsÀ‘À‘ÀÜN‘”    ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”  	 ‘”  
+ ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”    ‘”  ! ‘”  " ‘”  # ‘”  $ ‘”  % ‘”  & ‘”  ' ‘”  ( ‘”  ) ‘”  * ‘”  + ‘”  , ‘”  - ‘”  . ‘”  / ‘”  0 ‘”  1 ‘”  2 ‘”  3 ‘”  4 ‘”  5 ‘”  6 ‘”  7 ‘”  8 ‘”  9 ‘”  : ‘”  ; ‘”  < ‘”  = ‘”  > ‘”  ? ‘”  Ì@ ‘”  ÌA ‘”  ÌB ‘”  ÌC ‘”  ÌD ‘”  ÌE ‘”  ÌF ‘”  ÌG ‘”  ÌH ‘”  ÌI ‘”  ÌJ ‘”  ÌK ‘”  ÌL ‘”  ÌM ‘”  ÌN ‘”  ÌO ‘”  ÌP ‘”  ÌQ ‘”  ÌR ‘”  ÌS ‘”  ÌT ‘”  ÌU ‘”  ÌV ‘”  ÌW ‘”  ÌX ‘”  ÌY ‘”  ÌZ ‘”  Ì[ ‘”  Ì\ ‘”  Ì] ‘”  Ì^ ‘”  Ì_ ‘”  Ì` ‘”  Ìa ‘”  Ìb ‘”  Ìc ‘”  Ìd ‘”  Ìe ‘”  Ìf ‘”  Ìg ‘”  Ìh ‘”  Ìi ‘”  Ìj ‘”  Ìk ‘”  Ìl ‘”  Ìm ‘”  Ìn ‘”  Ìo ‘”  Ìp ‘”  Ìq ‘”  Ìr ‘”  Ìs ‘”  Ìt ‘”  Ìu ‘”  Ìv ‘”  Ìw ‘”  Ìx ‘”  Ìy ‘”  Ìz ‘”  Ì{ ‘”  Ì| ‘”  Ì} ‘”  Ì~ ‘”  Ì ‘”  Ì€ ‘”  Ì ‘”  Ì‚ ‘”  Ìƒ ‘”  Ì„ ‘”  Ì… ‘”  Ì† ‘”  Ì‡ ‘”  Ìˆ ‘”  Ì‰ ‘”  ÌŠ ‘”  Ì‹ ‘”  ÌŒ ‘”  Ì ‘”  Ì ‘”  Ì ‘”  Ì ‘”  Ì‘ ‘”  Ì’ ‘”  Ì“ ‘”  Ì” ‘”  Ì• ‘”  Ì– ‘”  Ì— ‘”  Ì˜ ‘”  Ì™ ‘”  Ìš ‘”  Ì› ‘”  Ìœ ‘”  Ì ‘”  Ì ‘”  ÌŸ ‘”  Ì  ‘”  Ì¡ ‘”  Ì¢ ‘”  Ì£ ‘”  Ì¤ ‘”  Ì¥ ‘”  Ì¦ ‘”  Ì§ ‘”  Ì¨ ‘”  Ì© ‘”  Ìª ‘”  Ì« ‘”  Ì¬ ‘”  Ì­ ‘”  Ì® ‘”  Ì¯ ‘”  Ì° ‘”  Ì± ‘”  Ì² ‘”  Ì³ ‘”  Ì´ ‘”  Ìµ ‘”  Ì¶ ‘”  Ì· ‘”  Ì¸ ‘”  Ì¹ ‘”  Ìº ‘”  Ì» ‘”  Ì¼ ‘”  Ì½ ‘”  Ì¾ ‘”  Ì¿ ‘”  ÌÀ ‘”  ÌÁ ‘”  ÌÂ ‘”  ÌÃ ‘”  ÌÄ ‘”  ÌÅ ‘”  ÌÆ ‘”  ÌÇ ‘”  ÌÈ ‘”  ÌÉ ‘”  ÌÊ ‘”  ÌË ‘”  ÌÌ ‘”  ÌÍ ‘”  ÌÎ ‘”  ÌÏ ‘”  ÌĞ ‘”  ÌÑ ‘”  ÌÒ ‘”  ÌÓ ‘”  ÌÔ ‘”  ÌÕ ‘”  ÌÖ ‘”  Ì× ‘”  ÌØ ‘”  ÌÙ ‘”  ÌÚ ‘”  ÌÛ ‘”  ÌÜ ‘”  Ìİ ‘”  ÌŞ ‘”  Ìß ‘”  Ìà ‘”  Ìá ‘”  Ìâ ‘”  Ìã ‘”  Ìä ‘”  Ìå ‘”  Ìæ ‘”  Ìç ‘”  Ìè ‘”  Ìé ‘”  Ìê ‘”  Ìë ‘”  Ìì ‘”  Ìí ‘”  Ìî ‘”  Ìï ‘”  Ìğ ‘”  Ìñ ‘”  Ìò ‘”  Ìó ‘”  Ìô ‘”  Ìõ ‘”  Ìö ‘”  Ì÷ ‘”  Ìø ‘”  Ìù ‘”  Ìú ‘”  Ìû ‘”  Ìü ‘”  Ìı ‘”  Ìş ‘”  Ìÿ ‘”  Í  ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í	 ‘”  Í
+ ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í  ‘”  Í! ‘”  Í" ‘”  Í# ‘”  Í$ ‘”  Í% ‘”  Í& ‘”  Í' ‘”  Í( ‘”  Í) ‘”  Í* ‘”  Í+ ‘”  Í, ‘”  Í- ‘”  Í. ‘”  Í/ ‘”  Í0 ‘”  Í1 ‘”  Í2 ‘”  Í3 ‘”  Í4 ‘”  Í5 ‘”  Í6 ‘”  Í7 ‘”  Í8 ‘”  Í9 ‘”  Í: ‘”  Í; ‘”  Í< ‘”  Í= ‘”  Í> ‘”  Í? ‘”  Í@ ‘”  ÍA ‘”  ÍB ‘”  ÍC ‘”  ÍD ‘”  ÍE ‘”  ÍF ‘”  ÍG ‘”  ÍH ‘”  ÍI ‘”  ÍJ ‘”  ÍK ‘”  ÍL ‘”  ÍM ÔrJ’§missing¦pluginÃ¦genAbcÂÔ  ÔrK”²dynamicImportCache¹exportAllDeclarationCache»exportNamedDeclarationCache«importCache‘ÔrL–¤type¥start£end«declarationªspecifiers¦source¶ExportNamedDeclarationÍ~Í.©ÔrM–¤type¥start£end¢idªsuperClass¤body°ClassDeclarationÍ…Í.©ÔrN”¤type¥start£end¤nameªIdentifierÍ‹Í–«AuthServiceÀÔrO”¤type¥start£end¤body©ClassBodyÍ—Í.©ŸÔrP˜¤type¥start£end¦static¨computed£key¤kind¥value°MethodDefinitionÍÍ?ÂÂNªIdentifierÍÍ©«constructor«constructorÔrQ™¤type¥start£end¢idªexpression©generator¥async¦params¤body²FunctionExpressionÍ©Í?ÀÂÂÂO®BlockStatementÍ¬Í?”ÔrR”¤type¥start£endªexpression³ExpressionStatementÍ·ÍÏÔrS–¤type¥start£end¨operator¤left¥right´AssignmentExpressionÍ·ÍÎ¡=ÔrT—¤type¥start£end¦object¨property¨computed¨optional°MemberExpressionÍ·ÍÇÔrU“¤type¥start£end®ThisExpressionÍ·Í»NªIdentifierÍ¼ÍÇ«currentUserÂÂÔrV•¤type¥start£end¥value£raw§LiteralÍÊÍÎÀ¤nullR³ExpressionStatementÍÙÍíS´AssignmentExpressionÍÙÍì¡=T°MemberExpressionÍÙÍåU®ThisExpressionÍÙÍİNªIdentifierÍŞÍå§contextÂÂV§LiteralÍèÍìÀ¤nullR³ExpressionStatementÍ÷ÍS´AssignmentExpressionÍ÷Í¡=T°MemberExpressionÍ÷Í	U®ThisExpressionÍ÷ÍûNªIdentifierÍüÍ	­isInitializedÂÂV§LiteralÍÍÂ¥falseR³ExpressionStatementÍÍ8S´AssignmentExpressionÍÍ7¡=T°MemberExpressionÍÍ0U®ThisExpressionÍÍ NªIdentifierÍ!Í0¯dataPreferencesÂÂV§LiteralÍ3Í7À¤nullP°MethodDefinitionÍEÍğÃÂNªIdentifierÍLÍW«getInstance¦methodQ²FunctionExpressionÍWÍğÀÂÂÂO®BlockStatementÍZÍğ’ÔrW–¤type¥start£end¤testªconsequent©alternate«IfStatementÍeÍÃÔrX–¤type¥start£end¨operator¦prefix¨argument¯UnaryExpressionÍiÍ~¡!ÃT°MemberExpressionÍjÍ~NªIdentifierÍjÍu«AuthServiceNªIdentifierÍvÍ~¨instanceÂÂO®BlockStatementÍ€ÍÃ‘R³ExpressionStatementÍÍ¸S´AssignmentExpressionÍÍ·¡=T°MemberExpressionÍÍ£NªIdentifierÍÍš«AuthServiceNªIdentifierÍ›Í£¨instanceÂÂÔrY•¤type¥start£end¦callee©arguments­NewExpressionÍ¦Í·NªIdentifierÍªÍµ«AuthServiceÀÔrZ”¤type¥start£end¨argument¯ReturnStatementÍÍÍéT°MemberExpressionÍÔÍèNªIdentifierÍÔÍß«AuthServiceNªIdentifierÍàÍè¨instanceÂÂP°MethodDefinitionÍ ÍøÂÂNªIdentifierÍ&Í0ªsetContext¦methodQ²FunctionExpressionÍ0ÍøÀÂÂÃ‘NªIdentifierÍ1Í8§contextO®BlockStatementÍ:Íø’R³ExpressionStatementÍEÍ\S´AssignmentExpressionÍEÍ[¡=T°MemberExpressionÍEÍQU®ThisExpressionÍEÍINªIdentifierÍJÍQ§contextÂÂNªIdentifierÍTÍ[§contextÔr[–¤type¥start£end¥block§handler©finalizer¬TryStatementÍ‚ÍñO®BlockStatementÍ†Ív“R³ExpressionStatementÍ•ÍèS´AssignmentExpressionÍ•Íç¡=T°MemberExpressionÍ•Í©U®ThisExpressionÍ•Í™NªIdentifierÍšÍ©¯dataPreferencesÂÂZ¯AwaitExpressionÍ¬ÍçÔr\–¤type¥start£end¦callee©arguments¨optional®CallExpressionÍ²ÍçT°MemberExpressionÍ²ÍÌNªIdentifierÍ²Í½«preferencesNªIdentifierÍ¾ÍÌ®getPreferencesÂÂ’NªIdentifierÍÍÍÔ§contextNªIdentifierÍÖÍæ°PREFERENCES_NAMEÂR³ExpressionStatementÍöÍ#\®CallExpressionÍöÍ"T°MemberExpressionÍöÍ NªIdentifierÍöÍû¥hilogNªIdentifierÍüÍ ¤infoÂÂ“V§LiteralÍÍ ¦0x0000NªIdentifierÍ	Í£TAGV§LiteralÍÍ!»Preferences åˆå§‹åŒ–æˆåŠŸ½'Preferences åˆå§‹åŒ–æˆåŠŸ'ÂR³ExpressionStatementÍKÍkZ¯AwaitExpressionÍKÍj\®CallExpressionÍQÍjT°MemberExpressionÍQÍhU®ThisExpressionÍQÍUNªIdentifierÍVÍh²loadCachedUserInfoÂÂÂÔr]•¤type¥start£end¥param¤body«CatchClauseÍ€ÍñNªIdentifierÍ‡ÍŒ¥errorO®BlockStatementÍÍñ‘R³ExpressionStatementÍÍæ\®CallExpressionÍÍåT°MemberExpressionÍÍ¨NªIdentifierÍÍ¢¥hilogNªIdentifierÍ£Í¨¥errorÂÂ”V§LiteralÍ©Í¯ ¦0x0000NªIdentifierÍ±Í´£TAGV§LiteralÍ¶ÍÕÙ'Preferences åˆå§‹åŒ–å¤±è´¥: %{public}sÙ)'Preferences åˆå§‹åŒ–å¤±è´¥: %{public}s'\®CallExpressionÍ×ÍäNªIdentifierÍ×Íİ¦String‘NªIdentifierÍŞÍã¥errorÂÂÀP°MethodDefinitionÍ$ÍnÂÂNªIdentifierÍ*Í<²loadCachedUserInfo¦methodQ²FunctionExpressionÍ<ÍnÀÂÂÃO®BlockStatementÍ?Ín‘[¬TryStatementÍJÍgO®BlockStatementÍNÍó“W«IfStatementÍ]Í¡X¯UnaryExpressionÍaÍv¡!ÃT°MemberExpressionÍbÍvU®ThisExpressionÍbÍfNªIdentifierÍgÍv¯dataPreferencesÂÂO®BlockStatementÍxÍ¡‘Z¯ReturnStatementÍ‹Í’ÀÀÔr^•¤type¥start£end¬declarations¤kind³VariableDeclarationÍ¯Íõ‘Ôr_•¤type¥start£end¢id¤init²VariableDeclaratorÍµÍôNªIdentifierÍµÍÀ«userInfoStrZ¯AwaitExpressionÍÃÍô\®CallExpressionÍÉÍôT°MemberExpressionÍÉÍáT°MemberExpressionÍÉÍİU®ThisExpressionÍÉÍÍNªIdentifierÍÎÍİ¯dataPreferencesÂÂNªIdentifierÍŞÍá£getÂÂ’NªIdentifierÍâÍï­KEY_USER_INFOV§LiteralÍñÍó ¢''Â¥constW«IfStatementÍÍèNªIdentifierÍÍ«userInfoStrO®BlockStatementÍÍè“^³VariableDeclarationÍ'ÍP‘_²VariableDeclaratorÍ-ÍONªIdentifierÍ-Í5¨userInfo\®CallExpressionÍ8ÍOT°MemberExpressionÍ8ÍBNªIdentifierÍ8Í<¤JSONNªIdentifierÍ=ÍB¥parseÂÂ‘NªIdentifierÍCÍN«userInfoStrÂ¥constR³ExpressionStatementÍbÍ~S´AssignmentExpressionÍbÍ}¡=T°MemberExpressionÍbÍrU®ThisExpressionÍbÍfNªIdentifierÍgÍr«currentUserÂÂNªIdentifierÍuÍ}¨userInfoR³ExpressionStatementÍÍÙ\®CallExpressionÍÍØT°MemberExpressionÍÍšNªIdentifierÍÍ•¥hilogNªIdentifierÍ–Íš¤infoÂÂ”V§LiteralÍ›Í¡ ¦0x0000NªIdentifierÍ£Í¦£TAGV§LiteralÍ¨ÍÁÙ-ä»ç¼“å­˜åŠ è½½ç”¨æˆ·ä¿¡æ¯æˆåŠŸ: %{public}sÙ/'ä»ç¼“å­˜åŠ è½½ç”¨æˆ·ä¿¡æ¯æˆåŠŸ: %{public}s'T°MemberExpressionÍÃÍ×NªIdentifierÍÃÍË¨userInfoNªIdentifierÍÌÍ×«displayNameÂÂÂÀ]«CatchClauseÍıÍgNªIdentifierÍÍ	¥errorO®BlockStatementÍÍg‘R³ExpressionStatementÍÍ\\®CallExpressionÍÍ[T°MemberExpressionÍÍ%NªIdentifierÍÍ¥hilogNªIdentifierÍ Í%¥errorÂÂ”V§LiteralÍ&Í, ¦0x0000NªIdentifierÍ.Í1£TAGV§LiteralÍ3ÍKÙ*åŠ è½½ç¼“å­˜ç”¨æˆ·ä¿¡æ¯å¤±è´¥: %{public}sÙ,'åŠ è½½ç¼“å­˜ç”¨æˆ·ä¿¡æ¯å¤±è´¥: %{public}s'\®CallExpressionÍMÍZNªIdentifierÍMÍS¦String‘NªIdentifierÍTÍY¥errorÂÂÀP°MethodDefinitionÍšÍ	¥ÂÂNªIdentifierÍ Í³³saveUserInfoToCache¦methodQ²FunctionExpressionÍ³Í	¥ÀÂÂÃO®BlockStatementÍ¶Í	¥‘[¬TryStatementÍÁÍ	O®BlockStatementÍÅÍ	)•W«IfStatementÍÔÍ-Ôr`–¤type¥start£end¤left¨operator¥right±LogicalExpressionÍØÍX¯UnaryExpressionÍØÍí¡!ÃT°MemberExpressionÍÙÍíU®ThisExpressionÍÙÍİNªIdentifierÍŞÍí¯dataPreferencesÂÂ¢||X¯UnaryExpressionÍñÍ¡!ÃT°MemberExpressionÍòÍU®ThisExpressionÍòÍöNªIdentifierÍ÷Í«currentUserÂÂO®BlockStatementÍÍ-‘Z¯ReturnStatementÍÍÀÀ^³VariableDeclarationÍ;Íp‘_²VariableDeclaratorÍAÍoNªIdentifierÍAÍL«userInfoStr\®CallExpressionÍOÍoT°MemberExpressionÍOÍ]NªIdentifierÍOÍS¤JSONNªIdentifierÍTÍ]©stringifyÂÂ‘T°MemberExpressionÍ^ÍnU®ThisExpressionÍ^ÍbNªIdentifierÍcÍn«currentUserÂÂÂ¥constR³ExpressionStatementÍ~Í¹Z¯AwaitExpressionÍ~Í¸\®CallExpressionÍ„Í¸T°MemberExpressionÍ„ÍœT°MemberExpressionÍ„Í˜U®ThisExpressionÍ„ÍˆNªIdentifierÍ‰Í˜¯dataPreferencesÂÂNªIdentifierÍ™Íœ£putÂÂ’NªIdentifierÍÍª­KEY_USER_INFONªIdentifierÍ¬Í·«userInfoStrÂR³ExpressionStatementÍÇÍêZ¯AwaitExpressionÍÇÍé\®CallExpressionÍÍÍéT°MemberExpressionÍÍÍçT°MemberExpressionÍÍÍáU®ThisExpressionÍÍÍÑNªIdentifierÍÒÍá¯dataPreferencesÂÂNªIdentifierÍâÍç¥flushÂÂÂR³ExpressionStatementÍøÍ	\®CallExpressionÍøÍ	T°MemberExpressionÍøÍ	NªIdentifierÍøÍı¥hilogNªIdentifierÍşÍ	¤infoÂÂ“V§LiteralÍ	Í		 ¦0x0000NªIdentifierÍ	Í	£TAGV§LiteralÍ	Í	¾ç”¨æˆ·ä¿¡æ¯å·²ä¿å­˜åˆ°ç¼“å­˜Ù 'ç”¨æˆ·ä¿¡æ¯å·²ä¿å­˜åˆ°ç¼“å­˜'Â]«CatchClauseÍ	3Í	NªIdentifierÍ	:Í	?¥errorO®BlockStatementÍ	AÍ	‘R³ExpressionStatementÍ	PÍ	“\®CallExpressionÍ	PÍ	’T°MemberExpressionÍ	PÍ	[NªIdentifierÍ	PÍ	U¥hilogNªIdentifierÍ	VÍ	[¥errorÂÂ”V§LiteralÍ	\Í	b ¦0x0000NªIdentifierÍ	dÍ	g£TAGV§LiteralÍ	iÍ	‚Ù-ä¿å­˜ç”¨æˆ·ä¿¡æ¯åˆ°ç¼“å­˜å¤±è´¥: %{public}sÙ/'ä¿å­˜ç”¨æˆ·ä¿¡æ¯åˆ°ç¼“å­˜å¤±è´¥: %{public}s'\®CallExpressionÍ	„Í	‘NªIdentifierÍ	„Í	Š¦String‘NªIdentifierÍ	‹Í	¥errorÂÂÀP°MethodDefinitionÍ	ÏÍwÂÂNªIdentifierÍ	ÕÍ	è³clearCachedUserInfo¦methodQ²FunctionExpressionÍ	èÍwÀÂÂÃO®BlockStatementÍ	ëÍw‘[¬TryStatementÍ	öÍpO®BlockStatementÍ	úÍ
+ü”W«IfStatementÍ
+	Í
+MX¯UnaryExpressionÍ
+Í
+"¡!ÃT°MemberExpressionÍ
+Í
+"U®ThisExpressionÍ
+Í
+NªIdentifierÍ
+Í
+"¯dataPreferencesÂÂO®BlockStatementÍ
+$Í
+M‘Z¯ReturnStatementÍ
+7Í
+>ÀÀR³ExpressionStatementÍ
+[Í
+ŒZ¯AwaitExpressionÍ
+[Í
+‹\®CallExpressionÍ
+aÍ
+‹T°MemberExpressionÍ
+aÍ
+|T°MemberExpressionÍ
+aÍ
+uU®ThisExpressionÍ
+aÍ
+eNªIdentifierÍ
+fÍ
+u¯dataPreferencesÂÂNªIdentifierÍ
+vÍ
+|¦deleteÂÂ‘NªIdentifierÍ
+}Í
+Š­KEY_USER_INFOÂR³ExpressionStatementÍ
+šÍ
+½Z¯AwaitExpressionÍ
+šÍ
+¼\®CallExpressionÍ
+ Í
+¼T°MemberExpressionÍ
+ Í
+ºT°MemberExpressionÍ
+ Í
+´U®ThisExpressionÍ
+ Í
+¤NªIdentifierÍ
+¥Í
+´¯dataPreferencesÂÂNªIdentifierÍ
+µÍ
+º¥flushÂÂÂR³ExpressionStatementÍ
+ËÍ
+ñ\®CallExpressionÍ
+ËÍ
+ğT°MemberExpressionÍ
+ËÍ
+ÕNªIdentifierÍ
+ËÍ
+Ğ¥hilogNªIdentifierÍ
+ÑÍ
+Õ¤infoÂÂ“V§LiteralÍ
+ÖÍ
+Ü ¦0x0000NªIdentifierÍ
+ŞÍ
+á£TAGV§LiteralÍ
+ãÍ
+ï¾ç¼“å­˜çš„ç”¨æˆ·ä¿¡æ¯å·²æ¸…é™¤Ù 'ç¼“å­˜çš„ç”¨æˆ·ä¿¡æ¯å·²æ¸…é™¤'Â]«CatchClauseÍÍpNªIdentifierÍÍ¥errorO®BlockStatementÍÍp‘R³ExpressionStatementÍ#Íe\®CallExpressionÍ#ÍdT°MemberExpressionÍ#Í.NªIdentifierÍ#Í(¥hilogNªIdentifierÍ)Í.¥errorÂÂ”V§LiteralÍ/Í5 ¦0x0000NªIdentifierÍ7Í:£TAGV§LiteralÍ<ÍTÙ*æ¸…é™¤ç¼“å­˜ç”¨æˆ·ä¿¡æ¯å¤±è´¥: %{public}sÙ,'æ¸…é™¤ç¼“å­˜ç”¨æˆ·ä¿¡æ¯å¤±è´¥: %{public}s'\®CallExpressionÍVÍcNªIdentifierÍVÍ\¦String‘NªIdentifierÍ]Íb¥errorÂÂÀP°MethodDefinitionÍ¤ÍœÂÂNªIdentifierÍ¤Í¬¨initAuth¦methodQ²FunctionExpressionÍ¬ÍœÀÂÂÂO®BlockStatementÍ¯Íœ“W«IfStatementÍºÍøT°MemberExpressionÍ¾ÍĞU®ThisExpressionÍ¾ÍÂNªIdentifierÍÃÍĞ­isInitializedÂÂO®BlockStatementÍÒÍø‘Z¯ReturnStatementÍáÍíV§LiteralÍèÍìÃ¤trueÀW«IfStatementÍÍ}X¯UnaryExpressionÍÍ¡!ÃT°MemberExpressionÍÍU®ThisExpressionÍÍNªIdentifierÍÍ§contextÂÂO®BlockStatementÍÍ}’R³ExpressionStatementÍ$ÍW\®CallExpressionÍ$ÍVT°MemberExpressionÍ$Í/NªIdentifierÍ$Í)¥hilogNªIdentifierÍ*Í/¥errorÂÂ“V§LiteralÍ0Í6 ¦0x0000NªIdentifierÍ8Í;£TAGV§LiteralÍ=ÍUÙ(Context æœªè®¾ç½®ï¼Œæ— æ³•åˆå§‹åŒ– AuthÙ*'Context æœªè®¾ç½®ï¼Œæ— æ³•åˆå§‹åŒ– Auth'ÂZ¯ReturnStatementÍeÍrV§LiteralÍlÍqÂ¥falseÀ[¬TryStatementÍ‡Í•O®BlockStatementÍ‹ÍÜ–^³VariableDeclarationÍšÍõ‘_²VariableDeclaratorÍ ÍôNªIdentifierÍ Í¤¤file\®CallExpressionÍ§ÍôT°MemberExpressionÍ§ÍÙT°MemberExpressionÍ§ÍÃT°MemberExpressionÍ§Í³U®ThisExpressionÍ§Í«NªIdentifierÍ¬Í³§contextÂÂNªIdentifierÍ´ÍÃ¯resourceManagerÂÂNªIdentifierÍÄÍÙµgetRawFileContentSyncÂÂ‘V§LiteralÍÚÍó·agconnect-services.json¹'agconnect-services.json'Â¥const^³VariableDeclarationÍÍ,‘_²VariableDeclaratorÍ	Í+NªIdentifierÍ	Í£str\®CallExpressionÍÍ+T°MemberExpressionÍÍ)\®CallExpressionÍÍ T°MemberExpressionÍÍNªIdentifierÍÍ¦bufferNªIdentifierÍÍ¤fromÂÂ‘NªIdentifierÍÍ¤fileÂNªIdentifierÍ!Í)¨toStringÂÂÂ¥constR³ExpressionStatementÍ:ÍW\®CallExpressionÍ:ÍVT°MemberExpressionÍ:ÍCNªIdentifierÍ:Í>¤authNªIdentifierÍ?ÍC¤initÂÂ’T°MemberExpressionÍDÍPU®ThisExpressionÍDÍHNªIdentifierÍIÍP§contextÂÂNªIdentifierÍRÍU£strÂR³ExpressionStatementÍeÍS´AssignmentExpressionÍeÍ~¡=T°MemberExpressionÍeÍwU®ThisExpressionÍeÍiNªIdentifierÍjÍw­isInitializedÂÂV§LiteralÍzÍ~Ã¤trueR³ExpressionStatementÍÍ·\®CallExpressionÍÍ¶T°MemberExpressionÍÍ—NªIdentifierÍÍ’¥hilogNªIdentifierÍ“Í—¤infoÂÂ“V§LiteralÍ˜Í ¦0x0000NªIdentifierÍ Í££TAGV§LiteralÍ¥Íµ¸Auth SDK åˆå§‹åŒ–æˆåŠŸº'Auth SDK åˆå§‹åŒ–æˆåŠŸ'ÂZ¯ReturnStatementÍÅÍÑV§LiteralÍÌÍĞÃ¤true]«CatchClauseÍæÍ•NªIdentifierÍíÍò¥errorO®BlockStatementÍôÍ•“^³VariableDeclarationÍÍ‘_²VariableDeclaratorÍ	ÍNªIdentifierÍ	Í£errNªIdentifierÍÍ¥error¥constR³ExpressionStatementÍ#Ío\®CallExpressionÍ#ÍnT°MemberExpressionÍ#Í.NªIdentifierÍ#Í(¥hilogNªIdentifierÍ)Í.¥errorÂÂ”V§LiteralÍ/Í5 ¦0x0000NªIdentifierÍ7Í:£TAGV§LiteralÍ<ÍXÙ$Auth SDK åˆå§‹åŒ–å¤±è´¥: %{public}sÙ&'Auth SDK åˆå§‹åŒ–å¤±è´¥: %{public}s'\®CallExpressionÍZÍmNªIdentifierÍZÍ`¦String‘T°MemberExpressionÍaÍlNªIdentifierÍaÍd£errNªIdentifierÍeÍl§messageÂÂÂÂZ¯ReturnStatementÍ}ÍŠV§LiteralÍ„Í‰Â¥falseÀP°MethodDefinitionÍÑÍ?ÂÂNªIdentifierÍ×ÍÜ¥login¦methodQ²FunctionExpressionÍÜÍ?ÀÂÂÃO®BlockStatementÍßÍ?‘[¬TryStatementÍêÍ8O®BlockStatementÍîÍ]R³ExpressionStatementÍıÍ$\®CallExpressionÍıÍ#T°MemberExpressionÍıÍNªIdentifierÍıÍ¥hilogNªIdentifierÍÍ¤infoÂÂ“V§LiteralÍÍ ¦0x0000NªIdentifierÍÍ£TAGV§LiteralÍÍ"»å¼€å§‹åä¸ºè´¦å·ç™»å½•...½'å¼€å§‹åä¸ºè´¦å·ç™»å½•...'Â^³VariableDeclarationÍSÍw‘_²VariableDeclaratorÍYÍvNªIdentifierÍYÍd«initialized\®CallExpressionÍgÍvT°MemberExpressionÍgÍtU®ThisExpressionÍgÍkNªIdentifierÍlÍt¨initAuthÂÂÂ¥constW«IfStatementÍ…ÍX¯UnaryExpressionÍ‰Í•¡!ÃNªIdentifierÍŠÍ•«initializedO®BlockStatementÍ—Í’R³ExpressionStatementÍªÍÔ\®CallExpressionÍªÍÓT°MemberExpressionÍªÍµNªIdentifierÍªÍ¯¥hilogNªIdentifierÍ°Íµ¥errorÂÂ“V§LiteralÍ¶Í¼ ¦0x0000NªIdentifierÍ¾ÍÁ£TAGV§LiteralÍÃÍÒµAuth SDK æœªåˆå§‹åŒ–·'Auth SDK æœªåˆå§‹åŒ–'ÂZ¯ReturnStatementÍæÍòV§LiteralÍíÍñÀ¤nullÀR³ExpressionStatementÍ'ÍN\®CallExpressionÍ'ÍMT°MemberExpressionÍ'Í1NªIdentifierÍ'Í,¥hilogNªIdentifierÍ-Í1¤infoÂÂ“V§LiteralÍ2Í8 ¦0x0000NªIdentifierÍ:Í=£TAGV§LiteralÍ?ÍL»æ£€æŸ¥å½“å‰ç™»å½•çŠ¶æ€...½'æ£€æŸ¥å½“å‰ç™»å½•çŠ¶æ€...'Â^³VariableDeclarationÍ\ÍŒ‘_²VariableDeclaratorÍbÍ‹NªIdentifierÍbÍm«currentUserZ¯AwaitExpressionÍpÍ‹\®CallExpressionÍvÍ‹T°MemberExpressionÍvÍ‰NªIdentifierÍvÍz¤authNªIdentifierÍ{Í‰®getCurrentUserÂÂÂ¥constW«IfStatementÍšÍ%`°BinaryExpressionÍÍ²NªIdentifierÍÍ©«currentUser£!==V§LiteralÍ®Í²À¤nullO®BlockStatementÍ´Í%’R³ExpressionStatementÍÇÍï\®CallExpressionÍÇÍîT°MemberExpressionÍÇÍÑNªIdentifierÍÇÍÌ¥hilogNªIdentifierÍÍÍÑ¤infoÂÂ“V§LiteralÍÒÍØ ¦0x0000NªIdentifierÍÚÍİ£TAGV§LiteralÍßÍí¾ç”¨æˆ·å·²ç™»å½•ï¼Œå…ˆé€€å‡º...Ù 'ç”¨æˆ·å·²ç™»å½•ï¼Œå…ˆé€€å‡º...'ÂR³ExpressionStatementÍÍZ¯AwaitExpressionÍÍ\®CallExpressionÍÍT°MemberExpressionÍÍNªIdentifierÍÍ¤authNªIdentifierÍÍ§signOutÂÂÂÀR³ExpressionStatementÍHÍo\®CallExpressionÍHÍnT°MemberExpressionÍHÍRNªIdentifierÍHÍM¥hilogNªIdentifierÍNÍR¤infoÂÂ“V§LiteralÍSÍY ¦0x0000NªIdentifierÍ[Í^£TAGV§LiteralÍ`Ím»æ‰§è¡Œåä¸ºè´¦å·ç™»å½•...½'æ‰§è¡Œåä¸ºè´¦å·ç™»å½•...'Â^³VariableDeclarationÍ}Í5‘_²VariableDeclaratorÍƒÍ4NªIdentifierÍƒÍ¬signInResultZ¯AwaitExpressionÍ’Í4\®CallExpressionÍ˜Í4T°MemberExpressionÍ˜Í£NªIdentifierÍ˜Íœ¤authNªIdentifierÍÍ£¦signInÂÂ‘Ôra”¤type¥start£endªproperties°ObjectExpressionÍ¤Í3’Ôrb™¤type¥start£end¦method©shorthand¨computed£key¥value¤kind¨PropertyÍ·ÍËÂÂÂNªIdentifierÍ·ÍÅ®autoCreateUserV§LiteralÍÇÍËÃ¤true¤initb¨PropertyÍŞÍ$ÂÂÂNªIdentifierÍŞÍì®credentialInfoa°ObjectExpressionÍîÍ$‘b¨PropertyÍÍÂÂÂNªIdentifierÍÍ	¤kindV§LiteralÍÍ¤hwid¦'hwid'¤init¤initÂ¥const^³VariableDeclarationÍCÍg‘_²VariableDeclaratorÍIÍfNªIdentifierÍIÍM¤user\®CallExpressionÍPÍfT°MemberExpressionÍPÍdNªIdentifierÍPÍ\¬signInResultNªIdentifierÍ]Íd§getUserÂÂÂ¥constR³ExpressionStatementÍuÍS´AssignmentExpressionÍuÍ¡=T°MemberExpressionÍuÍ…U®ThisExpressionÍuÍyNªIdentifierÍzÍ…«currentUserÂÂa°ObjectExpressionÍˆÍ•b¨PropertyÍ›Í­ÂÂÂNªIdentifierÍ›Í£uid\®CallExpressionÍ Í­T°MemberExpressionÍ Í«NªIdentifierÍ Í¤¤userNªIdentifierÍ¥Í«¦getUidÂÂÂ¤initb¨PropertyÍÀÍìÂÂÂNªIdentifierÍÀÍË«displayName`±LogicalExpressionÍÍÍì\®CallExpressionÍÍÍâT°MemberExpressionÍÍÍàNªIdentifierÍÍÍÑ¤userNªIdentifierÍÒÍà®getDisplayNameÂÂÂ¢||V§LiteralÍæÍì¬åä¸ºç”¨æˆ·®'åä¸ºç”¨æˆ·'¤initb¨PropertyÍÿÍ"ÂÂÂNªIdentifierÍÿÍ©avatarUri`±LogicalExpressionÍ
+Í"\®CallExpressionÍ
+ÍT°MemberExpressionÍ
+ÍNªIdentifierÍ
+Í¤userNªIdentifierÍÍ«getPhotoUrlÂÂÂ¢||V§LiteralÍ Í" ¢''¤initb¨PropertyÍ5ÍQÂÂÂNªIdentifierÍ5Í:¥email`±LogicalExpressionÍ<ÍQ\®CallExpressionÍ<ÍKT°MemberExpressionÍ<ÍINªIdentifierÍ<Í@¤userNªIdentifierÍAÍI¨getEmailÂÂÂ¢||V§LiteralÍOÍQ ¢''¤initb¨PropertyÍdÍ€ÂÂÂNªIdentifierÍdÍi¥phone`±LogicalExpressionÍkÍ€\®CallExpressionÍkÍzT°MemberExpressionÍkÍxNªIdentifierÍkÍo¤userNªIdentifierÍpÍx¨getPhoneÂÂÂ¢||V§LiteralÍ~Í€ ¢''¤initR³ExpressionStatementÍÍå\®CallExpressionÍÍäT°MemberExpressionÍÍ¨NªIdentifierÍÍ£¥hilogNªIdentifierÍ¤Í¨¤infoÂÂ”V§LiteralÍ©Í¯ ¦0x0000NªIdentifierÍ±Í´£TAGV§LiteralÍ¶ÍÍ½ç™»å½•æˆåŠŸ, uid: %{public}s¿'ç™»å½•æˆåŠŸ, uid: %{public}s'T°MemberExpressionÍÏÍãT°MemberExpressionÍÏÍßU®ThisExpressionÍÏÍÓNªIdentifierÍÔÍß«currentUserÂÂNªIdentifierÍàÍã£uidÂÂÂR³ExpressionStatementÍÍ,Z¯AwaitExpressionÍÍ+\®CallExpressionÍÍ+T°MemberExpressionÍÍ)U®ThisExpressionÍÍNªIdentifierÍÍ)³saveUserInfoToCacheÂÂÂZ¯ReturnStatementÍ:ÍRT°MemberExpressionÍAÍQU®ThisExpressionÍAÍENªIdentifierÍFÍQ«currentUserÂÂ]«CatchClauseÍgÍ8NªIdentifierÍnÍs¥errorO®BlockStatementÍuÍ8“^³VariableDeclarationÍ„Í–‘_²VariableDeclaratorÍŠÍ•NªIdentifierÍŠÍ£errNªIdentifierÍÍ•¥error¥constR³ExpressionStatementÍ¤Í\®CallExpressionÍ¤ÍT°MemberExpressionÍ¤Í¯NªIdentifierÍ¤Í©¥hilogNªIdentifierÍªÍ¯¥errorÂÂ•V§LiteralÍ°Í¶ ¦0x0000NªIdentifierÍ¸Í»£TAGV§LiteralÍ½ÍêÙ3ç™»å½•å¤±è´¥: Code: %{public}s, Message: %{public}sÙ5'ç™»å½•å¤±è´¥: Code: %{public}s, Message: %{public}s'\®CallExpressionÍìÍüNªIdentifierÍìÍò¦String‘T°MemberExpressionÍóÍûNªIdentifierÍóÍö£errNªIdentifierÍ÷Íû¤codeÂÂÂ\®CallExpressionÍşÍNªIdentifierÍşÍ¦String‘T°MemberExpressionÍÍNªIdentifierÍÍ£errNªIdentifierÍ	Í§messageÂÂÂÂZ¯ReturnStatementÍ!Í-V§LiteralÍ(Í,À¤nullÀP°MethodDefinitionÍoÍ&ÂÂNªIdentifierÍuÍ†±updateUserProfile¦methodQ²FunctionExpressionÍ†Í&ÀÂÂÃ’NªIdentifierÍ‡Í’«displayNameNªIdentifierÍ”Í©avatarUriO®BlockStatementÍŸÍ&‘W«IfStatementÍªÍT°MemberExpressionÍ®Í¾U®ThisExpressionÍ®Í²NªIdentifierÍ³Í¾«currentUserÂÂO®BlockStatementÍÀÍ”R³ExpressionStatementÍÏÍS´AssignmentExpressionÍÏÍ¡=T°MemberExpressionÍÏÍëT°MemberExpressionÍÏÍßU®ThisExpressionÍÏÍÓNªIdentifierÍÔÍß«currentUserÂÂNªIdentifierÍàÍë«displayNameÂÂ`±LogicalExpressionÍîÍNªIdentifierÍîÍù«displayName¢||T°MemberExpressionÍıÍT°MemberExpressionÍıÍU®ThisExpressionÍıÍNªIdentifierÍÍ«currentUserÂÂNªIdentifierÍÍ«displayNameÂÂR³ExpressionStatementÍ(ÍmS´AssignmentExpressionÍ(Íl¡=T°MemberExpressionÍ(ÍBT°MemberExpressionÍ(Í8U®ThisExpressionÍ(Í,NªIdentifierÍ-Í8«currentUserÂÂNªIdentifierÍ9ÍB©avatarUriÂÂ`±LogicalExpressionÍEÍlNªIdentifierÍEÍN©avatarUri¢||T°MemberExpressionÍRÍlT°MemberExpressionÍRÍbU®ThisExpressionÍRÍVNªIdentifierÍWÍb«currentUserÂÂNªIdentifierÍcÍl©avatarUriÂÂR³ExpressionStatementÍ{ÍÍ\®CallExpressionÍ{ÍÌT°MemberExpressionÍ{Í…NªIdentifierÍ{Í€¥hilogNªIdentifierÍÍ…¤infoÂÂ”V§LiteralÍ†ÍŒ ¦0x0000NªIdentifierÍÍ‘£TAGV§LiteralÍ“Í­Ù*ç”¨æˆ·ä¿¡æ¯å·²æ›´æ–° - æ˜µç§°: %{public}sÙ,'ç”¨æˆ·ä¿¡æ¯å·²æ›´æ–° - æ˜µç§°: %{public}s'T°MemberExpressionÍ¯ÍËT°MemberExpressionÍ¯Í¿U®ThisExpressionÍ¯Í³NªIdentifierÍ´Í¿«currentUserÂÂNªIdentifierÍÀÍË«displayNameÂÂÂR³ExpressionStatementÍóÍZ¯AwaitExpressionÍóÍ\®CallExpressionÍùÍT°MemberExpressionÍùÍU®ThisExpressionÍùÍıNªIdentifierÍşÍ³saveUserInfoToCacheÂÂÂÀP°MethodDefinitionÍÍ"ÂÂNªIdentifierÍ¤ÍÂ¾fetchUserProfileWithAccountKit¦methodQ²FunctionExpressionÍÂÍ"ÀÂÂÃ‘NªIdentifierÍÃÍÌ©uiContextO®BlockStatementÍÎÍ"‘[¬TryStatementÍÙÍ"O®BlockStatementÍİÍ!~Ü R³ExpressionStatementÍìÍ \®CallExpressionÍìÍT°MemberExpressionÍìÍöNªIdentifierÍìÍñ¥hilogNªIdentifierÍòÍö¤infoÂÂ“V§LiteralÍ÷Íı ¦0x0000NªIdentifierÍÿÍ£TAGV§LiteralÍÍÙ,å¼€å§‹é€šè¿‡Account Kitè·å–å¤´åƒæ˜µç§°...Ù.'å¼€å§‹é€šè¿‡Account Kitè·å–å¤´åƒæ˜µç§°...'Â^³VariableDeclarationÍEÍ¨‘_²VariableDeclaratorÍKÍ§NªIdentifierÍKÍV«authRequest\®CallExpressionÍYÍ§T°MemberExpressionÍYÍ¥Y­NewExpressionÍYÍ~T°MemberExpressionÍ]Í|NªIdentifierÍ]Ík®authenticationNªIdentifierÍlÍ|°HuaweiIDProviderÂÂNªIdentifierÍÍ¥Ù&createAuthorizationWithHuaweiIDRequestÂÂÂ¥constR³ExpressionStatementÍİÍşS´AssignmentExpressionÍİÍı¡=T°MemberExpressionÍİÍïNªIdentifierÍİÍè«authRequestNªIdentifierÍéÍï¦scopesÂÂÔrc”¤type¥start£end¨elements¯ArrayExpressionÍòÍı‘V§LiteralÍóÍü§profile©'profile'R³ExpressionStatementÍAÍiS´AssignmentExpressionÍAÍh¡=T°MemberExpressionÍAÍaNªIdentifierÍAÍL«authRequestNªIdentifierÍMÍa´supportAtomicServiceÂÂV§LiteralÍdÍhÃ¤trueR³ExpressionStatementÍ¿ÍíS´AssignmentExpressionÍ¿Íì¡=T°MemberExpressionÍ¿ÍÖNªIdentifierÍ¿ÍÊ«authRequestNªIdentifierÍËÍÖ«permissionsÂÂc¯ArrayExpressionÍÙÍì‘V§LiteralÍÚÍë¯serviceauthcode±'serviceauthcode'R³ExpressionStatementÍ6Í\S´AssignmentExpressionÍ6Í[¡=T°MemberExpressionÍ6ÍTNªIdentifierÍ6ÍA«authRequestNªIdentifierÍBÍT²forceAuthorizationÂÂV§LiteralÍWÍ[Ã¤trueR³ExpressionStatementÍ…Í³S´AssignmentExpressionÍ…Í²¡=T°MemberExpressionÍ…Í–NªIdentifierÍ…Í«authRequestNªIdentifierÍ‘Í–¥stateÂÂ\®CallExpressionÍ™Í²T°MemberExpressionÍ™Í°NªIdentifierÍ™Í¤utilNªIdentifierÍÍ°²generateRandomUUIDÂÂÂ^³VariableDeclarationÍÍt‘_²VariableDeclaratorÍÍsNªIdentifierÍÍ)ªcontrollerY­NewExpressionÍ,ÍsT°MemberExpressionÍ0ÍWNªIdentifierÍ0Í>®authenticationNªIdentifierÍ?ÍW¸AuthenticationControllerÂÂ‘\®CallExpressionÍXÍrT°MemberExpressionÍXÍpNªIdentifierÍXÍa©uiContextNªIdentifierÍbÍp®getHostContextÂÂÂ¥const^³VariableDeclarationÍ™ÍÓ‘_²VariableDeclaratorÍŸÍÒNªIdentifierÍŸÍ£¤dataZ¯AwaitExpressionÍ¦ÍÒ\®CallExpressionÍ¬ÍÒT°MemberExpressionÍ¬ÍÅNªIdentifierÍ¬Í¶ªcontrollerNªIdentifierÍ·ÍÅ®executeRequestÂÂ‘NªIdentifierÍÆÍÑ«authRequestÂ¥const^³VariableDeclarationÍáÍ‘_²VariableDeclaratorÍçÍNªIdentifierÍçÍÙ!authorizationWithHuaweiIDResponseNªIdentifierÍÍ¤data¥const^³VariableDeclarationÍ6Íl‘_²VariableDeclaratorÍ<ÍkNªIdentifierÍ<ÍA¥stateT°MemberExpressionÍDÍkNªIdentifierÍDÍeÙ!authorizationWithHuaweiIDResponseNªIdentifierÍfÍk¥stateÂÂ¥constW«IfStatementÍzÍ1`±LogicalExpressionÍ~Í¢NªIdentifierÍ~Íƒ¥state¢&&`°BinaryExpressionÍ‡Í¢T°MemberExpressionÍ‡Í˜NªIdentifierÍ‡Í’«authRequestNªIdentifierÍ“Í˜¥stateÂÂ£!==NªIdentifierÍÍ¢¥stateO®BlockStatementÍ¤Í1’R³ExpressionStatementÍ·Í\®CallExpressionÍ·ÍT°MemberExpressionÍ·ÍÂNªIdentifierÍ·Í¼¥hilogNªIdentifierÍ½ÍÂ¥errorÂÂ”V§LiteralÍÃÍÉ ¦0x0000NªIdentifierÍËÍÎ£TAGV§LiteralÍĞÍúÙ:æˆæƒå¤±è´¥ï¼šstateä¸åŒ¹é…ï¼Œresponse state: %{public}sÙ<'æˆæƒå¤±è´¥ï¼šstateä¸åŒ¹é…ï¼Œresponse state: %{public}s'NªIdentifierÍüÍ¥stateÂZ¯ReturnStatementÍÍ"V§LiteralÍÍ!Â¥falseÀR³ExpressionStatementÍ?Í_\®CallExpressionÍ?Í^T°MemberExpressionÍ?ÍINªIdentifierÍ?ÍD¥hilogNªIdentifierÍEÍI¤infoÂÂ“V§LiteralÍJÍP ¦0x0000NªIdentifierÍRÍU£TAGV§LiteralÍWÍ]¬æˆæƒæˆåŠŸ®'æˆæƒæˆåŠŸ'Â^³VariableDeclarationÍ„ÍØ‘_²VariableDeclaratorÍŠÍ×NªIdentifierÍŠÍ­Ù#authorizationWithHuaweiIDCredentialR¯ChainExpressionÍ°Í×T°MemberExpressionÍ°Í×NªIdentifierÍ°ÍÑÙ!authorizationWithHuaweiIDResponseNªIdentifierÍÓÍ×¤dataÂÃ¥const^³VariableDeclarationÍæÍ'‘_²VariableDeclaratorÍìÍ&NªIdentifierÍìÍõ©avatarUriR¯ChainExpressionÍøÍ&T°MemberExpressionÍøÍ&NªIdentifierÍøÍÙ#authorizationWithHuaweiIDCredentialNªIdentifierÍÍ&©avatarUriÂÃ¥const^³VariableDeclarationÍ5Ít‘_²VariableDeclaratorÍ;ÍsNªIdentifierÍ;ÍC¨nickNameR¯ChainExpressionÍFÍsT°MemberExpressionÍFÍsNªIdentifierÍFÍiÙ#authorizationWithHuaweiIDCredentialNªIdentifierÍkÍs¨nickNameÂÃ¥constR³ExpressionStatementÍ‚Íâ\®CallExpressionÍ‚ÍáT°MemberExpressionÍ‚ÍŒNªIdentifierÍ‚Í‡¥hilogNªIdentifierÍˆÍŒ¤infoÂÂ•V§LiteralÍÍ“ ¦0x0000NªIdentifierÍ•Í˜£TAGV§LiteralÍšÍ½Ù/è·å–åˆ°å¤´åƒ: %{public}s, æ˜µç§°: %{public}sÙ1'è·å–åˆ°å¤´åƒ: %{public}s, æ˜µç§°: %{public}s'`±LogicalExpressionÍ¿ÍÏNªIdentifierÍ¿ÍÈ©avatarUri¢||V§LiteralÍÌÍÏ£æ— ¥'æ— '`±LogicalExpressionÍÑÍàNªIdentifierÍÑÍÙ¨nickName¢||V§LiteralÍİÍà£æ— ¥'æ— 'ÂW«IfStatementÍÍ!sT°MemberExpressionÍÍU®ThisExpressionÍÍNªIdentifierÍÍ«currentUserÂÂO®BlockStatementÍÍ ò•W«IfStatementÍ0Í®`±LogicalExpressionÍ4ÍZNªIdentifierÍ4Í<¨nickName¢&&`°BinaryExpressionÍ@ÍZT°MemberExpressionÍ@ÍV\®CallExpressionÍ@ÍOT°MemberExpressionÍ@ÍMNªIdentifierÍ@ÍH¨nickNameNªIdentifierÍIÍM¤trimÂÂÂNªIdentifierÍPÍV¦lengthÂÂ¡>V§LiteralÍYÍZ ¡0O®BlockStatementÍ\Í®‘R³ExpressionStatementÍsÍ›S´AssignmentExpressionÍsÍš¡=T°MemberExpressionÍsÍT°MemberExpressionÍsÍƒU®ThisExpressionÍsÍwNªIdentifierÍxÍƒ«currentUserÂÂNªIdentifierÍ„Í«displayNameÂÂNªIdentifierÍ’Íš¨nickNameÀW«IfStatementÍÀÍ ?`±LogicalExpressionÍÄÍìNªIdentifierÍÄÍÍ©avatarUri¢&&`°BinaryExpressionÍÑÍìT°MemberExpressionÍÑÍè\®CallExpressionÍÑÍáT°MemberExpressionÍÑÍßNªIdentifierÍÑÍÚ©avatarUriNªIdentifierÍÛÍß¤trimÂÂÂNªIdentifierÍâÍè¦lengthÂÂ¡>V§LiteralÍëÍì ¡0O®BlockStatementÍîÍ ?‘R³ExpressionStatementÍ Í ,S´AssignmentExpressionÍ Í +¡=T°MemberExpressionÍ Í T°MemberExpressionÍ Í U®ThisExpressionÍ Í 	NªIdentifierÍ 
+Í «currentUserÂÂNªIdentifierÍ Í ©avatarUriÂÂNªIdentifierÍ "Í +©avatarUriÀR³ExpressionStatementÍ mÍ Z¯AwaitExpressionÍ mÍ \®CallExpressionÍ sÍ T°MemberExpressionÍ sÍ ‹U®ThisExpressionÍ sÍ wNªIdentifierÍ xÍ ‹³saveUserInfoToCacheÂÂÂR³ExpressionStatementÍ  Í Å\®CallExpressionÍ  Í ÄT°MemberExpressionÍ  Í ªNªIdentifierÍ  Í ¥¥hilogNªIdentifierÍ ¦Í ª¤infoÂÂ“V§LiteralÍ «Í ± ¦0x0000NªIdentifierÍ ³Í ¶£TAGV§LiteralÍ ¸Í Ã»ç”¨æˆ·å¤´åƒæ˜µç§°å·²æ›´æ–°½'ç”¨æˆ·å¤´åƒæ˜µç§°å·²æ›´æ–°'ÂZ¯ReturnStatementÍ ×Í ãV§LiteralÍ ŞÍ âÃ¤trueO®BlockStatementÍ!Í!s’R³ExpressionStatementÍ!Í!E\®CallExpressionÍ!Í!DT°MemberExpressionÍ!Í!"NªIdentifierÍ!Í!¥hilogNªIdentifierÍ!Í!"¤warnÂÂ“V§LiteralÍ!#Í!) ¦0x0000NªIdentifierÍ!+Í!.£TAGV§LiteralÍ!0Í!CÙ3å½“å‰æ²¡æœ‰ç™»å½•ç”¨æˆ·ï¼Œæ— æ³•æ›´æ–°å¤´åƒæ˜µç§°Ù5'å½“å‰æ²¡æœ‰ç™»å½•ç”¨æˆ·ï¼Œæ— æ³•æ›´æ–°å¤´åƒæ˜µç§°'ÂZ¯ReturnStatementÍ!WÍ!dV§LiteralÍ!^Í!cÂ¥false]«CatchClauseÍ!ˆÍ"NªIdentifierÍ!Í!”¥errorO®BlockStatementÍ!–Í"“^³VariableDeclarationÍ!¥Í!·‘_²VariableDeclaratorÍ!«Í!¶NªIdentifierÍ!«Í!®£errNªIdentifierÍ!±Í!¶¥error¥constR³ExpressionStatementÍ!ÅÍ!å\®CallExpressionÍ!ÅÍ!äT°MemberExpressionÍ!ÅÍ!ßU®ThisExpressionÍ!ÅÍ!ÉNªIdentifierÍ!ÊÍ!ßµhandleAccountKitErrorÂÂ‘NªIdentifierÍ!àÍ!ã£errÂZ¯ReturnStatementÍ!óÍ" V§LiteralÍ!úÍ!ÿÂ¥falseÀP°MethodDefinitionÍ"BÍ&°ÂÂNªIdentifierÍ"BÍ"WµhandleAccountKitError¦methodQ²FunctionExpressionÍ"WÍ&°ÀÂÂÂ‘NªIdentifierÍ"XÍ"]¥errorO®BlockStatementÍ"_Í&°–^³VariableDeclarationÍ"jÍ"’‘_²VariableDeclaratorÍ"pÍ"‘NªIdentifierÍ"pÍ"„´ERROR_CODE_LOGIN_OUTV§LiteralÍ"‡Í"‘Î;±µ1ª1001502001¥const^³VariableDeclarationÍ"¥Í"Ñ‘_²VariableDeclaratorÍ"«Í"ĞNªIdentifierÍ"«Í"Ã¸ERROR_CODE_NETWORK_ERRORV§LiteralÍ"ÆÍ"ĞÎ;±µ5ª1001502005¥const^³VariableDeclarationÍ"ãÍ#‘_²VariableDeclaratorÍ"éÍ#NªIdentifierÍ"éÍ"ÿ¶ERROR_CODE_USER_CANCELV§LiteralÍ#Í#Î;±µ<ª1001502012¥const^³VariableDeclarationÍ#!Í#L‘_²VariableDeclaratorÍ#'Í#KNªIdentifierÍ#'Í#@¹ERROR_CODE_SYSTEM_SERVICEV§LiteralÍ#CÍ#KÎ »®á¨12300001¥const^³VariableDeclarationÍ#`Í#‘_²VariableDeclaratorÍ#fÍ#ŒNªIdentifierÍ#fÍ#¹ERROR_CODE_REQUEST_REFUSEV§LiteralÍ#‚Í#ŒÎ;±­bª1001500002¥constW«IfStatementÍ#ŸÍ&©`°BinaryExpressionÍ#£Í#ÆT°MemberExpressionÍ#£Í#­NªIdentifierÍ#£Í#¨¥errorNªIdentifierÍ#©Í#­¤codeÂÂ£===NªIdentifierÍ#²Í#Æ´ERROR_CODE_LOGIN_OUTO®BlockStatementÍ#ÈÍ$‘R³ExpressionStatementÍ#×Í$\®CallExpressionÍ#×Í$T°MemberExpressionÍ#×Í#âNªIdentifierÍ#×Í#Ü¥hilogNªIdentifierÍ#İÍ#â¥errorÂÂ“V§LiteralÍ#ãÍ#é ¦0x0000NªIdentifierÍ#ëÍ#î£TAGV§LiteralÍ#ğÍ$Ù<ç”¨æˆ·æœªç™»å½•åä¸ºè´¦å·ï¼Œè¯·ç™»å½•åä¸ºè´¦å·å¹¶é‡è¯•Ù>'ç”¨æˆ·æœªç™»å½•åä¸ºè´¦å·ï¼Œè¯·ç™»å½•åä¸ºè´¦å·å¹¶é‡è¯•'ÂW«IfStatementÍ$"Í&©`°BinaryExpressionÍ$&Í$MT°MemberExpressionÍ$&Í$0NªIdentifierÍ$&Í$+¥errorNªIdentifierÍ$,Í$0¤codeÂÂ£===NªIdentifierÍ$5Í$M¸ERROR_CODE_NETWORK_ERRORO®BlockStatementÍ$OÍ$—‘R³ExpressionStatementÍ$^Í$Œ\®CallExpressionÍ$^Í$‹T°MemberExpressionÍ$^Í$iNªIdentifierÍ$^Í$c¥hilogNªIdentifierÍ$dÍ$i¥errorÂÂ“V§LiteralÍ$jÍ$p ¦0x0000NªIdentifierÍ$rÍ$u£TAGV§LiteralÍ$wÍ$ŠÙ3ç½‘ç»œå¼‚å¸¸ï¼Œè¯·æ£€æŸ¥å½“å‰ç½‘ç»œçŠ¶æ€å¹¶é‡è¯•Ù5'ç½‘ç»œå¼‚å¸¸ï¼Œè¯·æ£€æŸ¥å½“å‰ç½‘ç»œçŠ¶æ€å¹¶é‡è¯•'ÂW«IfStatementÍ$¦Í&©`°BinaryExpressionÍ$ªÍ$ÏT°MemberExpressionÍ$ªÍ$´NªIdentifierÍ$ªÍ$¯¥errorNªIdentifierÍ$°Í$´¤codeÂÂ£===NªIdentifierÍ$¹Í$Ï¶ERROR_CODE_USER_CANCELO®BlockStatementÍ$ÑÍ%‘R³ExpressionStatementÍ$àÍ%\®CallExpressionÍ$àÍ%T°MemberExpressionÍ$àÍ$êNªIdentifierÍ$àÍ$å¥hilogNªIdentifierÍ$æÍ$ê¤warnÂÂ“V§LiteralÍ$ëÍ$ñ ¦0x0000NªIdentifierÍ$óÍ$ö£TAGV§LiteralÍ$øÍ% ²ç”¨æˆ·å–æ¶ˆæˆæƒ´'ç”¨æˆ·å–æ¶ˆæˆæƒ'ÂW«IfStatementÍ%Í&©`°BinaryExpressionÍ% Í%HT°MemberExpressionÍ% Í%*NªIdentifierÍ% Í%%¥errorNªIdentifierÍ%&Í%*¤codeÂÂ£===NªIdentifierÍ%/Í%H¹ERROR_CODE_SYSTEM_SERVICEO®BlockStatementÍ%JÍ%‘R³ExpressionStatementÍ%YÍ%‚\®CallExpressionÍ%YÍ%T°MemberExpressionÍ%YÍ%dNªIdentifierÍ%YÍ%^¥hilogNªIdentifierÍ%_Í%d¥errorÂÂ“V§LiteralÍ%eÍ%k ¦0x0000NªIdentifierÍ%mÍ%p£TAGV§LiteralÍ%rÍ%€Ù$ç³»ç»ŸæœåŠ¡å¼‚å¸¸ï¼Œè¯·ç¨åé‡è¯•Ù&'ç³»ç»ŸæœåŠ¡å¼‚å¸¸ï¼Œè¯·ç¨åé‡è¯•'ÂW«IfStatementÍ%œÍ&©`°BinaryExpressionÍ% Í%ÈT°MemberExpressionÍ% Í%ªNªIdentifierÍ% Í%¥¥errorNªIdentifierÍ%¦Í%ª¤codeÂÂ£===NªIdentifierÍ%¯Í%È¹ERROR_CODE_REQUEST_REFUSEO®BlockStatementÍ%ÊÍ&	‘R³ExpressionStatementÍ%ÙÍ%ş\®CallExpressionÍ%ÙÍ%ıT°MemberExpressionÍ%ÙÍ%ãNªIdentifierÍ%ÙÍ%Ş¥hilogNªIdentifierÍ%ßÍ%ã¤warnÂÂ“V§LiteralÍ%äÍ%ê ¦0x0000NªIdentifierÍ%ìÍ%ï£TAGV§LiteralÍ%ñÍ%ü»é‡å¤è¯·æ±‚ï¼Œæ— éœ€å¤„ç†½'é‡å¤è¯·æ±‚ï¼Œæ— éœ€å¤„ç†'ÂO®BlockStatementÍ&Í&©‘R³ExpressionStatementÍ&'Í&\®CallExpressionÍ&'Í&T°MemberExpressionÍ&'Í&2NªIdentifierÍ&'Í&,¥hilogNªIdentifierÍ&-Í&2¥errorÂÂ•V§LiteralÍ&3Í&9 ¦0x0000NªIdentifierÍ&;Í&>£TAGV§LiteralÍ&@Í&qÙ?è·å–å¤´åƒæ˜µç§°å¤±è´¥: Code: %{public}s, Message: %{public}sÙA'è·å–å¤´åƒæ˜µç§°å¤±è´¥: Code: %{public}s, Message: %{public}s'\®CallExpressionÍ&sÍ&…NªIdentifierÍ&sÍ&y¦String‘T°MemberExpressionÍ&zÍ&„NªIdentifierÍ&zÍ&¥errorNªIdentifierÍ&€Í&„¤codeÂÂÂ\®CallExpressionÍ&‡Í&œNªIdentifierÍ&‡Í&¦String‘T°MemberExpressionÍ&Í&›NªIdentifierÍ&Í&“¥errorNªIdentifierÍ&”Í&›§messageÂÂÂÂP°MethodDefinitionÍ&ÙÍ+yÂÂNªIdentifierÍ&ßÍ&ò³getCurrentUserAsync¦methodQ²FunctionExpressionÍ&òÍ+yÀÂÂÃO®BlockStatementÍ&õÍ+y‘[¬TryStatementÍ' Í+rO®BlockStatementÍ'Í*À–^³VariableDeclarationÍ'Í'7‘_²VariableDeclaratorÍ'Í'6NªIdentifierÍ'Í'$«initialized\®CallExpressionÍ''Í'6T°MemberExpressionÍ''Í'4U®ThisExpressionÍ''Í'+NªIdentifierÍ',Í'4¨initAuthÂÂÂ¥constW«IfStatementÍ'EÍ'…X¯UnaryExpressionÍ'IÍ'U¡!ÃNªIdentifierÍ'JÍ'U«initializedO®BlockStatementÍ'WÍ'…‘Z¯ReturnStatementÍ'jÍ'vV§LiteralÍ'qÍ'uÀ¤nullÀ^³VariableDeclarationÍ'“Í'¼‘_²VariableDeclaratorÍ'™Í'»NªIdentifierÍ'™Í'¤userZ¯AwaitExpressionÍ' Í'»\®CallExpressionÍ'¦Í'»T°MemberExpressionÍ'¦Í'¹NªIdentifierÍ'¦Í'ª¤authNªIdentifierÍ'«Í'¹®getCurrentUserÂÂÂ¥constW«IfStatementÍ'ÊÍ*iNªIdentifierÍ'ÎÍ'Ò¤userO®BlockStatementÍ'ÔÍ*i”W«IfStatementÍ(Í(`±LogicalExpressionÍ(Í(JT°MemberExpressionÍ(Í( U®ThisExpressionÍ(Í(NªIdentifierÍ(Í( «currentUserÂÂ¢&&`°BinaryExpressionÍ($Í(JT°MemberExpressionÍ($Í(8T°MemberExpressionÍ($Í(4U®ThisExpressionÍ($Í((NªIdentifierÍ()Í(4«currentUserÂÂNªIdentifierÍ(5Í(8£uidÂÂ£===\®CallExpressionÍ(=Í(JT°MemberExpressionÍ(=Í(HNªIdentifierÍ(=Í(A¤userNªIdentifierÍ(BÍ(H¦getUidÂÂÂO®BlockStatementÍ(LÍ(‘Z¯ReturnStatementÍ(cÍ({T°MemberExpressionÍ(jÍ(zU®ThisExpressionÍ(jÍ(nNªIdentifierÍ(oÍ(z«currentUserÂÂÀR³ExpressionStatementÍ( Í)ÓS´AssignmentExpressionÍ( Í)Ò¡=T°MemberExpressionÍ( Í(°U®ThisExpressionÍ( Í(¤NªIdentifierÍ(¥Í(°«currentUserÂÂa°ObjectExpressionÍ(³Í)Ò•b¨PropertyÍ(ÊÍ(ÜÂÂÂNªIdentifierÍ(ÊÍ(Í£uid\®CallExpressionÍ(ÏÍ(ÜT°MemberExpressionÍ(ÏÍ(ÚNªIdentifierÍ(ÏÍ(Ó¤userNªIdentifierÍ(ÔÍ(Ú¦getUidÂÂÂ¤initb¨PropertyÍ(óÍ)ÂÂÂNªIdentifierÍ(óÍ(ş«displayName`±LogicalExpressionÍ) Í)\®CallExpressionÍ) Í)T°MemberExpressionÍ) Í)NªIdentifierÍ) Í)¤userNªIdentifierÍ)Í)®getDisplayNameÂÂÂ¢||V§LiteralÍ)Í)¬åä¸ºç”¨æˆ·®'åä¸ºç”¨æˆ·'¤initb¨PropertyÍ)6Í)YÂÂÂNªIdentifierÍ)6Í)?©avatarUri`±LogicalExpressionÍ)AÍ)Y\®CallExpressionÍ)AÍ)ST°MemberExpressionÍ)AÍ)QNªIdentifierÍ)AÍ)E¤userNªIdentifierÍ)FÍ)Q«getPhotoUrlÂÂÂ¢||V§LiteralÍ)WÍ)Y ¢''¤initb¨PropertyÍ)pÍ)ŒÂÂÂNªIdentifierÍ)pÍ)u¥email`±LogicalExpressionÍ)wÍ)Œ\®CallExpressionÍ)wÍ)†T°MemberExpressionÍ)wÍ)„NªIdentifierÍ)wÍ){¤userNªIdentifierÍ)|Í)„¨getEmailÂÂÂ¢||V§LiteralÍ)ŠÍ)Œ ¢''¤initb¨PropertyÍ)£Í)¿ÂÂÂNªIdentifierÍ)£Í)¨¥phone`±LogicalExpressionÍ)ªÍ)¿\®CallExpressionÍ)ªÍ)¹T°MemberExpressionÍ)ªÍ)·NªIdentifierÍ)ªÍ)®¤userNªIdentifierÍ)¯Í)·¨getPhoneÂÂÂ¢||V§LiteralÍ)½Í)¿ ¢''¤initR³ExpressionStatementÍ)åÍ*0\®CallExpressionÍ)åÍ*/T°MemberExpressionÍ)åÍ)ïNªIdentifierÍ)åÍ)ê¥hilogNªIdentifierÍ)ëÍ)ï¤infoÂÂ”V§LiteralÍ)ğÍ)ö ¦0x0000NªIdentifierÍ)øÍ)û£TAGV§LiteralÍ)ıÍ*Ù)è·å–å½“å‰ç”¨æˆ·æˆåŠŸ, uid: %{public}sÙ+'è·å–å½“å‰ç”¨æˆ·æˆåŠŸ, uid: %{public}s'T°MemberExpressionÍ*Í*.T°MemberExpressionÍ*Í**U®ThisExpressionÍ*Í*NªIdentifierÍ*Í**«currentUserÂÂNªIdentifierÍ*+Í*.£uidÂÂÂZ¯ReturnStatementÍ*BÍ*ZT°MemberExpressionÍ*IÍ*YU®ThisExpressionÍ*IÍ*MNªIdentifierÍ*NÍ*Y«currentUserÂÂÀR³ExpressionStatementÍ*wÍ*›\®CallExpressionÍ*wÍ*šT°MemberExpressionÍ*wÍ*NªIdentifierÍ*wÍ*|¥hilogNªIdentifierÍ*}Í*¤infoÂÂ“V§LiteralÍ*‚Í*ˆ ¦0x0000NªIdentifierÍ*ŠÍ*£TAGV§LiteralÍ*Í*™¸å½“å‰æ²¡æœ‰ç™»å½•ç”¨æˆ·º'å½“å‰æ²¡æœ‰ç™»å½•ç”¨æˆ·'ÂZ¯ReturnStatementÍ*©Í*µV§LiteralÍ*°Í*´À¤null]«CatchClauseÍ*ÊÍ+rNªIdentifierÍ*ÑÍ*Ö¥errorO®BlockStatementÍ*ØÍ+r“^³VariableDeclarationÍ*çÍ*ù‘_²VariableDeclaratorÍ*íÍ*øNªIdentifierÍ*íÍ*ğ£errNªIdentifierÍ*óÍ*ø¥error¥constR³ExpressionStatementÍ+Í+M\®CallExpressionÍ+Í+LT°MemberExpressionÍ+Í+NªIdentifierÍ+Í+¥hilogNªIdentifierÍ+Í+¥errorÂÂ”V§LiteralÍ+Í+ ¦0x0000NªIdentifierÍ+Í+£TAGV§LiteralÍ+ Í+6Ù$è·å–å½“å‰ç”¨æˆ·å¤±è´¥: %{public}sÙ&'è·å–å½“å‰ç”¨æˆ·å¤±è´¥: %{public}s'\®CallExpressionÍ+8Í+KNªIdentifierÍ+8Í+>¦String‘T°MemberExpressionÍ+?Í+JNªIdentifierÍ+?Í+B£errNªIdentifierÍ+CÍ+J§messageÂÂÂÂZ¯ReturnStatementÍ+[Í+gV§LiteralÍ+bÍ+fÀ¤nullÀP°MethodDefinitionÍ+Í-ÚÂÂNªIdentifierÍ+¤Í+ª¦logout¦methodQ²FunctionExpressionÍ+ªÍ-ÚÀÂÂÃO®BlockStatementÍ+­Í-Ú‘[¬TryStatementÍ+¸Í-ÓO®BlockStatementÍ+¼Í-"—^³VariableDeclarationÍ+ËÍ+ï‘_²VariableDeclaratorÍ+ÑÍ+îNªIdentifierÍ+ÑÍ+Ü«initialized\®CallExpressionÍ+ßÍ+îT°MemberExpressionÍ+ßÍ+ìU®ThisExpressionÍ+ßÍ+ãNªIdentifierÍ+äÍ+ì¨initAuthÂÂÂ¥constW«IfStatementÍ+ıÍ,>X¯UnaryExpressionÍ,Í,¡!ÃNªIdentifierÍ,Í,«initializedO®BlockStatementÍ,Í,>‘Z¯ReturnStatementÍ,"Í,/V§LiteralÍ,)Í,.Â¥falseÀR³ExpressionStatementÍ,LÍ,aZ¯AwaitExpressionÍ,LÍ,`\®CallExpressionÍ,RÍ,`T°MemberExpressionÍ,RÍ,^NªIdentifierÍ,RÍ,V¤authNªIdentifierÍ,WÍ,^§signOutÂÂÂR³ExpressionStatementÍ,oÍ,‡S´AssignmentExpressionÍ,oÍ,†¡=T°MemberExpressionÍ,oÍ,U®ThisExpressionÍ,oÍ,sNªIdentifierÍ,tÍ,«currentUserÂÂV§LiteralÍ,‚Í,†À¤nullR³ExpressionStatementÍ,¬Í,ÍZ¯AwaitExpressionÍ,¬Í,Ì\®CallExpressionÍ,²Í,ÌT°MemberExpressionÍ,²Í,ÊU®ThisExpressionÍ,²Í,¶NªIdentifierÍ,·Í,Ê³clearCachedUserInfoÂÂÂR³ExpressionStatementÍ,ÛÍ,ı\®CallExpressionÍ,ÛÍ,üT°MemberExpressionÍ,ÛÍ,åNªIdentifierÍ,ÛÍ,à¥hilogNªIdentifierÍ,áÍ,å¤infoÂÂ“V§LiteralÍ,æÍ,ì ¦0x0000NªIdentifierÍ,îÍ,ñ£TAGV§LiteralÍ,óÍ,û²é€€å‡ºç™»å½•æˆåŠŸ´'é€€å‡ºç™»å½•æˆåŠŸ'ÂZ¯ReturnStatementÍ-Í-V§LiteralÍ-Í-Ã¤true]«CatchClauseÍ-,Í-ÓNªIdentifierÍ-3Í-8¥errorO®BlockStatementÍ-:Í-Ó“^³VariableDeclarationÍ-IÍ-[‘_²VariableDeclaratorÍ-OÍ-ZNªIdentifierÍ-OÍ-R£errNªIdentifierÍ-UÍ-Z¥error¥constR³ExpressionStatementÍ-iÍ-­\®CallExpressionÍ-iÍ-¬T°MemberExpressionÍ-iÍ-tNªIdentifierÍ-iÍ-n¥hilogNªIdentifierÍ-oÍ-t¥errorÂÂ”V§LiteralÍ-uÍ-{ ¦0x0000NªIdentifierÍ-}Í-€£TAGV§LiteralÍ-‚Í-–¾é€€å‡ºç™»å½•å¤±è´¥: %{public}sÙ 'é€€å‡ºç™»å½•å¤±è´¥: %{public}s'\®CallExpressionÍ-˜Í-«NªIdentifierÍ-˜Í-¦String‘T°MemberExpressionÍ-ŸÍ-ªNªIdentifierÍ-ŸÍ-¢£errNªIdentifierÍ-£Í-ª§messageÂÂÂÂZ¯ReturnStatementÍ-»Í-ÈV§LiteralÍ-ÂÍ-ÇÂ¥falseÀP°MethodDefinitionÍ.Í.@ÂÂNªIdentifierÍ.Í.®getCurrentUser¦methodQ²FunctionExpressionÍ.Í.@ÀÂÂÂO®BlockStatementÍ.Í.@‘Z¯ReturnStatementÍ.!Í.9T°MemberExpressionÍ.(Í.8U®ThisExpressionÍ.(Í.,NªIdentifierÍ.-Í.8«currentUserÂÂP°MethodDefinitionÍ.fÍ.¦ÂÂNªIdentifierÍ.fÍ.pªisLoggedIn¦methodQ²FunctionExpressionÍ.pÍ.¦ÀÂÂÂO®BlockStatementÍ.sÍ.¦‘Z¯ReturnStatementÍ.~Í.Ÿ`°BinaryExpressionÍ.…Í.T°MemberExpressionÍ.…Í.•U®ThisExpressionÍ.…Í.‰NªIdentifierÍ.ŠÍ.•«currentUserÂÂ£!==V§LiteralÍ.šÍ.À¤nullÀ–Ôrd•¤type¥start£endªspecifiers¦source±ImportDeclaration &‘Ôre”¤type¥start£end¥local¶ImportDefaultSpecifierNªIdentifier¤authV§Literal%²@hw-agconnect/auth´'@hw-agconnect/auth'd±ImportDeclaration(ÌH‘e¶ImportDefaultSpecifier/4NªIdentifier/4¥hilogV§Literal:ÌG«@ohos.hilog­"@ohos.hilog"d±ImportDeclarationÌJÌl‘e¶ImportDefaultSpecifierÌQÌWNªIdentifierÌQÌW¦bufferV§LiteralÌ]Ìk¬@ohos.buffer®"@ohos.buffer"d±ImportDeclarationÌnÌŸ‘e¶ImportDefaultSpecifierÌuÌ€NªIdentifierÌuÌ€«preferencesV§LiteralÌ†Ì¶@ohos.data.preferences¸"@ohos.data.preferences"d±ImportDeclarationÌ¡Ì×‘e¶ImportDefaultSpecifierÌ¨Ì¶NªIdentifierÌ¨Ì¶®authenticationV§LiteralÌ¼ÌÖ¸@hms.core.authenticationº"@hms.core.authentication"d±ImportDeclarationÌÙÌ÷‘e¶ImportDefaultSpecifierÌàÌäNªIdentifierÌàÌä¤utilV§LiteralÌêÌöª@ohos.util¬"@ohos.util"

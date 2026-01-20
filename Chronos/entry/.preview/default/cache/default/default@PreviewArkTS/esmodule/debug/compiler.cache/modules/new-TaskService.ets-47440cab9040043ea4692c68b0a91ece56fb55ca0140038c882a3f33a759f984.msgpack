@@ -1,0 +1,798 @@
+Ôr@Ÿªassertions¤code´customTransformCache¬dependencies¢id¤meta±moduleSideEffects¬originalCode±originalSourcemap«resolvedIds®sourcemapChainµsyntheticNamedExportsµtransformDependencies®transformFiles¨cacheAstÔrAÚ)æimport { Task } from '../model/Task';
+import { Constants } from '../common/Constants';
+import { Utils } from '../common/Utils';
+import { LocalDBService, SyncStatus } from './LocalDBService';
+import { SyncService } from './SyncService';
+import hilog from "@ohos.hilog";
+const TAG = 'TaskService';
+const DOMAIN = 0x0000;
+/**
+ * ä»»åŠ¡æœåŠ¡ç±» - ç¦»çº¿ä¼˜å…ˆæ¨¡å¼
+ * ç­–ç•¥ï¼šæ•°æ®ä¼˜å…ˆå­˜å…¥æœ¬åœ° SQLiteï¼Œåå°é™é»˜åŒæ­¥åˆ°äº‘ç«¯
+ * å‚è€ƒï¼šåä¸ºäº‘å¼€å‘æœ€ä½³å®è·µ - æœ¬åœ° SQLite + CloudDB åŒå†™æ¨¡å¼
+ */
+export class TaskService {
+    constructor() {
+        this.localDB = LocalDBService.getInstance();
+        this.syncService = SyncService.getInstance();
+    }
+    static getInstance() {
+        if (!TaskService.instance) {
+            TaskService.instance = new TaskService();
+        }
+        return TaskService.instance;
+    }
+    /**
+     * ç”Ÿæˆå”¯ä¸€ID
+     */
+    generateId() {
+        const timestamp = Date.now();
+        const random = Math.floor(Math.random() * 10000);
+        return `${timestamp}_${random}`;
+    }
+    /**
+     * Task è½¬ LocalTask
+     */
+    taskToLocal(task, syncStatus = SyncStatus.PENDING) {
+        // ä¼˜å…ˆä½¿ç”¨ localIdï¼Œå¦‚æœæ²¡æœ‰åˆ™ç”Ÿæˆæ–°çš„
+        const taskId = task.localId ? task.localId : this.generateId();
+        return {
+            id: taskId,
+            title: task.title,
+            description: task.description,
+            status: task.status,
+            priority: task.priority.toString(),
+            dueDate: task.dueDate ? task.dueDate.toISOString() : '',
+            createTime: task.createTime ? task.createTime.toISOString() : new Date().toISOString(),
+            updateTime: task.updateTime ? task.updateTime.toISOString() : new Date().toISOString(),
+            completedTime: task.completedTime ? task.completedTime.toISOString() : '',
+            tags: JSON.stringify(task.tags || []),
+            userId: 'default_user',
+            syncStatus: syncStatus,
+            version: 1
+        };
+    }
+    /**
+     * LocalTask è½¬ Task
+     */
+    localToTask(local) {
+        let tags = [];
+        try {
+            tags = JSON.parse(local.tags || '[]');
+        }
+        catch (e) {
+            tags = [];
+        }
+        let priorityNum = 1;
+        if (local.priority) {
+            const parsed = parseInt(local.priority);
+            if (!isNaN(parsed)) {
+                priorityNum = parsed;
+            }
+        }
+        const taskData = {
+            id: parseInt(local.id) || 0,
+            localId: local.id,
+            title: local.title || '',
+            description: local.description || '',
+            status: local.status || 'pending',
+            priority: priorityNum,
+            dueDate: local.dueDate ? new Date(local.dueDate) : null,
+            createTime: local.createTime ? new Date(local.createTime) : new Date(),
+            updateTime: local.updateTime ? new Date(local.updateTime) : new Date(),
+            completedTime: local.completedTime ? new Date(local.completedTime) : null,
+            tags: tags
+        };
+        return new Task(taskData);
+    }
+    /**
+     * åˆ›å»ºä»»åŠ¡
+     * ç¦»çº¿ä¼˜å…ˆï¼šå…ˆå­˜æœ¬åœ°ï¼Œåå°é™é»˜åŒæ­¥
+     */
+    async createTask(task) {
+        try {
+            // è®¾ç½®æ—¶é—´
+            if (!task.createTime) {
+                task.createTime = new Date();
+            }
+            task.updateTime = new Date();
+            // è½¬æ¢ä¸ºæœ¬åœ°æ ¼å¼å¹¶ä¿å­˜
+            const localTask = this.taskToLocal(task, SyncStatus.PENDING);
+            await this.localDB.upsertTask(localTask);
+            hilog.info(DOMAIN, TAG, 'ä»»åŠ¡å·²ä¿å­˜åˆ°æœ¬åœ°: %{public}s', localTask.id);
+            // è§¦å‘åå°åŒæ­¥ï¼ˆä¸é˜»å¡ï¼‰
+            this.triggerSync();
+            // è¿”å›å¸¦æœ‰æ–°IDçš„Task
+            return this.localToTask(localTask);
+        }
+        catch (error) {
+            hilog.error(DOMAIN, TAG, 'åˆ›å»ºä»»åŠ¡å¤±è´¥: %{public}s', String(error));
+            throw error instanceof Error ? error : new Error(String(error));
+        }
+    }
+    /**
+     * æ›´æ–°ä»»åŠ¡
+     */
+    async updateTask(task) {
+        try {
+            task.updateTime = new Date();
+            const localTask = this.taskToLocal(task, SyncStatus.PENDING);
+            await this.localDB.upsertTask(localTask);
+            hilog.info(DOMAIN, TAG, 'ä»»åŠ¡å·²æ›´æ–°: %{public}s', localTask.id);
+            this.triggerSync();
+        }
+        catch (error) {
+            hilog.error(DOMAIN, TAG, 'æ›´æ–°ä»»åŠ¡å¤±è´¥: %{public}s', String(error));
+            throw error instanceof Error ? error : new Error(String(error));
+        }
+    }
+    /**
+     * åˆ é™¤ä»»åŠ¡ï¼ˆæ ‡è®°åˆ é™¤ï¼‰
+     * @param taskOrId å¯ä»¥æ˜¯ Task å¯¹è±¡æˆ– localId å­—ç¬¦ä¸²
+     */
+    async deleteTask(taskOrId) {
+        try {
+            let localId;
+            if (typeof taskOrId === 'string') {
+                localId = taskOrId;
+            }
+            else {
+                // å¦‚æœæ˜¯ Task å¯¹è±¡ï¼Œä¼˜å…ˆä½¿ç”¨ localId
+                localId = taskOrId.localId || taskOrId.id.toString();
+            }
+            await this.localDB.deleteTask(localId);
+            hilog.info(DOMAIN, TAG, 'ä»»åŠ¡å·²æ ‡è®°åˆ é™¤: %{public}s', localId);
+            this.triggerSync();
+        }
+        catch (error) {
+            hilog.error(DOMAIN, TAG, 'åˆ é™¤ä»»åŠ¡å¤±è´¥: %{public}s', String(error));
+            throw error instanceof Error ? error : new Error(String(error));
+        }
+    }
+    /**
+     * è·å–ä»»åŠ¡
+     */
+    async getTask(id) {
+        try {
+            const localTask = await this.localDB.queryTaskById(id.toString());
+            if (!localTask) {
+                return null;
+            }
+            return this.localToTask(localTask);
+        }
+        catch (error) {
+            hilog.error(DOMAIN, TAG, 'è·å–ä»»åŠ¡å¤±è´¥: %{public}s', String(error));
+            return null;
+        }
+    }
+    /**
+     * è·å–æ‰€æœ‰ä»»åŠ¡
+     */
+    async getAllTasks() {
+        try {
+            const localTasks = await this.localDB.queryAllTasks();
+            return localTasks.map(local => this.localToTask(local));
+        }
+        catch (error) {
+            hilog.error(DOMAIN, TAG, 'è·å–ä»»åŠ¡åˆ—è¡¨å¤±è´¥: %{public}s', String(error));
+            return [];
+        }
+    }
+    /**
+     * è·å–å¾…åŠä»»åŠ¡
+     */
+    async getPendingTasks() {
+        return await this.getTasksByStatus(Constants.TASK_STATUS_PENDING);
+    }
+    /**
+     * è·å–è¿›è¡Œä¸­çš„ä»»åŠ¡
+     */
+    async getInProgressTasks() {
+        return await this.getTasksByStatus(Constants.TASK_STATUS_IN_PROGRESS);
+    }
+    /**
+     * è·å–å·²å®Œæˆçš„ä»»åŠ¡
+     */
+    async getCompletedTasks() {
+        return await this.getTasksByStatus(Constants.TASK_STATUS_COMPLETED);
+    }
+    /**
+     * æ ¹æ®çŠ¶æ€è·å–ä»»åŠ¡
+     */
+    async getTasksByStatus(status) {
+        try {
+            const localTasks = await this.localDB.queryTasksByStatus(status);
+            return localTasks.map(local => this.localToTask(local));
+        }
+        catch (error) {
+            hilog.error(DOMAIN, TAG, 'è·å–ä»»åŠ¡åˆ—è¡¨å¤±è´¥: %{public}s', String(error));
+            return [];
+        }
+    }
+    /**
+     * å®Œæˆä»»åŠ¡
+     */
+    async completeTask(task) {
+        task.status = Constants.TASK_STATUS_COMPLETED;
+        task.completedTime = new Date();
+        task.updateTime = new Date();
+        await this.updateTask(task);
+    }
+    /**
+     * å–æ¶ˆå®Œæˆä»»åŠ¡
+     */
+    async uncompleteTask(task) {
+        task.status = Constants.TASK_STATUS_PENDING;
+        task.completedTime = null;
+        task.updateTime = new Date();
+        await this.updateTask(task);
+    }
+    /**
+     * è·å–æŒ‡å®šæ—¥æœŸçš„ä»»åŠ¡
+     * æ³¨æ„ï¼šæœ¬åœ°æŸ¥è¯¢éœ€è¦åœ¨å†…å­˜ä¸­è¿‡æ»¤
+     */
+    async getTasksByDate(date) {
+        try {
+            const allTasks = await this.getAllTasks();
+            const startOfDay = new Date(date);
+            startOfDay.setHours(0, 0, 0, 0);
+            const endOfDay = new Date(date);
+            endOfDay.setHours(23, 59, 59, 999);
+            return allTasks.filter(task => {
+                if (!task.dueDate)
+                    return false;
+                const dueTime = task.dueDate.getTime();
+                return dueTime >= startOfDay.getTime() && dueTime <= endOfDay.getTime();
+            });
+        }
+        catch (error) {
+            hilog.error(DOMAIN, TAG, 'è·å–ä»»åŠ¡åˆ—è¡¨å¤±è´¥: %{public}s', String(error));
+            return [];
+        }
+    }
+    /**
+     * è·å–æŒ‡å®šæ—¥æœŸèŒƒå›´çš„ä»»åŠ¡
+     */
+    async getTasksByDateRange(startDate, endDate) {
+        try {
+            const allTasks = await this.getAllTasks();
+            const startTime = startDate.getTime();
+            const endTime = endDate.getTime();
+            return allTasks.filter(task => {
+                if (!task.dueDate)
+                    return false;
+                const dueTime = task.dueDate.getTime();
+                return dueTime >= startTime && dueTime <= endTime;
+            });
+        }
+        catch (error) {
+            hilog.error(DOMAIN, TAG, 'è·å–ä»»åŠ¡åˆ—è¡¨å¤±è´¥: %{public}s', String(error));
+            return [];
+        }
+    }
+    /**
+     * è·å–ä»Šæ—¥ä»»åŠ¡
+     */
+    async getTodayTasks() {
+        return await this.getTasksByDate(new Date());
+    }
+    /**
+     * è·å–æœ¬å‘¨ä»»åŠ¡
+     */
+    async getWeekTasks() {
+        const today = new Date();
+        const weekStart = Utils.getWeekStart(today);
+        const weekEnd = Utils.getWeekEnd(today);
+        return await this.getTasksByDateRange(weekStart, weekEnd);
+    }
+    /**
+     * è·å–æœ¬æœˆä»»åŠ¡
+     */
+    async getMonthTasks() {
+        const today = new Date();
+        const monthStart = Utils.getMonthStart(today);
+        const monthEnd = Utils.getMonthEnd(today);
+        return await this.getTasksByDateRange(monthStart, monthEnd);
+    }
+    /**
+     * è§¦å‘åå°åŒæ­¥ï¼ˆéé˜»å¡ï¼‰
+     */
+    triggerSync() {
+        // ä½¿ç”¨ setTimeout å»¶è¿Ÿæ‰§è¡Œï¼Œé¿å…é˜»å¡ä¸»çº¿ç¨‹
+        setTimeout(() => {
+            this.syncService.syncAll().catch((err) => {
+                hilog.warn(DOMAIN, TAG, 'åå°åŒæ­¥å¤±è´¥ï¼ˆå°†åœ¨ä¸‹æ¬¡é‡è¯•ï¼‰: %{public}s', String(err));
+            });
+        }, 100);
+    }
+    /**
+     * æ‰‹åŠ¨è§¦å‘åŒæ­¥
+     */
+    async manualSync() {
+        await this.syncService.syncAll();
+    }
+}
+//# sourceMappingURL=TaskService.js.mapÂ–Ù9E:\CODE\Chronos\Chronos\entry\src\main\ets\model\Task.etsÙ?E:\CODE\Chronos\Chronos\entry\src\main\ets\common\Constants.etsÙ;E:\CODE\Chronos\Chronos\entry\src\main\ets\common\Utils.etsÙEE:\CODE\Chronos\Chronos\entry\src\main\ets\service\LocalDBService.etsÙBE:\CODE\Chronos\Chronos\entry\src\main\ets\service\SyncService.etsÙb hvigor_ignore_D:_My_Study_A_deveco_DevEco Studio_sdk_default_openharmony_ets_api_@ohos.hilog.d.tsÙBE:\CODE\Chronos\Chronos\entry\src\main\ets\service\TaskService.etsÔrBœªmoduleName±isLocalDependency¯isNodeEntryFile§pkgPath±belongProjectPath§pkgNameªpkgVersion±dependencyPkgInfo¯hostModulesInfo°belongModulePath§checker¬shouldEmitJs¥entryÃÂ½E:\CODE\Chronos\Chronos\entry·E:\CODE\Chronos\Chronos¥entry¥1.0.0Ô  “ÔrC’²hostDependencyName®hostModuleName¶../service/TaskService¥entryC¶../service/TaskService¥entryC¶../service/TaskService¥entry½E:\CODE\Chronos\Chronos\entryÔrDÜ ®¬getNodeCount²getIdentifierCount®getSymbolCount¬getTypeCountµgetInstantiationCountµgetRelationCacheSizes±isUndefinedSymbol±isArgumentsSymbol¯isUnknownSymbol¯getMergedSymbol®getDiagnostics´getGlobalDiagnostics´getRecursionIdentity¶getUnmatchedProperties¹getTypeOfSymbolAtLocation¯getTypeOfSymbolÙ(getSymbolsOfParameterPropertyDeclaration·getDeclaredTypeOfSymbol³getPropertiesOfType±getPropertyOfTypeÙ"getPrivateIdentifierPropertyOfType·getTypeOfPropertyOfType²getIndexInfoOfType³getIndexInfosOfTypeºgetIndexInfosOfIndexSymbol³getSignaturesOfType²getIndexTypeOfType¬getIndexType¬getBaseTypes¸getBaseTypeOfLiteralType®getWidenedType³getTypeFromTypeNode°getParameterTypeÙ$getParameterIdentifierNameAtPosition¸getPromisedTypeOfPromise®getAwaitedType¸getReturnTypeOfSignature®isNullableType¯getNullableType²getNonNullableType²getNonOptionalType°getTypeArguments®typeToTypeNodeÙ$indexInfoToIndexSignatureDeclaration¿signatureToSignatureDeclaration²symbolToEntityName²symbolToExpression¬symbolToNodeÙ!symbolToTypeParameterDeclarations¼symbolToParameterDeclarationºtypeParameterToDeclaration±getSymbolsInScope³getSymbolAtLocation·getIndexInfosAtLocationÙ!getShorthandAssignmentValueSymbolÙ#getExportSpecifierLocalTargetSymbol·getExportSymbolOfSymbol±getTypeAtLocationÙ tryGetTypeAtLocationWithoutCheckºgetTypeOfAssignmentPatternÙ*getPropertySymbolOfDestructuringAssignment±signatureToString¬typeToString®symbolToStringµtypePredicateToString®writeSignature©writeType«writeSymbol²writeTypePredicate¼getAugmentedPropertiesOfType®getRootSymbols²getSymbolOfExpando±getContextualTypeÙ(getContextualTypeForObjectLiteralElementÙ#getContextualTypeForArgumentAtIndexÙ getContextualTypeForJsxAttribute²isContextSensitiveÙ!getTypeOfPropertyOfContextualTypeµgetFullyQualifiedNameÙ#tryGetResolvedSignatureWithoutCheck´getResolvedSignatureÙ/getResolvedSignatureForStringLiteralCompletionsÙ$getResolvedSignatureForSignatureHelpµgetExpandedParameters¹hasEffectiveRestParameterºcontainsArgumentsReference°getConstantValueµisValidPropertyAccessÙ#isValidPropertyAccessForCompletions»getSignatureFromDeclarationºisImplementationOfOverload¹getImmediateAliasedSymbol°getAliasedSymbol¯getEmitResolver²getExportsOfModule¿getExportsAndPropertiesOfModuleÙ forEachExportAndPropertyOfModule¯getSymbolWalker±getAmbientModules¹getJsxIntrinsicTagNamesAt³isOptionalParameter»tryGetMemberInModuleExportsÙ(tryGetMemberInModuleExportsAndProperties´tryFindAmbientModuleÙ(tryFindAmbientModuleWithoutAugmentations¯getApparentType¬getUnionType²isTypeAssignableTo³createAnonymousType¯createSignature¬createSymbol¯createIndexInfoªgetAnyType­getStringType­getNumberType±createPromiseType¯createArrayType¹getElementTypeOfArrayType®getBooleanType¬getFalseType«getTrueType«getVoidType°getUndefinedType«getNullType¯getESSymbolType¬getNeverType¯getOptionalType®getPromiseType²getPromiseLikeType´getAsyncIterableType²isSymbolAccessible«isArrayType«isTupleType¯isArrayLikeTypeÙ#isTypeInvalidDueToUnionDiscriminantºgetExactOptionalProperties¿getAllPossiblePropertiesOfTypesÙ(getSuggestedSymbolForNonexistentPropertyÙ#getSuggestionForNonexistentPropertyÙ,getSuggestedSymbolForNonexistentJSXAttributeÙ&getSuggestedSymbolForNonexistentSymbolÙ!getSuggestionForNonexistentSymbolÙ&getSuggestedSymbolForNonexistentModuleÙ!getSuggestionForNonexistentExportÙ+getSuggestedSymbolForNonexistentClassMember·getBaseConstraintOfType»getDefaultFromTypeParameter«resolveName¯getJsxNamespaceµgetJsxFragmentFactory¸getAccessibleSymbolChain»getTypePredicateOfSignature¹resolveExternalModuleName»resolveExternalModuleSymbol°tryGetThisTypeAt¹getTypeArgumentConstraint¸getSuggestionDiagnostics¸runWithCancellationTokenÙ3getLocalTypeParametersOfClassOrInterfaceOrTypeAlias´isDeclarationVisible´isPropertyAccessible»getTypeOnlyAliasDeclaration¿getMemberOverrideModifierStatusÙ!isTypeParameterPossiblyReferenced²getConstEnumRelate´clearConstEnumRelateµdeleteConstEnumRelateÙ$getTypeArgumentsForResolvedSignatureµgetCheckedSourceFilesÙ"collectHaveTsNoCheckFilesForLinter·clearQualifiedNameCache®isStaticRecord²isStaticSourceFile³createIntrinsicTypeÔ  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  ÃÃÚ&2import { Task, TaskData } from '../model/Task';
+import { Constants } from '../common/Constants';
+import { Utils } from '../common/Utils';
+import { LocalDBService, LocalTask, SyncStatus } from './LocalDBService';
+import { SyncService } from './SyncService';
+import { hilog } from '@kit.PerformanceAnalysisKit';
+
+const TAG = 'TaskService';
+const DOMAIN = 0x0000;
+
+/**
+ * ä»»åŠ¡æœåŠ¡ç±» - ç¦»çº¿ä¼˜å…ˆæ¨¡å¼
+ * ç­–ç•¥ï¼šæ•°æ®ä¼˜å…ˆå­˜å…¥æœ¬åœ° SQLiteï¼Œåå°é™é»˜åŒæ­¥åˆ°äº‘ç«¯
+ * å‚è€ƒï¼šåä¸ºäº‘å¼€å‘æœ€ä½³å®è·µ - æœ¬åœ° SQLite + CloudDB åŒå†™æ¨¡å¼
+ */
+export class TaskService {
+  private static instance: TaskService;
+  private localDB: LocalDBService = LocalDBService.getInstance();
+  private syncService: SyncService = SyncService.getInstance();
+
+  private constructor() {}
+
+  static getInstance(): TaskService {
+    if (!TaskService.instance) {
+      TaskService.instance = new TaskService();
+    }
+    return TaskService.instance;
+  }
+
+  /**
+   * ç”Ÿæˆå”¯ä¸€ID
+   */
+  private generateId(): string {
+    const timestamp = Date.now();
+    const random = Math.floor(Math.random() * 10000);
+    return `${timestamp}_${random}`;
+  }
+
+  /**
+   * Task è½¬ LocalTask
+   */
+  private taskToLocal(task: Task, syncStatus: number = SyncStatus.PENDING): LocalTask {
+    // ä¼˜å…ˆä½¿ç”¨ localIdï¼Œå¦‚æœæ²¡æœ‰åˆ™ç”Ÿæˆæ–°çš„
+    const taskId = task.localId ? task.localId : this.generateId();
+    return {
+      id: taskId,
+      title: task.title,
+      description: task.description,
+      status: task.status,
+      priority: task.priority.toString(),
+      dueDate: task.dueDate ? task.dueDate.toISOString() : '',
+      createTime: task.createTime ? task.createTime.toISOString() : new Date().toISOString(),
+      updateTime: task.updateTime ? task.updateTime.toISOString() : new Date().toISOString(),
+      completedTime: task.completedTime ? task.completedTime.toISOString() : '',
+      tags: JSON.stringify(task.tags || []),
+      userId: 'default_user',
+      syncStatus: syncStatus,
+      version: 1
+    };
+  }
+
+  /**
+   * LocalTask è½¬ Task
+   */
+  private localToTask(local: LocalTask): Task {
+    let tags: string[] = [];
+    try {
+      tags = JSON.parse(local.tags || '[]');
+    } catch (e) {
+      tags = [];
+    }
+
+    let priorityNum = 1;
+    if (local.priority) {
+      const parsed = parseInt(local.priority);
+      if (!isNaN(parsed)) {
+        priorityNum = parsed;
+      }
+    }
+
+    const taskData: TaskData = {
+      id: parseInt(local.id) || 0,
+      localId: local.id, // ä¿å­˜åŸå§‹çš„æœ¬åœ°ID
+      title: local.title || '',
+      description: local.description || '',
+      status: local.status || 'pending',
+      priority: priorityNum,
+      dueDate: local.dueDate ? new Date(local.dueDate) : null,
+      createTime: local.createTime ? new Date(local.createTime) : new Date(),
+      updateTime: local.updateTime ? new Date(local.updateTime) : new Date(),
+      completedTime: local.completedTime ? new Date(local.completedTime) : null,
+      tags: tags
+    };
+
+    return new Task(taskData);
+  }
+
+  /**
+   * åˆ›å»ºä»»åŠ¡
+   * ç¦»çº¿ä¼˜å…ˆï¼šå…ˆå­˜æœ¬åœ°ï¼Œåå°é™é»˜åŒæ­¥
+   */
+  async createTask(task: Task): Promise<Task> {
+    try {
+      // è®¾ç½®æ—¶é—´
+      if (!task.createTime) {
+        task.createTime = new Date();
+      }
+      task.updateTime = new Date();
+
+      // è½¬æ¢ä¸ºæœ¬åœ°æ ¼å¼å¹¶ä¿å­˜
+      const localTask = this.taskToLocal(task, SyncStatus.PENDING);
+      await this.localDB.upsertTask(localTask);
+      
+      hilog.info(DOMAIN, TAG, 'ä»»åŠ¡å·²ä¿å­˜åˆ°æœ¬åœ°: %{public}s', localTask.id);
+
+      // è§¦å‘åå°åŒæ­¥ï¼ˆä¸é˜»å¡ï¼‰
+      this.triggerSync();
+
+      // è¿”å›å¸¦æœ‰æ–°IDçš„Task
+      return this.localToTask(localTask);
+    } catch (error) {
+      hilog.error(DOMAIN, TAG, 'åˆ›å»ºä»»åŠ¡å¤±è´¥: %{public}s', String(error));
+      throw error instanceof Error ? error : new Error(String(error));
+    }
+  }
+
+  /**
+   * æ›´æ–°ä»»åŠ¡
+   */
+  async updateTask(task: Task): Promise<void> {
+    try {
+      task.updateTime = new Date();
+      const localTask = this.taskToLocal(task, SyncStatus.PENDING);
+      await this.localDB.upsertTask(localTask);
+      
+      hilog.info(DOMAIN, TAG, 'ä»»åŠ¡å·²æ›´æ–°: %{public}s', localTask.id);
+      this.triggerSync();
+    } catch (error) {
+      hilog.error(DOMAIN, TAG, 'æ›´æ–°ä»»åŠ¡å¤±è´¥: %{public}s', String(error));
+      throw error instanceof Error ? error : new Error(String(error));
+    }
+  }
+
+  /**
+   * åˆ é™¤ä»»åŠ¡ï¼ˆæ ‡è®°åˆ é™¤ï¼‰
+   * @param taskOrId å¯ä»¥æ˜¯ Task å¯¹è±¡æˆ– localId å­—ç¬¦ä¸²
+   */
+  async deleteTask(taskOrId: Task | string): Promise<void> {
+    try {
+      let localId: string;
+      if (typeof taskOrId === 'string') {
+        localId = taskOrId;
+      } else {
+        // å¦‚æœæ˜¯ Task å¯¹è±¡ï¼Œä¼˜å…ˆä½¿ç”¨ localId
+        localId = taskOrId.localId || taskOrId.id.toString();
+      }
+      
+      await this.localDB.deleteTask(localId);
+      hilog.info(DOMAIN, TAG, 'ä»»åŠ¡å·²æ ‡è®°åˆ é™¤: %{public}s', localId);
+      this.triggerSync();
+    } catch (error) {
+      hilog.error(DOMAIN, TAG, 'åˆ é™¤ä»»åŠ¡å¤±è´¥: %{public}s', String(error));
+      throw error instanceof Error ? error : new Error(String(error));
+    }
+  }
+
+  /**
+   * è·å–ä»»åŠ¡
+   */
+  async getTask(id: number): Promise<Task | null> {
+    try {
+      const localTask = await this.localDB.queryTaskById(id.toString());
+      if (!localTask) {
+        return null;
+      }
+      return this.localToTask(localTask);
+    } catch (error) {
+      hilog.error(DOMAIN, TAG, 'è·å–ä»»åŠ¡å¤±è´¥: %{public}s', String(error));
+      return null;
+    }
+  }
+
+  /**
+   * è·å–æ‰€æœ‰ä»»åŠ¡
+   */
+  async getAllTasks(): Promise<Task[]> {
+    try {
+      const localTasks = await this.localDB.queryAllTasks();
+      return localTasks.map(local => this.localToTask(local));
+    } catch (error) {
+      hilog.error(DOMAIN, TAG, 'è·å–ä»»åŠ¡åˆ—è¡¨å¤±è´¥: %{public}s', String(error));
+      return [];
+    }
+  }
+
+  /**
+   * è·å–å¾…åŠä»»åŠ¡
+   */
+  async getPendingTasks(): Promise<Task[]> {
+    return await this.getTasksByStatus(Constants.TASK_STATUS_PENDING);
+  }
+
+  /**
+   * è·å–è¿›è¡Œä¸­çš„ä»»åŠ¡
+   */
+  async getInProgressTasks(): Promise<Task[]> {
+    return await this.getTasksByStatus(Constants.TASK_STATUS_IN_PROGRESS);
+  }
+
+  /**
+   * è·å–å·²å®Œæˆçš„ä»»åŠ¡
+   */
+  async getCompletedTasks(): Promise<Task[]> {
+    return await this.getTasksByStatus(Constants.TASK_STATUS_COMPLETED);
+  }
+
+  /**
+   * æ ¹æ®çŠ¶æ€è·å–ä»»åŠ¡
+   */
+  async getTasksByStatus(status: string): Promise<Task[]> {
+    try {
+      const localTasks = await this.localDB.queryTasksByStatus(status);
+      return localTasks.map(local => this.localToTask(local));
+    } catch (error) {
+      hilog.error(DOMAIN, TAG, 'è·å–ä»»åŠ¡åˆ—è¡¨å¤±è´¥: %{public}s', String(error));
+      return [];
+    }
+  }
+
+  /**
+   * å®Œæˆä»»åŠ¡
+   */
+  async completeTask(task: Task): Promise<void> {
+    task.status = Constants.TASK_STATUS_COMPLETED;
+    task.completedTime = new Date();
+    task.updateTime = new Date();
+    await this.updateTask(task);
+  }
+
+  /**
+   * å–æ¶ˆå®Œæˆä»»åŠ¡
+   */
+  async uncompleteTask(task: Task): Promise<void> {
+    task.status = Constants.TASK_STATUS_PENDING;
+    task.completedTime = null;
+    task.updateTime = new Date();
+    await this.updateTask(task);
+  }
+
+  /**
+   * è·å–æŒ‡å®šæ—¥æœŸçš„ä»»åŠ¡
+   * æ³¨æ„ï¼šæœ¬åœ°æŸ¥è¯¢éœ€è¦åœ¨å†…å­˜ä¸­è¿‡æ»¤
+   */
+  async getTasksByDate(date: Date): Promise<Task[]> {
+    try {
+      const allTasks = await this.getAllTasks();
+      const startOfDay = new Date(date);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(date);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      return allTasks.filter(task => {
+        if (!task.dueDate) return false;
+        const dueTime = task.dueDate.getTime();
+        return dueTime >= startOfDay.getTime() && dueTime <= endOfDay.getTime();
+      });
+    } catch (error) {
+      hilog.error(DOMAIN, TAG, 'è·å–ä»»åŠ¡åˆ—è¡¨å¤±è´¥: %{public}s', String(error));
+      return [];
+    }
+  }
+
+  /**
+   * è·å–æŒ‡å®šæ—¥æœŸèŒƒå›´çš„ä»»åŠ¡
+   */
+  async getTasksByDateRange(startDate: Date, endDate: Date): Promise<Task[]> {
+    try {
+      const allTasks = await this.getAllTasks();
+      const startTime = startDate.getTime();
+      const endTime = endDate.getTime();
+
+      return allTasks.filter(task => {
+        if (!task.dueDate) return false;
+        const dueTime = task.dueDate.getTime();
+        return dueTime >= startTime && dueTime <= endTime;
+      });
+    } catch (error) {
+      hilog.error(DOMAIN, TAG, 'è·å–ä»»åŠ¡åˆ—è¡¨å¤±è´¥: %{public}s', String(error));
+      return [];
+    }
+  }
+
+  /**
+   * è·å–ä»Šæ—¥ä»»åŠ¡
+   */
+  async getTodayTasks(): Promise<Task[]> {
+    return await this.getTasksByDate(new Date());
+  }
+
+  /**
+   * è·å–æœ¬å‘¨ä»»åŠ¡
+   */
+  async getWeekTasks(): Promise<Task[]> {
+    const today = new Date();
+    const weekStart = Utils.getWeekStart(today);
+    const weekEnd = Utils.getWeekEnd(today);
+    return await this.getTasksByDateRange(weekStart, weekEnd);
+  }
+
+  /**
+   * è·å–æœ¬æœˆä»»åŠ¡
+   */
+  async getMonthTasks(): Promise<Task[]> {
+    const today = new Date();
+    const monthStart = Utils.getMonthStart(today);
+    const monthEnd = Utils.getMonthEnd(today);
+    return await this.getTasksByDateRange(monthStart, monthEnd);
+  }
+
+  /**
+   * è§¦å‘åå°åŒæ­¥ï¼ˆéé˜»å¡ï¼‰
+   */
+  private triggerSync(): void {
+    // ä½¿ç”¨ setTimeout å»¶è¿Ÿæ‰§è¡Œï¼Œé¿å…é˜»å¡ä¸»çº¿ç¨‹
+    setTimeout(() => {
+      this.syncService.syncAll().catch((err: Error) => {
+        hilog.warn(DOMAIN, TAG, 'åå°åŒæ­¥å¤±è´¥ï¼ˆå°†åœ¨ä¸‹æ¬¡é‡è¯•ï¼‰: %{public}s', String(err));
+      });
+    }, 100);
+  }
+
+  /**
+   * æ‰‹åŠ¨è§¦å‘åŒæ­¥
+   */
+  async manualSync(): Promise<void> {
+    await this.syncService.syncAll();
+  }
+}
+ÀÔrE–«@ohos.hilog­../model/Task°./LocalDBService³../common/Constants¯../common/Utils­./SyncServiceÔrF—ªassertions¨external¢id¤meta±moduleSideEffectsªresolvedByµsyntheticNamedExportsAÃÙb hvigor_ignore_D:_My_Study_A_deveco_DevEco Studio_sdk_default_openharmony_ets_api_@ohos.hilog.d.tsAÃªoh-resolveÂFAÂÙ9E:\CODE\Chronos\Chronos\entry\src\main\ets\model\Task.etsAÃªoh-resolveÂFAÂÙEE:\CODE\Chronos\Chronos\entry\src\main\ets\service\LocalDBService.etsAÃªoh-resolveÂFAÂÙ?E:\CODE\Chronos\Chronos\entry\src\main\ets\common\Constants.etsAÃªoh-resolveÂFAÂÙ;E:\CODE\Chronos\Chronos\entry\src\main\ets\common\Utils.etsAÃªoh-resolveÂFAÂÙBE:\CODE\Chronos\Chronos\entry\src\main\ets\service\SyncService.etsAÃªoh-resolveÂ“ÔrG–§version¤fileªsourceRoot§sources¥names¨mappings®TaskService.js ‘¯TaskService.etsÜ:˜”    ”  ”	  	”  ”  ”  ”$  .”%  /˜”   ” ”	 	” ” ” ”/ /”0 0˜”   ” ”	 	” ” ” ”' '”( (š”   ” ”	 	” ” $”# .”% 0”+ 6”= ÌH”> ÌI˜”   ” ”	 	” ” ” ”+ +”, ,–”   ” 	” ” ” 3”  4–”   ” ”	 	” ” ” –”   ” ” ” ” ” ‘”  
+ ‘” ””   ” ” ” ‘” ˜” 
+” ” $”% 2”& 3”1 >”3 Ì@”4 ÌA˜” 
+” ” %”& 0”' 1”2 <”4 >”5 ?’” ” ”” ”
+ ” 	” —” ” ” 	” ” ”! ”# ™” ” ” ”  ”# ”' !”2 ,”4 .”5 /‘”	 –” ” ” ” ”# ”$  ’” ” ‘” ‘” ’”  
+”  ™” !” !
+” !” !” !” !”" !”$ ! ”% !!Ü ” "” "
+” "” "” "” "”! "”" "”& ""”' "#”- ")”/ "+”2 ".”7 "3”8 "4”9 "5˜” #” #” #” #” #”% #!”' ##”( #$’” $” $‘” &‘” (™” )
+” )” )” ) ” )"”# )7”- )ÌA”. )ÌB”5 )ÌI’” *”! *Ü ” +” +
+” +” +” +” +”# +”$ + ”% +!”& +"”* +&”+ +'”2 +.”3 +/”4 +0”5 +1”9 +5”: +6”ÌD +Ì@”ÌF +ÌB”ÌG +ÌC’” ,” ,”” -” -” -
+” -–” .” .” .” .” .” .–” /” /” /” /” /”) /#–” 0” 0” 0” 0” 0” 0™” 1” 1” 1” 1” 1”# 1”$ 1”, 1&”. 1(Ü ” 2” 2” 2” 2” 2”! 2”" 2”# 2”$ 2”( 2"”) 2#”0 2*”1 2+”< 26”> 28”? 29”Ì@ 2:”ÌA 2;”ÌC 2=Ü ” 3” 3” 3” 3” 3”' 3!”( 3"”) 3#”* 3$”. 3(”/ 3)”9 33”: 34”ÌE 3?”ÌG 3ÌA”ÌH 3ÌB”ÌI 3ÌC”ÌJ 3ÌD”ÌN 3ÌH”ÌR 3ÌL”ÌT 3ÌN”ÌU 3ÌO”Ì` 3ÌZ”Ìb 3Ì\Ü ” 4” 4” 4” 4” 4”' 4!”( 4"”) 4#”* 4$”. 4(”/ 4)”9 43”: 44”ÌE 4?”ÌG 4ÌA”ÌH 4ÌB”ÌI 4ÌC”ÌJ 4ÌD”ÌN 4ÌH”ÌR 4ÌL”ÌT 4ÌN”ÌU 4ÌO”Ì` 4ÌZ”Ìb 4Ì\Ü ” 5” 5” 5” 5”  5”- 5'”. 5(”/ 5)”0 5*”4 5.”5 5/”ÌB 5<”ÌC 5=”ÌN 5ÌH”ÌP 5ÌJ”ÌQ 5ÌK”ÌR 5ÌL”ÌS 5ÌM”ÌU 5ÌO” 6” 6
+” 6” 6” 6”  6”! 6”% 6”& 6 ”* 6$”. 6(”0 6*”1 6+”” 7” 7” 7”" 7”” 8” 8” 8”" 8”” 9” 9” 9” 9’”	 :”
+ :’” ;” ;‘” =‘” ?”” Ì@
+” Ì@” Ì@” Ì@&–” ÌA” ÌA” ÌA” ÌA” ÌA” ÌA’” ÌB” ÌB” ÌC” ÌC
+” ÌC” ÌC” ÌC” ÌC” ÌC”# ÌC”$ ÌC”( ÌC"”, ÌC&”0 ÌC*”1 ÌC+”2 ÌC,‘”	 ÌD”” ÌD” ÌD” ÌD” ÌD•” ÌE” ÌE
+” ÌE” ÌE” ÌE‘”	 ÌF–” ÌH” ÌH” ÌH” ÌH” ÌH” ÌH–” ÌI” ÌI” ÌI” ÌI” ÌI” ÌI›” ÌJ” ÌJ” ÌJ” ÌJ”# ÌJ”$ ÌJ”) ÌJ#”* ÌJ$”2 ÌJ,”3 ÌJ-”4 ÌJ.˜” ÌK” ÌK
+” ÌK” ÌK” ÌK” ÌK” ÌK”  ÌK•” ÌL” ÌL” ÌL”$ ÌL”% ÌL‘” ÌM‘”	 ÌN”” ÌP” ÌP
+” ÌP” ÌP›” ÌQ” ÌQ” ÌQ
+” ÌQ” ÌQ” ÌQ” ÌQ”! ÌQ”" ÌQ”& ÌQ ”' ÌQ!–” ÌR” ÌR” ÌR” ÌR” ÌR” ÌR˜” ÌS” ÌS” ÌS” ÌS” ÌS” ÌS”" ÌS”$ ÌS˜” ÌT” ÌT” ÌT” ÌT” ÌT”* ÌT$”. ÌT(”0 ÌT*˜” ÌU” ÌU” ÌU” ÌU” ÌU”  ÌU”$ ÌU”- ÌU'”” ÌV” ÌV” ÌV”! ÌVÜ ” ÌW” ÌW” ÌW” ÌW” ÌW”" ÌW”# ÌW”$ ÌW”% ÌW”) ÌW#”- ÌW'”. ÌW(”3 ÌW-”4 ÌW.”; ÌW5”< ÌW6”= ÌW7”> ÌW8”? ÌW9”ÌC ÌW=Ü ” ÌX” ÌX” ÌX” ÌX” ÌX”( ÌX"”) ÌX#”* ÌX$”+ ÌX%”/ ÌX)”3 ÌX-”4 ÌX.”9 ÌX3”: ÌX4”ÌD ÌX>”ÌE ÌX?”ÌF ÌXÌ@”ÌG ÌXÌA”ÌH ÌXÌB”ÌL ÌXÌF”ÌP ÌXÌJ”ÌR ÌXÌLÜ ” ÌY” ÌY” ÌY” ÌY” ÌY”( ÌY"”) ÌY#”* ÌY$”+ ÌY%”/ ÌY)”3 ÌY-”4 ÌY.”9 ÌY3”: ÌY4”ÌD ÌY>”ÌE ÌY?”ÌF ÌYÌ@”ÌG ÌYÌA”ÌH ÌYÌB”ÌL ÌYÌF”ÌP ÌYÌJ”ÌR ÌYÌLÜ ” ÌZ” ÌZ” ÌZ”  ÌZ”! ÌZ”. ÌZ(”/ ÌZ)”0 ÌZ*”1 ÌZ+”5 ÌZ/”9 ÌZ3”: ÌZ4”? ÌZ9”Ì@ ÌZ:”ÌM ÌZÌG”ÌN ÌZÌH”ÌO ÌZÌI”ÌP ÌZÌJ”ÌQ ÌZÌK”ÌU ÌZÌO”” Ì[” Ì[
+” Ì[” Ì[’”	 Ì\”
+ Ì\˜” Ì^” Ì^” Ì^” Ì^” Ì^”  Ì^”! Ì^”" Ì^’” Ì_” Ì_‘” Ìa‘” Ìd–” Ìe”	 Ìe”
+ Ìe” Ìe” Ìe” Ìe’” Ìf” Ìf’” Ìg” Ìg—” Ìh” Ìh
+” Ìh” Ìh” Ìh”  Ìh”" Ìh™” Ìi” Ìi” Ìi” Ìi”" Ìi”& Ìi”* Ìi"”, Ìi$”- Ìi%‘” Ìj™” Ìk” Ìk
+” Ìk” Ìk” Ìk”" Ìk”& Ìk ”( Ìk"”) Ìk#’” Ìm” ÌmŸ” Ìn” Ìn” Ìn” Ìn”" Ìn”# Ìn”. Ìn(”/ Ìn)”3 Ìn-”5 Ìn/”? Ìn9”Ì@ Ìn:”ÌG ÌnÌA”ÌH ÌnÌB”ÌI ÌnÌC›” Ìo” Ìo” Ìo” Ìo” Ìo” Ìo”) Ìo#”* Ìo$”3 Ìo-”4 Ìo.”5 Ìo/Ü ” Ìq” Ìq” Ìq” Ìq” Ìq” Ìq” Ìq”" Ìq”$ Ìq”: Ìq4”< Ìq6”ÌE Ìq?”ÌF ÌqÌ@”ÌH ÌqÌB”ÌI ÌqÌC”ÌJ ÌqÌD’” Ìs” Ìs–” Ìt” Ìt
+” Ìt” Ìt” Ìt” Ìt’” Ìv” Ìv™” Ìw” Ìw” Ìw” Ìw”# Ìw”$ Ìw”- Ìw'”. Ìw(”/ Ìw)‘”	 Ìx”” Ìx” Ìx” Ìx” ÌxÜ ” Ìy” Ìy” Ìy” Ìy” Ìy” Ìy”  Ìy”# Ìy”% Ìy”9 Ìy3”; Ìy5”ÌA Ìy;”ÌB Ìy<”ÌG ÌyÌA”ÌH ÌyÌB”ÌI ÌyÌC”ÌJ ÌyÌDÜ ” Ìz” Ìz” Ìz”# Ìz”( Ìz"”) Ìz#”* Ìz$”+ Ìz%”0 Ìz*”1 Ìz+”2 Ìz,”3 Ìz-”7 Ìz1”< Ìz6”= Ìz7”ÌC Ìz=”ÌD Ìz>”ÌI ÌzÌC”ÌJ ÌzÌD”ÌK ÌzÌE”ÌL ÌzÌF‘”	 Ì{’” Ì|” Ì|‘” Ì~‘” Ì€–” Ì”	 Ì”
+ Ì” Ì” Ì” Ì’” Ì‚” Ì‚™” Ìƒ” Ìƒ
+” Ìƒ” Ìƒ” Ìƒ”" Ìƒ”& Ìƒ ”( Ìƒ"”) Ìƒ#Ÿ” Ì„” Ì„” Ì„” Ì„”" Ì„”# Ì„”. Ì„(”/ Ì„)”3 Ì„-”5 Ì„/”? Ì„9”Ì@ Ì„:”ÌG Ì„ÌA”ÌH Ì„ÌB”ÌI Ì„ÌC›” Ì…” Ì…” Ì…” Ì…” Ì…” Ì…”) Ì…#”* Ì…$”3 Ì…-”4 Ì….”5 Ì…/Ü ” Ì‡” Ì‡” Ì‡” Ì‡” Ì‡” Ì‡” Ì‡”" Ì‡”$ Ì‡”7 Ì‡1”9 Ì‡3”ÌB Ì‡<”ÌC Ì‡=”ÌE Ì‡?”ÌF Ì‡Ì@”ÌG Ì‡ÌA–” Ìˆ” Ìˆ
+” Ìˆ” Ìˆ” Ìˆ” Ìˆ‘”	 Ì‰”” Ì‰” Ì‰” Ì‰” Ì‰Ü ” ÌŠ” ÌŠ” ÌŠ” ÌŠ” ÌŠ” ÌŠ”  ÌŠ”# ÌŠ”% ÌŠ”9 ÌŠ3”; ÌŠ5”ÌA ÌŠ;”ÌB ÌŠ<”ÌG ÌŠÌA”ÌH ÌŠÌB”ÌI ÌŠÌC”ÌJ ÌŠÌDÜ ” Ì‹” Ì‹” Ì‹”# Ì‹”( Ì‹"”) Ì‹#”* Ì‹$”+ Ì‹%”0 Ì‹*”1 Ì‹+”2 Ì‹,”3 Ì‹-”7 Ì‹1”< Ì‹6”= Ì‹7”ÌC Ì‹=”ÌD Ì‹>”ÌI Ì‹ÌC”ÌJ Ì‹ÌD”ÌK Ì‹ÌE”ÌL Ì‹ÌF‘”	 ÌŒ’” Ì” Ì‘” Ì‘” Ì’–” Ì“”	 Ì“”
+ Ì“” Ì“” Ì“” Ì“*’” Ì”” Ì””” Ì•” Ì•
+” Ì•” Ì•—” Ì–” Ì–
+” Ì–” Ì–”$ Ì–”, Ì–&”. Ì–(•” Ì—” Ì—” Ì—”" Ì—”# Ì—‘” Ì˜‘” Ì˜’” Ì™”+ Ì™#” Ìš” Ìš” Ìš”" Ìš”# Ìš”* Ìš"”. Ìš&”6 Ìš.”7 Ìš/”9 Ìš1”: Ìš2”ÌB Ìš:”ÌD Ìš<”ÌE Ìš=‘” Ì››” Ì” Ì” Ì” Ì” Ì” Ì”) Ì#”* Ì$”1 Ì+”2 Ì,”3 Ì-” Ì” Ì” Ì” Ì” Ì” Ì” Ì”" Ì”$ Ì”9 Ì3”; Ì5”ÌB Ì<”ÌC Ì=”ÌD Ì>–” ÌŸ” ÌŸ
+” ÌŸ” ÌŸ” ÌŸ” ÌŸ‘”	 Ì ”” Ì ” Ì ” Ì ” Ì Ü ” Ì¡” Ì¡” Ì¡” Ì¡” Ì¡” Ì¡”  Ì¡”# Ì¡”% Ì¡”9 Ì¡3”; Ì¡5”ÌA Ì¡;”ÌB Ì¡<”ÌG Ì¡ÌA”ÌH Ì¡ÌB”ÌI Ì¡ÌC”ÌJ Ì¡ÌDÜ ” Ì¢” Ì¢” Ì¢”# Ì¢”( Ì¢"”) Ì¢#”* Ì¢$”+ Ì¢%”0 Ì¢*”1 Ì¢+”2 Ì¢,”3 Ì¢-”7 Ì¢1”< Ì¢6”= Ì¢7”ÌC Ì¢=”ÌD Ì¢>”ÌI Ì¢ÌC”ÌJ Ì¢ÌD”ÌK Ì¢ÌE”ÌL Ì¢ÌF‘”	 Ì£’” Ì¤” Ì¤‘” Ì¦‘” Ì¨–” Ì©”	 Ì©”
+ Ì©” Ì©” Ì©” Ì©’” Ìª” ÌªÜ ” Ì«” Ì«” Ì«” Ì«”$ Ì«”( Ì«"”) Ì«#”0 Ì«*”1 Ì«+”> Ì«8”? Ì«9”ÌA Ì«;”ÌB Ì«<”ÌJ Ì«ÌD”ÌL Ì«ÌF”ÌM Ì«ÌG”ÌN Ì«ÌH•” Ì¬” Ì¬
+” Ì¬” Ì¬” Ì¬”” Ì­” Ì­” Ì­” Ì­‘” Ì®™” Ì¯” Ì¯” Ì¯” Ì¯”# Ì¯”$ Ì¯”- Ì¯'”. Ì¯(”/ Ì¯)‘”	 Ì°”” Ì°” Ì°” Ì°” Ì°Ü ” Ì±” Ì±” Ì±” Ì±” Ì±” Ì±”  Ì±”# Ì±”% Ì±”9 Ì±3”; Ì±5”ÌA Ì±;”ÌB Ì±<”ÌG Ì±ÌA”ÌH Ì±ÌB”ÌI Ì±ÌC”ÌJ Ì±ÌD”” Ì²” Ì²” Ì²” Ì²‘”	 Ì³’” Ì´” Ì´‘” Ì¶‘” Ì¸”” Ì¹”	 Ì¹”
+ Ì¹” Ì¹’” Ìº” Ìºœ” Ì»” Ì»” Ì»” Ì»”% Ì»”) Ì»#”* Ì»$”1 Ì»+”2 Ì»,”? Ì»9”ÌA Ì»;”ÌB Ì»<Ü ” Ì¼” Ì¼” Ì¼” Ì¼”! Ì¼”" Ì¼”' Ì¼!”( Ì¼"”* Ì¼$”+ Ì¼%”/ Ì¼)”0 Ì¼*”; Ì¼5”< Ì¼6”ÌA Ì¼;”ÌB Ì¼<”ÌC Ì¼=”ÌD Ì¼>‘”	 Ì½”” Ì½” Ì½” Ì½” Ì½Ü ” Ì¾” Ì¾” Ì¾” Ì¾” Ì¾” Ì¾”  Ì¾”# Ì¾”% Ì¾”; Ì¾5”= Ì¾7”ÌC Ì¾=”ÌD Ì¾>”ÌI Ì¾ÌC”ÌJ Ì¾ÌD”ÌK Ì¾ÌE”ÌL Ì¾ÌF”” Ì¿” Ì¿” Ì¿” Ì¿‘”	 ÌÀ’” ÌÁ” ÌÁ‘” ÌÃ‘” ÌÅ”” ÌÆ”	 ÌÆ”
+ ÌÆ” ÌÆœ” ÌÇ” ÌÇ” ÌÇ” ÌÇ” ÌÇ”* ÌÇ&”+ ÌÇ'”4 ÌÇ0”5 ÌÇ1”ÌH ÌÇÌD”ÌI ÌÇÌE”ÌJ ÌÇÌF’” ÌÈ” ÌÈ‘” ÌÊ‘” ÌÌ”” ÌÍ”	 ÌÍ”
+ ÌÍ” ÌÍœ” ÌÎ” ÌÎ” ÌÎ” ÌÎ” ÌÎ”* ÌÎ&”+ ÌÎ'”4 ÌÎ0”5 ÌÎ1”ÌL ÌÎÌH”ÌM ÌÎÌI”ÌN ÌÎÌJ’” ÌÏ” ÌÏ‘” ÌÑ‘” ÌÓ”” ÌÔ”	 ÌÔ”
+ ÌÔ” ÌÔœ” ÌÕ” ÌÕ” ÌÕ” ÌÕ” ÌÕ”* ÌÕ&”+ ÌÕ'”4 ÌÕ0”5 ÌÕ1”ÌJ ÌÕÌF”ÌK ÌÕÌG”ÌL ÌÕÌH’” ÌÖ” ÌÖ‘” ÌØ‘” ÌÚ–” ÌÛ”	 ÌÛ”
+ ÌÛ” ÌÛ” ÌÛ”! ÌÛ'’” ÌÜ” ÌÜ” Ìİ” Ìİ” Ìİ” Ìİ”% Ìİ”) Ìİ#”* Ìİ$”1 Ìİ+”2 Ìİ,”ÌD Ìİ>”ÌE Ìİ?”ÌK ÌİÌE”ÌL ÌİÌF”ÌM ÌİÌGÜ ” ÌŞ” ÌŞ” ÌŞ” ÌŞ”! ÌŞ”" ÌŞ”' ÌŞ!”( ÌŞ"”* ÌŞ$”+ ÌŞ%”/ ÌŞ)”0 ÌŞ*”; ÌŞ5”< ÌŞ6”ÌA ÌŞ;”ÌB ÌŞ<”ÌC ÌŞ=”ÌD ÌŞ>‘”	 Ìß”” Ìß” Ìß” Ìß” ÌßÜ ” Ìà” Ìà” Ìà” Ìà” Ìà” Ìà”  Ìà”# Ìà”% Ìà”; Ìà5”= Ìà7”ÌC Ìà=”ÌD Ìà>”ÌI ÌàÌC”ÌJ ÌàÌD”ÌK ÌàÌE”ÌL ÌàÌF”” Ìá” Ìá” Ìá” Ìá‘”	 Ìâ’” Ìã” Ìã‘” Ìå‘” Ìç–” Ìè”	 Ìè”
+ Ìè” Ìè” Ìè” Ìè™” Ìé” Ìé” Ìé	” Ìé” Ìé” Ìé”  Ìé”5 Ìé1”6 Ìé2™” Ìê” Ìê” Ìê	” Ìê” Ìê”! Ìê”% Ìê!”' Ìê#”( Ìê$™” Ìë” Ìë” Ìë	” Ìë” Ìë” Ìë”" Ìë”$ Ìë ”% Ìë!™” Ìì” Ìì
+” Ìì” Ìì” Ìì” Ìì”" Ìì”# Ìì”$ Ìì ’” Ìí” Ìí‘” Ìï‘” Ìñ–” Ìò”	 Ìò”
+ Ìò” Ìò” Ìò” Ìò!™” Ìó” Ìó” Ìó	” Ìó” Ìó” Ìó”  Ìó”3 Ìó/”4 Ìó0—” Ìô” Ìô” Ìô	” Ìô” Ìô”! Ìô”" Ìô™” Ìõ” Ìõ” Ìõ	” Ìõ” Ìõ” Ìõ”" Ìõ”$ Ìõ ”% Ìõ!™” Ìö” Ìö
+” Ìö” Ìö” Ìö” Ìö”" Ìö”# Ìö”$ Ìö ’” Ì÷” Ì÷‘” Ìù‘” Ìü–” Ìı”	 Ìı”
+ Ìı” Ìı” Ìı” Ìı!’” Ìş” Ìşš” Ìÿ” Ìÿ” Ìÿ” Ìÿ”# Ìÿ”' Ìÿ!”( Ìÿ"”3 Ìÿ-”5 Ìÿ/”6 Ìÿ0š” Í ” Í ” Í ” Í ”# Í ”' Í !”( Í "”, Í &”- Í '”. Í (” Í” Í” Í” Í”  Í”! Í”# Í”$ Í”& Í ”' Í!”) Í#”* Í$”+ Í%”, Í&š” Í” Í” Í” Í”! Í”% Í”& Í ”* Í$”+ Í%”, Í&” Í” Í” Í” Í” Í”  Í”" Í”$ Í”& Í ”( Í"”* Í$”- Í'”. Í(”/ Í)™” Í” Í” Í” Í”" Í”# Í”' Í!”( Í"”* Í$–” Í” Í” Í” Í” Í”! Í”” Í” Í"”  Í'”! Í(›” Í” Í” Í”  Í”$ Í”% Í”, Í$”- Í%”4 Í,”6 Í.”7 Í/Ü ” Í” Í” Í”" Í”, Í$”- Í%”4 Í,”6 Í.”: Í2”ÌA Í9”ÌE Í=”ÌM ÍÌE”ÌN ÍÌF”ÌU ÍÌM”ÌW ÍÌO”ÌX ÍÌP”” Í	” Í	” Í	” Í		‘”	 Í
+”” Í
+” Í
+” Í
+” Í
+Ü ” Í” Í” Í” Í” Í” Í”  Í”# Í”% Í”; Í5”= Í7”ÌC Í=”ÌD Í>”ÌI ÍÌC”ÌJ ÍÌD”ÌK ÍÌE”ÌL ÍÌF”” Í” Í” Í” Í‘”	 Í’” Í” Í‘” Í‘” Í˜” Í”	 Í”
+ Í” Í” Í”' Í+”) Í-”0 Í:’” Í” Íš” Í” Í” Í” Í”# Í”' Í!”( Í"”3 Í-”5 Í/”6 Í0™” Í” Í” Í” Í”' Í!”( Í"”/ Í)”1 Í+”2 Í,™” Í” Í” Í” Í”# Í”$ Í”+ Í%”- Í'”. Í(™” Í” Í” Í” Í”" Í”# Í”' Í!”( Í"”* Í$–” Í” Í” Í” Í” Í”! Í”” Í” Í"”  Í'”! Í(›” Í” Í” Í”  Í”$ Í”% Í”, Í$”- Í%”4 Í,”6 Í.”7 Í/š” Í” Í” Í”" Í”+ Í#”/ Í'”6 Í.”: Í2”ÌA Í9”ÌB Í:”” Í” Í” Í” Í	‘”	 Í”” Í” Í” Í” ÍÜ ” Í” Í” Í” Í” Í” Í”  Í”# Í”% Í”; Í5”= Í7”ÌC Í=”ÌD Í>”ÌI ÍÌC”ÌJ ÍÌD”ÌK ÍÌE”ÌL ÍÌF”” Í ” Í ” Í ” Í ‘”	 Í!’” Í"” Í"‘” Í$‘” Í&”” Í'”	 Í'”
+ Í'” Í'œ” Í(” Í(” Í(” Í(” Í(”( Í($”) Í(%”- Í()”1 Í(-”3 Í(/”4 Í(0”5 Í(1’” Í)” Í)‘” Í+‘” Í-”” Í.”	 Í.”
+ Í.” Í.˜” Í/” Í/
+” Í/” Í/” Í/” Í/”  Í/”! Í/›” Í0” Í0
+” Í0” Í0” Í0”  Í0”, Í0(”- Í0)”2 Í0.”3 Í0/”4 Í00›” Í1” Í1
+” Í1” Í1” Í1” Í1”( Í1$”) Í1%”. Í1*”/ Í1+”0 Í1,œ” Í2” Í2” Í2” Í2” Í2”- Í2)”. Í2*”7 Í23”9 Í25”Ì@ Í2<”ÌA Í2=”ÌB Í2>’” Í3” Í3‘” Í5‘” Í7”” Í8”	 Í8”
+ Í8” Í8˜” Í9” Í9
+” Í9” Í9” Í9” Í9”  Í9”! Í9›” Í:” Í:
+” Í:” Í:”  Í:”! Í:”. Í:*”/ Í:+”4 Í:0”5 Í:1”6 Í:2›” Í;” Í;
+” Í;” Í;” Í;” Í;”* Í;&”+ Í;'”0 Í;,”1 Í;-”2 Í;.œ” Í<” Í<” Í<” Í<” Í<”- Í<)”. Í<*”8 Í<4”: Í<6”ÌB Í<>”ÌC Í<?”ÌD Í<Ì@’” Í=” Í=‘” Í?‘” ÍA’” ÍB
+” ÍB’” ÍC”% ÍC!•” ÍD” ÍD” ÍD” ÍD” ÍD” ÍE” ÍE
+” ÍE” ÍE” ÍE”$ ÍE”& ÍE ”' ÍE!”, ÍE&”- ÍE'”. ÍE(”1 ÍE2”3 ÍE4”5 ÍE6Ü ” ÍF” ÍF” ÍF” ÍF” ÍF”! ÍF”# ÍF”& ÍF”( ÍF ”ÌD ÍF<”ÌF ÍF>”ÌL ÍFÌD”ÌM ÍFÌE”ÌP ÍFÌH”ÌQ ÍFÌI”ÌR ÍFÌJ”ÌS ÍFÌK”” ÍG” ÍG” ÍG” ÍG	–” ÍH”	 ÍH” ÍH” ÍH
+” ÍH” ÍH’” ÍI” ÍI‘” ÍK‘” ÍM”” ÍN”	 ÍN”
+ ÍN” ÍN™” ÍO” ÍO
+” ÍO” ÍO” ÍO” ÍO”& ÍO"”( ÍO$”) ÍO%’” ÍP” ÍP‘” ÍQÔrH–§version¤file§sources®sourcesContent¥names¨mappingsÀ‘À‘ÀÜ;‘”    ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”  	 ‘”  
+ ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”    ‘”  ! ‘”  " ‘”  # ‘”  $ ‘”  % ‘”  & ‘”  ' ‘”  ( ‘”  ) ‘”  * ‘”  + ‘”  , ‘”  - ‘”  . ‘”  / ‘”  0 ‘”  1 ‘”  2 ‘”  3 ‘”  4 ‘”  5 ‘”  6 ‘”  7 ‘”  8 ‘”  9 ‘”  : ‘”  ; ‘”  < ‘”  = ‘”  > ‘”  ? ‘”  Ì@ ‘”  ÌA ‘”  ÌB ‘”  ÌC ‘”  ÌD ‘”  ÌE ‘”  ÌF ‘”  ÌG ‘”  ÌH ‘”  ÌI ‘”  ÌJ ‘”  ÌK ‘”  ÌL ‘”  ÌM ‘”  ÌN ‘”  ÌO ‘”  ÌP ‘”  ÌQ ‘”  ÌR ‘”  ÌS ‘”  ÌT ‘”  ÌU ‘”  ÌV ‘”  ÌW ‘”  ÌX ‘”  ÌY ‘”  ÌZ ‘”  Ì[ ‘”  Ì\ ‘”  Ì] ‘”  Ì^ ‘”  Ì_ ‘”  Ì` ‘”  Ìa ‘”  Ìb ‘”  Ìc ‘”  Ìd ‘”  Ìe ‘”  Ìf ‘”  Ìg ‘”  Ìh ‘”  Ìi ‘”  Ìj ‘”  Ìk ‘”  Ìl ‘”  Ìm ‘”  Ìn ‘”  Ìo ‘”  Ìp ‘”  Ìq ‘”  Ìr ‘”  Ìs ‘”  Ìt ‘”  Ìu ‘”  Ìv ‘”  Ìw ‘”  Ìx ‘”  Ìy ‘”  Ìz ‘”  Ì{ ‘”  Ì| ‘”  Ì} ‘”  Ì~ ‘”  Ì ‘”  Ì€ ‘”  Ì ‘”  Ì‚ ‘”  Ìƒ ‘”  Ì„ ‘”  Ì… ‘”  Ì† ‘”  Ì‡ ‘”  Ìˆ ‘”  Ì‰ ‘”  ÌŠ ‘”  Ì‹ ‘”  ÌŒ ‘”  Ì ‘”  Ì ‘”  Ì ‘”  Ì ‘”  Ì‘ ‘”  Ì’ ‘”  Ì“ ‘”  Ì” ‘”  Ì• ‘”  Ì– ‘”  Ì— ‘”  Ì˜ ‘”  Ì™ ‘”  Ìš ‘”  Ì› ‘”  Ìœ ‘”  Ì ‘”  Ì ‘”  ÌŸ ‘”  Ì  ‘”  Ì¡ ‘”  Ì¢ ‘”  Ì£ ‘”  Ì¤ ‘”  Ì¥ ‘”  Ì¦ ‘”  Ì§ ‘”  Ì¨ ‘”  Ì© ‘”  Ìª ‘”  Ì« ‘”  Ì¬ ‘”  Ì­ ‘”  Ì® ‘”  Ì¯ ‘”  Ì° ‘”  Ì± ‘”  Ì² ‘”  Ì³ ‘”  Ì´ ‘”  Ìµ ‘”  Ì¶ ‘”  Ì· ‘”  Ì¸ ‘”  Ì¹ ‘”  Ìº ‘”  Ì» ‘”  Ì¼ ‘”  Ì½ ‘”  Ì¾ ‘”  Ì¿ ‘”  ÌÀ ‘”  ÌÁ ‘”  ÌÂ ‘”  ÌÃ ‘”  ÌÄ ‘”  ÌÅ ‘”  ÌÆ ‘”  ÌÇ ‘”  ÌÈ ‘”  ÌÉ ‘”  ÌÊ ‘”  ÌË ‘”  ÌÌ ‘”  ÌÍ ‘”  ÌÎ ‘”  ÌÏ ‘”  ÌĞ ‘”  ÌÑ ‘”  ÌÒ ‘”  ÌÓ ‘”  ÌÔ ‘”  ÌÕ ‘”  ÌÖ ‘”  Ì× ‘”  ÌØ ‘”  ÌÙ ‘”  ÌÚ ‘”  ÌÛ ‘”  ÌÜ ‘”  Ìİ ‘”  ÌŞ ‘”  Ìß ‘”  Ìà ‘”  Ìá ‘”  Ìâ ‘”  Ìã ‘”  Ìä ‘”  Ìå ‘”  Ìæ ‘”  Ìç ‘”  Ìè ‘”  Ìé ‘”  Ìê ‘”  Ìë ‘”  Ìì ‘”  Ìí ‘”  Ìî ‘”  Ìï ‘”  Ìğ ‘”  Ìñ ‘”  Ìò ‘”  Ìó ‘”  Ìô ‘”  Ìõ ‘”  Ìö ‘”  Ì÷ ‘”  Ìø ‘”  Ìù ‘”  Ìú ‘”  Ìû ‘”  Ìü ‘”  Ìı ‘”  Ìş ‘”  Ìÿ ‘”  Í  ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í	 ‘”  Í
+ ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í  ‘”  Í! ‘”  Í" ‘”  Í# ‘”  Í$ ‘”  Í% ‘”  Í& ‘”  Í' ‘”  Í( ‘”  Í) ‘”  Í* ‘”  Í+ ‘”  Í, ‘”  Í- ‘”  Í. ‘”  Í/ ‘”  Í0 ‘”  Í1 ‘”  Í2 ‘”  Í3 ‘”  Í4 ‘”  Í5 ‘”  Í6 ‘”  Í7 ‘”  Í8 ‘”  Í9 ‘”  Í: ÔrI’§missing¦pluginÃ¦genAbcÂÔ  ÔrJ”²dynamicImportCache¹exportAllDeclarationCache»exportNamedDeclarationCache«importCache‘ÔrK–¤type¥start£end«declarationªspecifiers¦source¶ExportNamedDeclarationÍ±Í&ÉÔrL–¤type¥start£end¢idªsuperClass¤body°ClassDeclarationÍ¸Í&ÉÔrM”¤type¥start£end¤nameªIdentifierÍ¾ÍÉ«TaskServiceÀÔrN”¤type¥start£end¤body©ClassBodyÍÊÍ&ÉÜ ÔrO˜¤type¥start£end¦static¨computed£key¤kind¥value°MethodDefinitionÍÑÍTÂÂMªIdentifierÍÑÍÜ«constructor«constructorÔrP™¤type¥start£end¢idªexpression©generator¥async¦params¤body²FunctionExpressionÍÜÍTÀÂÂÂN®BlockStatementÍßÍT’ÔrQ”¤type¥start£endªexpression³ExpressionStatementÍêÍÔrR–¤type¥start£end¨operator¤left¥right´AssignmentExpressionÍêÍ¡=ÔrS—¤type¥start£end¦object¨property¨computed¨optional°MemberExpressionÍêÍöÔrT“¤type¥start£end®ThisExpressionÍêÍîMªIdentifierÍïÍö§localDBÂÂÔrU–¤type¥start£end¦callee©arguments¨optional®CallExpressionÍùÍS°MemberExpressionÍùÍMªIdentifierÍùÍ®LocalDBServiceMªIdentifierÍÍ«getInstanceÂÂÂQ³ExpressionStatementÍ ÍMR´AssignmentExpressionÍ ÍL¡=S°MemberExpressionÍ Í0T®ThisExpressionÍ Í$MªIdentifierÍ%Í0«syncServiceÂÂU®CallExpressionÍ3ÍLS°MemberExpressionÍ3ÍJMªIdentifierÍ3Í>«SyncServiceMªIdentifierÍ?ÍJ«getInstanceÂÂÂO°MethodDefinitionÍZÍÃÂMªIdentifierÍaÍl«getInstance¦methodP²FunctionExpressionÍlÍÀÂÂÂN®BlockStatementÍoÍ’ÔrV–¤type¥start£end¤testªconsequent©alternate«IfStatementÍzÍØÔrW–¤type¥start£end¨operator¦prefix¨argument¯UnaryExpressionÍ~Í“¡!ÃS°MemberExpressionÍÍ“MªIdentifierÍÍŠ«TaskServiceMªIdentifierÍ‹Í“¨instanceÂÂN®BlockStatementÍ•ÍØ‘Q³ExpressionStatementÍ¤ÍÍR´AssignmentExpressionÍ¤ÍÌ¡=S°MemberExpressionÍ¤Í¸MªIdentifierÍ¤Í¯«TaskServiceMªIdentifierÍ°Í¸¨instanceÂÂÔrX•¤type¥start£end¦callee©arguments­NewExpressionÍ»ÍÌMªIdentifierÍ¿ÍÊ«TaskServiceÀÔrY”¤type¥start£end¨argument¯ReturnStatementÍâÍşS°MemberExpressionÍéÍıMªIdentifierÍéÍô«TaskServiceMªIdentifierÍõÍı¨instanceÂÂO°MethodDefinitionÍ,ÍÍÂÂMªIdentifierÍ,Í6ªgenerateId¦methodP²FunctionExpressionÍ6ÍÍÀÂÂÂN®BlockStatementÍ9ÍÍ“ÔrZ•¤type¥start£end¬declarations¤kind³VariableDeclarationÍDÍa‘Ôr[•¤type¥start£end¢id¤init²VariableDeclaratorÍJÍ`MªIdentifierÍJÍS©timestampU®CallExpressionÍVÍ`S°MemberExpressionÍVÍ^MªIdentifierÍVÍZ¤DateMªIdentifierÍ[Í^£nowÂÂÂ¥constZ³VariableDeclarationÍkÍœ‘[²VariableDeclaratorÍqÍ›MªIdentifierÍqÍw¦randomU®CallExpressionÍzÍ›S°MemberExpressionÍzÍ„MªIdentifierÍzÍ~¤MathMªIdentifierÍÍ„¥floorÂÂ‘Ôr\–¤type¥start£end¤left¨operator¥right°BinaryExpressionÍ…ÍšU®CallExpressionÍ…Í’S°MemberExpressionÍ…ÍMªIdentifierÍ…Í‰¤MathMªIdentifierÍŠÍ¦randomÂÂÂ¡*Ôr]•¤type¥start£end¥value£raw§LiteralÍ•ÍšÍ'¥10000Â¥constY¯ReturnStatementÍ¦ÍÆÔr^•¤type¥start£end«expressions¦quasis¯TemplateLiteralÍ­ÍÅ’MªIdentifierÍ°Í¹©timestampMªIdentifierÍ½ÍÃ¦random“Ôr_•¤type¥start£end¥value¤tail¯TemplateElementÍ®Í®Ôr`’£raw¦cooked  Â_¯TemplateElementÍºÍ»`¡_¡_Â_¯TemplateElementÍÄÍÄ`  ÃO°MethodDefinitionÍşÍyÂÂMªIdentifierÍşÍ	«taskToLocal¦methodP²FunctionExpressionÍ	ÍyÀÂÂÂ’MªIdentifierÍ
+Í¤taskÔra•¤type¥start£end¤left¥right±AssignmentPatternÍÍ/MªIdentifierÍÍªsyncStatusS°MemberExpressionÍÍ/MªIdentifierÍÍ'ªSyncStatusMªIdentifierÍ(Í/§PENDINGÂÂN®BlockStatementÍ1Íy’Z³VariableDeclarationÍ_Í‘[²VariableDeclaratorÍeÍMªIdentifierÍeÍk¦taskIdVµConditionalExpressionÍnÍS°MemberExpressionÍnÍzMªIdentifierÍnÍr¤taskMªIdentifierÍsÍz§localIdÂÂS°MemberExpressionÍ}Í‰MªIdentifierÍ}Í¤taskMªIdentifierÍ‚Í‰§localIdÂÂU®CallExpressionÍŒÍS°MemberExpressionÍŒÍ›T®ThisExpressionÍŒÍMªIdentifierÍ‘Í›ªgenerateIdÂÂÂ¥constY¯ReturnStatementÍ¨ÍrÔrb”¤type¥start£endªproperties°ObjectExpressionÍ¯ÍqÔrc™¤type¥start£end¦method©shorthand¨computed£key¥value¤kind¨PropertyÍ¾ÍÈÂÂÂMªIdentifierÍ¾ÍÀ¢idMªIdentifierÍÂÍÈ¦taskId¤initc¨PropertyÍ×ÍèÂÂÂMªIdentifierÍ×ÍÜ¥titleS°MemberExpressionÍŞÍèMªIdentifierÍŞÍâ¤taskMªIdentifierÍãÍè¥titleÂÂ¤initc¨PropertyÍ÷ÍÂÂÂMªIdentifierÍ÷Í«descriptionS°MemberExpressionÍÍMªIdentifierÍÍ¤taskMªIdentifierÍ	Í«descriptionÂÂ¤initc¨PropertyÍ#Í6ÂÂÂMªIdentifierÍ#Í)¦statusS°MemberExpressionÍ+Í6MªIdentifierÍ+Í/¤taskMªIdentifierÍ0Í6¦statusÂÂ¤initc¨PropertyÍEÍgÂÂÂMªIdentifierÍEÍM¨priorityU®CallExpressionÍOÍgS°MemberExpressionÍOÍeS°MemberExpressionÍOÍ\MªIdentifierÍOÍS¤taskMªIdentifierÍTÍ\¨priorityÂÂMªIdentifierÍ]Íe¨toStringÂÂÂ¤initc¨PropertyÍvÍ­ÂÂÂMªIdentifierÍvÍ}§dueDateVµConditionalExpressionÍÍ­S°MemberExpressionÍÍ‹MªIdentifierÍÍƒ¤taskMªIdentifierÍ„Í‹§dueDateÂÂU®CallExpressionÍÍ¨S°MemberExpressionÍÍ¦S°MemberExpressionÍÍšMªIdentifierÍÍ’¤taskMªIdentifierÍ“Íš§dueDateÂÂMªIdentifierÍ›Í¦«toISOStringÂÂÂ]§LiteralÍ«Í­ ¢''¤initc¨PropertyÍ¼ÍÂÂÂMªIdentifierÍ¼ÍÆªcreateTimeVµConditionalExpressionÍÈÍS°MemberExpressionÍÈÍ×MªIdentifierÍÈÍÌ¤taskMªIdentifierÍÍÍ×ªcreateTimeÂÂU®CallExpressionÍÚÍ÷S°MemberExpressionÍÚÍõS°MemberExpressionÍÚÍéMªIdentifierÍÚÍŞ¤taskMªIdentifierÍßÍéªcreateTimeÂÂMªIdentifierÍêÍõ«toISOStringÂÂÂU®CallExpressionÍúÍS°MemberExpressionÍúÍX­NewExpressionÍúÍMªIdentifierÍşÍ¤DateMªIdentifierÍÍ«toISOStringÂÂÂ¤initc¨PropertyÍ!ÍwÂÂÂMªIdentifierÍ!Í+ªupdateTimeVµConditionalExpressionÍ-ÍwS°MemberExpressionÍ-Í<MªIdentifierÍ-Í1¤taskMªIdentifierÍ2Í<ªupdateTimeÂÂU®CallExpressionÍ?Í\S°MemberExpressionÍ?ÍZS°MemberExpressionÍ?ÍNMªIdentifierÍ?ÍC¤taskMªIdentifierÍDÍNªupdateTimeÂÂMªIdentifierÍOÍZ«toISOStringÂÂÂU®CallExpressionÍ_ÍwS°MemberExpressionÍ_ÍuX­NewExpressionÍ_ÍiMªIdentifierÍcÍg¤DateMªIdentifierÍjÍu«toISOStringÂÂÂ¤initc¨PropertyÍ†ÍÏÂÂÂMªIdentifierÍ†Í“­completedTimeVµConditionalExpressionÍ•ÍÏS°MemberExpressionÍ•Í§MªIdentifierÍ•Í™¤taskMªIdentifierÍšÍ§­completedTimeÂÂU®CallExpressionÍªÍÊS°MemberExpressionÍªÍÈS°MemberExpressionÍªÍ¼MªIdentifierÍªÍ®¤taskMªIdentifierÍ¯Í¼­completedTimeÂÂMªIdentifierÍ½ÍÈ«toISOStringÂÂÂ]§LiteralÍÍÍÏ ¢''¤initc¨PropertyÍŞÍÂÂÂMªIdentifierÍŞÍâ¤tagsU®CallExpressionÍäÍS°MemberExpressionÍäÍòMªIdentifierÍäÍè¤JSONMªIdentifierÍéÍò©stringifyÂÂ‘\±LogicalExpressionÍóÍS°MemberExpressionÍóÍüMªIdentifierÍóÍ÷¤taskMªIdentifierÍøÍü¤tagsÂÂ¢||Ôrd”¤type¥start£end¨elements¯ArrayExpressionÍ ÍÂ¤initc¨PropertyÍÍ(ÂÂÂMªIdentifierÍÍ¦userId]§LiteralÍÍ(¬default_user®'default_user'¤initc¨PropertyÍ7ÍMÂÂÂMªIdentifierÍ7ÍAªsyncStatusMªIdentifierÍCÍMªsyncStatus¤initc¨PropertyÍ\ÍfÂÂÂMªIdentifierÍ\Íc§version]§LiteralÍeÍf¡1¤initO°MethodDefinitionÍªÍŞÂÂMªIdentifierÍªÍµ«localToTask¦methodP²FunctionExpressionÍµÍŞÀÂÂÂ‘MªIdentifierÍ¶Í»¥localN®BlockStatementÍ½ÍŞ–Z³VariableDeclarationÍÈÍÖ‘[²VariableDeclaratorÍÌÍÕMªIdentifierÍÌÍĞ¤tagsd¯ArrayExpressionÍÓÍÕ£letÔre–¤type¥start£end¥block§handler©finalizer¬TryStatementÍàÍ\N®BlockStatementÍäÍ$‘Q³ExpressionStatementÍóÍR´AssignmentExpressionÍóÍ¡=MªIdentifierÍóÍ÷¤tagsU®CallExpressionÍúÍS°MemberExpressionÍúÍMªIdentifierÍúÍş¤JSONMªIdentifierÍÿÍ¥parseÂÂ‘\±LogicalExpressionÍÍS°MemberExpressionÍÍMªIdentifierÍÍ
+¥localMªIdentifierÍÍ¤tagsÂÂ¢||]§LiteralÍÍ¢[]¤'[]'ÂÔrf•¤type¥start£end¥param¤body«CatchClauseÍ.Í\MªIdentifierÍ5Í6¡eN®BlockStatementÍ8Í\‘Q³ExpressionStatementÍGÍQR´AssignmentExpressionÍGÍP¡=MªIdentifierÍGÍK¤tagsd¯ArrayExpressionÍNÍPÀZ³VariableDeclarationÍfÍz‘[²VariableDeclaratorÍjÍyMªIdentifierÍjÍu«priorityNum]§LiteralÍxÍy¡1£letV«IfStatementÍ„Í	3S°MemberExpressionÍˆÍ–MªIdentifierÍˆÍ¥localMªIdentifierÍÍ–¨priorityÂÂN®BlockStatementÍ˜Í	3’Z³VariableDeclarationÍ§ÍÏ‘[²VariableDeclaratorÍ­ÍÎMªIdentifierÍ­Í³¦parsedU®CallExpressionÍ¶ÍÎMªIdentifierÍ¶Í¾¨parseInt‘S°MemberExpressionÍ¿ÍÍMªIdentifierÍ¿ÍÄ¥localMªIdentifierÍÅÍÍ¨priorityÂÂÂ¥constV«IfStatementÍİÍ	(W¯UnaryExpressionÍáÍï¡!ÃU®CallExpressionÍâÍïMªIdentifierÍâÍç¥isNaN‘MªIdentifierÍèÍî¦parsedÂN®BlockStatementÍñÍ	(‘Q³ExpressionStatementÍ	Í	R´AssignmentExpressionÍ	Í	¡=MªIdentifierÍ	Í	«priorityNumMªIdentifierÍ	Í	¦parsedÀÀZ³VariableDeclarationÍ	=Í³‘[²VariableDeclaratorÍ	CÍ²MªIdentifierÍ	CÍ	K¨taskDatab°ObjectExpressionÍ	NÍ²›c¨PropertyÍ	]Í	xÂÂÂMªIdentifierÍ	]Í	_¢id\±LogicalExpressionÍ	aÍ	xU®CallExpressionÍ	aÍ	sMªIdentifierÍ	aÍ	i¨parseInt‘S°MemberExpressionÍ	jÍ	rMªIdentifierÍ	jÍ	o¥localMªIdentifierÍ	pÍ	r¢idÂÂÂ¢||]§LiteralÍ	wÍ	x ¡0¤initc¨PropertyÍ	‡Í	˜ÂÂÂMªIdentifierÍ	‡Í	§localIdS°MemberExpressionÍ	Í	˜MªIdentifierÍ	Í	•¥localMªIdentifierÍ	–Í	˜¢idÂÂ¤initc¨PropertyÍ	§Í	¿ÂÂÂMªIdentifierÍ	§Í	¬¥title\±LogicalExpressionÍ	®Í	¿S°MemberExpressionÍ	®Í	¹MªIdentifierÍ	®Í	³¥localMªIdentifierÍ	´Í	¹¥titleÂÂ¢||]§LiteralÍ	½Í	¿ ¢''¤initc¨PropertyÍ	ÎÍ	òÂÂÂMªIdentifierÍ	ÎÍ	Ù«description\±LogicalExpressionÍ	ÛÍ	òS°MemberExpressionÍ	ÛÍ	ìMªIdentifierÍ	ÛÍ	à¥localMªIdentifierÍ	áÍ	ì«descriptionÂÂ¢||]§LiteralÍ	ğÍ	ò ¢''¤initc¨PropertyÍ
+Í
+"ÂÂÂMªIdentifierÍ
+Í
+¦status\±LogicalExpressionÍ
+	Í
+"S°MemberExpressionÍ
+	Í
+MªIdentifierÍ
+	Í
+¥localMªIdentifierÍ
+Í
+¦statusÂÂ¢||]§LiteralÍ
+Í
+"§pending©'pending'¤initc¨PropertyÍ
+1Í
+FÂÂÂMªIdentifierÍ
+1Í
+9¨priorityMªIdentifierÍ
+;Í
+F«priorityNum¤initc¨PropertyÍ
+UÍ
+ŒÂÂÂMªIdentifierÍ
+UÍ
+\§dueDateVµConditionalExpressionÍ
+^Í
+ŒS°MemberExpressionÍ
+^Í
+kMªIdentifierÍ
+^Í
+c¥localMªIdentifierÍ
+dÍ
+k§dueDateÂÂX­NewExpressionÍ
+nÍ
+…MªIdentifierÍ
+rÍ
+v¤Date‘S°MemberExpressionÍ
+wÍ
+„MªIdentifierÍ
+wÍ
+|¥localMªIdentifierÍ
+}Í
+„§dueDateÂÂ]§LiteralÍ
+ˆÍ
+ŒÀ¤null¤initc¨PropertyÍ
+›Í
+áÂÂÂMªIdentifierÍ
+›Í
+¥ªcreateTimeVµConditionalExpressionÍ
+§Í
+áS°MemberExpressionÍ
+§Í
+·MªIdentifierÍ
+§Í
+¬¥localMªIdentifierÍ
+­Í
+·ªcreateTimeÂÂX­NewExpressionÍ
+ºÍ
+ÔMªIdentifierÍ
+¾Í
+Â¤Date‘S°MemberExpressionÍ
+ÃÍ
+ÓMªIdentifierÍ
+ÃÍ
+È¥localMªIdentifierÍ
+ÉÍ
+ÓªcreateTimeÂÂX­NewExpressionÍ
+×Í
+áMªIdentifierÍ
+ÛÍ
+ß¤Date¤initc¨PropertyÍ
+ğÍ6ÂÂÂMªIdentifierÍ
+ğÍ
+úªupdateTimeVµConditionalExpressionÍ
+üÍ6S°MemberExpressionÍ
+üÍMªIdentifierÍ
+üÍ¥localMªIdentifierÍÍªupdateTimeÂÂX­NewExpressionÍÍ)MªIdentifierÍÍ¤Date‘S°MemberExpressionÍÍ(MªIdentifierÍÍ¥localMªIdentifierÍÍ(ªupdateTimeÂÂX­NewExpressionÍ,Í6MªIdentifierÍ0Í4¤Date¤initc¨PropertyÍEÍÂÂÂMªIdentifierÍEÍR­completedTimeVµConditionalExpressionÍTÍS°MemberExpressionÍTÍgMªIdentifierÍTÍY¥localMªIdentifierÍZÍg­completedTimeÂÂX­NewExpressionÍjÍ‡MªIdentifierÍnÍr¤Date‘S°MemberExpressionÍsÍ†MªIdentifierÍsÍx¥localMªIdentifierÍyÍ†­completedTimeÂÂ]§LiteralÍŠÍÀ¤null¤initc¨PropertyÍÍ§ÂÂÂMªIdentifierÍÍ¡¤tagsMªIdentifierÍ£Í§¤tags¤init¥constY¯ReturnStatementÍ½Í×X­NewExpressionÍÄÍÖMªIdentifierÍÈÍÌ¤Task‘MªIdentifierÍÍÍÕ¨taskDataO°MethodDefinitionÍÍ*ÂÂMªIdentifierÍ"Í,ªcreateTask¦methodP²FunctionExpressionÍ,Í*ÀÂÂÃ‘MªIdentifierÍ-Í1¤taskN®BlockStatementÍ3Í*‘e¬TryStatementÍ>Í#N®BlockStatementÍBÍe—V«IfStatementÍfÍ»W¯UnaryExpressionÍjÍz¡!ÃS°MemberExpressionÍkÍzMªIdentifierÍkÍo¤taskMªIdentifierÍpÍzªcreateTimeÂÂN®BlockStatementÍ|Í»‘Q³ExpressionStatementÍÍ¬R´AssignmentExpressionÍÍ«¡=S°MemberExpressionÍÍMªIdentifierÍÍ“¤taskMªIdentifierÍ”ÍªcreateTimeÂÂX­NewExpressionÍ¡Í«MªIdentifierÍ¥Í©¤DateÀQ³ExpressionStatementÍÉÍæR´AssignmentExpressionÍÉÍå¡=S°MemberExpressionÍÉÍØMªIdentifierÍÉÍÍ¤taskMªIdentifierÍÎÍØªupdateTimeÂÂX­NewExpressionÍÛÍåMªIdentifierÍßÍã¤DateZ³VariableDeclarationÍÍL‘[²VariableDeclaratorÍÍKMªIdentifierÍÍ©localTaskU®CallExpressionÍ!ÍKS°MemberExpressionÍ!Í1T®ThisExpressionÍ!Í%MªIdentifierÍ&Í1«taskToLocalÂÂ’MªIdentifierÍ2Í6¤taskS°MemberExpressionÍ8ÍJMªIdentifierÍ8ÍBªSyncStatusMªIdentifierÍCÍJ§PENDINGÂÂÂ¥constQ³ExpressionStatementÍZÍƒY¯AwaitExpressionÍZÍ‚U®CallExpressionÍ`Í‚S°MemberExpressionÍ`ÍwS°MemberExpressionÍ`ÍlT®ThisExpressionÍ`ÍdMªIdentifierÍeÍl§localDBÂÂMªIdentifierÍmÍwªupsertTaskÂÂ‘MªIdentifierÍxÍ©localTaskÂQ³ExpressionStatementÍ‘ÍÏU®CallExpressionÍ‘ÍÎS°MemberExpressionÍ‘Í›MªIdentifierÍ‘Í–¥hilogMªIdentifierÍ—Í›¤infoÂÂ”MªIdentifierÍœÍ¢¦DOMAINMªIdentifierÍ¤Í§£TAG]§LiteralÍ©Í¿Ù$ä»»åŠ¡å·²ä¿å­˜åˆ°æœ¬åœ°: %{public}sÙ&'ä»»åŠ¡å·²ä¿å­˜åˆ°æœ¬åœ°: %{public}s'S°MemberExpressionÍÁÍÍMªIdentifierÍÁÍÊ©localTaskMªIdentifierÍËÍÍ¢idÂÂÂQ³ExpressionStatementÍùÍU®CallExpressionÍùÍS°MemberExpressionÍùÍ	T®ThisExpressionÍùÍıMªIdentifierÍşÍ	«triggerSyncÂÂÂY¯ReturnStatementÍ7ÍZU®CallExpressionÍ>ÍYS°MemberExpressionÍ>ÍNT®ThisExpressionÍ>ÍBMªIdentifierÍCÍN«localToTaskÂÂ‘MªIdentifierÍOÍX©localTaskÂf«CatchClauseÍoÍ#MªIdentifierÍvÍ{¥errorN®BlockStatementÍ}Í#’Q³ExpressionStatementÍŒÍÊU®CallExpressionÍŒÍÉS°MemberExpressionÍŒÍ—MªIdentifierÍŒÍ‘¥hilogMªIdentifierÍ’Í—¥errorÂÂ”MªIdentifierÍ˜Í¦DOMAINMªIdentifierÍ Í££TAG]§LiteralÍ¥Í¹¾åˆ›å»ºä»»åŠ¡å¤±è´¥: %{public}sÙ 'åˆ›å»ºä»»åŠ¡å¤±è´¥: %{public}s'U®CallExpressionÍ»ÍÈMªIdentifierÍ»ÍÁ¦String‘MªIdentifierÍÂÍÇ¥errorÂÂY®ThrowStatementÍØÍVµConditionalExpressionÍŞÍ\°BinaryExpressionÍŞÍôMªIdentifierÍŞÍã¥errorªinstanceofMªIdentifierÍïÍô¥ErrorMªIdentifierÍ÷Íü¥errorX­NewExpressionÍÿÍMªIdentifierÍÍ¥Error‘U®CallExpressionÍ	ÍMªIdentifierÍ	Í¦String‘MªIdentifierÍÍ¥errorÂÀO°MethodDefinitionÍOÍ]ÂÂMªIdentifierÍUÍ_ªupdateTask¦methodP²FunctionExpressionÍ_Í]ÀÂÂÃ‘MªIdentifierÍ`Íd¤taskN®BlockStatementÍfÍ]‘e¬TryStatementÍqÍVN®BlockStatementÍuÍ˜•Q³ExpressionStatementÍ„Í¡R´AssignmentExpressionÍ„Í ¡=S°MemberExpressionÍ„Í“MªIdentifierÍ„Íˆ¤taskMªIdentifierÍ‰Í“ªupdateTimeÂÂX­NewExpressionÍ–Í MªIdentifierÍšÍ¤DateZ³VariableDeclarationÍ¯Íì‘[²VariableDeclaratorÍµÍëMªIdentifierÍµÍ¾©localTaskU®CallExpressionÍÁÍëS°MemberExpressionÍÁÍÑT®ThisExpressionÍÁÍÅMªIdentifierÍÆÍÑ«taskToLocalÂÂ’MªIdentifierÍÒÍÖ¤taskS°MemberExpressionÍØÍêMªIdentifierÍØÍâªSyncStatusMªIdentifierÍãÍê§PENDINGÂÂÂ¥constQ³ExpressionStatementÍúÍ#Y¯AwaitExpressionÍúÍ"U®CallExpressionÍ Í"S°MemberExpressionÍ ÍS°MemberExpressionÍ ÍT®ThisExpressionÍ ÍMªIdentifierÍÍ§localDBÂÂMªIdentifierÍÍªupsertTaskÂÂ‘MªIdentifierÍÍ!©localTaskÂQ³ExpressionStatementÍ1ÍlU®CallExpressionÍ1ÍkS°MemberExpressionÍ1Í;MªIdentifierÍ1Í6¥hilogMªIdentifierÍ7Í;¤infoÂÂ”MªIdentifierÍ<ÍB¦DOMAINMªIdentifierÍDÍG£TAG]§LiteralÍIÍ\»ä»»åŠ¡å·²æ›´æ–°: %{public}s½'ä»»åŠ¡å·²æ›´æ–°: %{public}s'S°MemberExpressionÍ^ÍjMªIdentifierÍ^Íg©localTaskMªIdentifierÍhÍj¢idÂÂÂQ³ExpressionStatementÍzÍU®CallExpressionÍzÍŒS°MemberExpressionÍzÍŠT®ThisExpressionÍzÍ~MªIdentifierÍÍŠ«triggerSyncÂÂÂf«CatchClauseÍ¢ÍVMªIdentifierÍ©Í®¥errorN®BlockStatementÍ°ÍV’Q³ExpressionStatementÍ¿ÍıU®CallExpressionÍ¿ÍüS°MemberExpressionÍ¿ÍÊMªIdentifierÍ¿ÍÄ¥hilogMªIdentifierÍÅÍÊ¥errorÂÂ”MªIdentifierÍËÍÑ¦DOMAINMªIdentifierÍÓÍÖ£TAG]§LiteralÍØÍì¾æ›´æ–°ä»»åŠ¡å¤±è´¥: %{public}sÙ 'æ›´æ–°ä»»åŠ¡å¤±è´¥: %{public}s'U®CallExpressionÍîÍûMªIdentifierÍîÍô¦String‘MªIdentifierÍõÍú¥errorÂÂY®ThrowStatementÍÍKVµConditionalExpressionÍÍJ\°BinaryExpressionÍÍ'MªIdentifierÍÍ¥errorªinstanceofMªIdentifierÍ"Í'¥ErrorMªIdentifierÍ*Í/¥errorX­NewExpressionÍ2ÍJMªIdentifierÍ6Í;¥Error‘U®CallExpressionÍ<ÍIMªIdentifierÍ<ÍB¦String‘MªIdentifierÍCÍH¥errorÂÀO°MethodDefinitionÍ¹ÍfÂÂMªIdentifierÍ¿ÍÉªdeleteTask¦methodP²FunctionExpressionÍÉÍfÀÂÂÃ‘MªIdentifierÍÊÍÒ¨taskOrIdN®BlockStatementÍÔÍf‘e¬TryStatementÍßÍ_N®BlockStatementÍãÍ¡•Z³VariableDeclarationÍòÍş‘[²VariableDeclaratorÍöÍıMªIdentifierÍöÍı§localIdÀ£letV«IfStatementÍÍú\°BinaryExpressionÍÍ,W¯UnaryExpressionÍÍ¦typeofÃMªIdentifierÍÍ¨taskOrId£===]§LiteralÍ$Í,¦string¨'string'N®BlockStatementÍ.Íc‘Q³ExpressionStatementÍAÍTR´AssignmentExpressionÍAÍS¡=MªIdentifierÍAÍH§localIdMªIdentifierÍKÍS¨taskOrIdN®BlockStatementÍvÍú‘Q³ExpressionStatementÍ¶ÍëR´AssignmentExpressionÍ¶Íê¡=MªIdentifierÍ¶Í½§localId\±LogicalExpressionÍÀÍêS°MemberExpressionÍÀÍĞMªIdentifierÍÀÍÈ¨taskOrIdMªIdentifierÍÉÍĞ§localIdÂÂ¢||U®CallExpressionÍÔÍêS°MemberExpressionÍÔÍèS°MemberExpressionÍÔÍßMªIdentifierÍÔÍÜ¨taskOrIdMªIdentifierÍİÍß¢idÂÂMªIdentifierÍàÍè¨toStringÂÂÂQ³ExpressionStatementÍÍ/Y¯AwaitExpressionÍÍ.U®CallExpressionÍÍ.S°MemberExpressionÍÍ%S°MemberExpressionÍÍT®ThisExpressionÍÍMªIdentifierÍÍ§localDBÂÂMªIdentifierÍÍ%ªdeleteTaskÂÂ‘MªIdentifierÍ&Í-§localIdÂQ³ExpressionStatementÍ=ÍuU®CallExpressionÍ=ÍtS°MemberExpressionÍ=ÍGMªIdentifierÍ=ÍB¥hilogMªIdentifierÍCÍG¤infoÂÂ”MªIdentifierÍHÍN¦DOMAINMªIdentifierÍPÍS£TAG]§LiteralÍUÍjÙ!ä»»åŠ¡å·²æ ‡è®°åˆ é™¤: %{public}sÙ#'ä»»åŠ¡å·²æ ‡è®°åˆ é™¤: %{public}s'MªIdentifierÍlÍs§localIdÂQ³ExpressionStatementÍƒÍ–U®CallExpressionÍƒÍ•S°MemberExpressionÍƒÍ“T®ThisExpressionÍƒÍ‡MªIdentifierÍˆÍ“«triggerSyncÂÂÂf«CatchClauseÍ«Í_MªIdentifierÍ²Í·¥errorN®BlockStatementÍ¹Í_’Q³ExpressionStatementÍÈÍU®CallExpressionÍÈÍS°MemberExpressionÍÈÍÓMªIdentifierÍÈÍÍ¥hilogMªIdentifierÍÎÍÓ¥errorÂÂ”MªIdentifierÍÔÍÚ¦DOMAINMªIdentifierÍÜÍß£TAG]§LiteralÍáÍõ¾åˆ é™¤ä»»åŠ¡å¤±è´¥: %{public}sÙ 'åˆ é™¤ä»»åŠ¡å¤±è´¥: %{public}s'U®CallExpressionÍ÷ÍMªIdentifierÍ÷Íı¦String‘MªIdentifierÍşÍ¥errorÂÂY®ThrowStatementÍÍTVµConditionalExpressionÍÍS\°BinaryExpressionÍÍ0MªIdentifierÍÍ¥errorªinstanceofMªIdentifierÍ+Í0¥ErrorMªIdentifierÍ3Í8¥errorX­NewExpressionÍ;ÍSMªIdentifierÍ?ÍD¥Error‘U®CallExpressionÍEÍRMªIdentifierÍEÍK¦String‘MªIdentifierÍLÍQ¥errorÂÀO°MethodDefinitionÍ‹ÍÂÂMªIdentifierÍ‘Í˜§getTask¦methodP²FunctionExpressionÍ˜ÍÀÂÂÃ‘MªIdentifierÍ™Í›¢idN®BlockStatementÍÍ‘e¬TryStatementÍ¨ÍN®BlockStatementÍ¬Í…“Z³VariableDeclarationÍ»Íı‘[²VariableDeclaratorÍÁÍüMªIdentifierÍÁÍÊ©localTaskY¯AwaitExpressionÍÍÍüU®CallExpressionÍÓÍüS°MemberExpressionÍÓÍíS°MemberExpressionÍÓÍßT®ThisExpressionÍÓÍ×MªIdentifierÍØÍß§localDBÂÂMªIdentifierÍàÍí­queryTaskByIdÂÂ‘U®CallExpressionÍîÍûS°MemberExpressionÍîÍùMªIdentifierÍîÍğ¢idMªIdentifierÍñÍù¨toStringÂÂÂÂ¥constV«IfStatementÍÍIW¯UnaryExpressionÍÍ¡!ÃMªIdentifierÍÍ©localTaskN®BlockStatementÍÍI‘Y¯ReturnStatementÍ.Í:]§LiteralÍ5Í9À¤nullÀY¯ReturnStatementÍWÍzU®CallExpressionÍ^ÍyS°MemberExpressionÍ^ÍnT®ThisExpressionÍ^ÍbMªIdentifierÍcÍn«localToTaskÂÂ‘MªIdentifierÍoÍx©localTaskÂf«CatchClauseÍÍMªIdentifierÍ–Í›¥errorN®BlockStatementÍÍ’Q³ExpressionStatementÍ¬ÍêU®CallExpressionÍ¬ÍéS°MemberExpressionÍ¬Í·MªIdentifierÍ¬Í±¥hilogMªIdentifierÍ²Í·¥errorÂÂ”MªIdentifierÍ¸Í¾¦DOMAINMªIdentifierÍÀÍÃ£TAG]§LiteralÍÅÍÙ¾è·å–ä»»åŠ¡å¤±è´¥: %{public}sÙ 'è·å–ä»»åŠ¡å¤±è´¥: %{public}s'U®CallExpressionÍÛÍèMªIdentifierÍÛÍá¦String‘MªIdentifierÍâÍç¥errorÂÂY¯ReturnStatementÍøÍ]§LiteralÍÿÍÀ¤nullÀO°MethodDefinitionÍ=Í‡ÂÂMªIdentifierÍCÍN«getAllTasks¦methodP²FunctionExpressionÍNÍ‡ÀÂÂÃN®BlockStatementÍQÍ‡‘e¬TryStatementÍ\Í€N®BlockStatementÍ`Íö’Z³VariableDeclarationÍoÍ¥‘[²VariableDeclaratorÍuÍ¤MªIdentifierÍuÍªlocalTasksY¯AwaitExpressionÍ‚Í¤U®CallExpressionÍˆÍ¤S°MemberExpressionÍˆÍ¢S°MemberExpressionÍˆÍ”T®ThisExpressionÍˆÍŒMªIdentifierÍÍ”§localDBÂÂMªIdentifierÍ•Í¢­queryAllTasksÂÂÂ¥constY¯ReturnStatementÍ³ÍëU®CallExpressionÍºÍêS°MemberExpressionÍºÍÈMªIdentifierÍºÍÄªlocalTasksMªIdentifierÍÅÍÈ£mapÂÂ‘P·ArrowFunctionExpressionÍÉÍéÀÃÂÂ‘MªIdentifierÍÉÍÎ¥localU®CallExpressionÍÒÍéS°MemberExpressionÍÒÍâT®ThisExpressionÍÒÍÖMªIdentifierÍ×Íâ«localToTaskÂÂ‘MªIdentifierÍãÍè¥localÂÂf«CatchClauseÍ Í€MªIdentifierÍÍ¥errorN®BlockStatementÍÍ€’Q³ExpressionStatementÍÍ]U®CallExpressionÍÍ\S°MemberExpressionÍÍ(MªIdentifierÍÍ"¥hilogMªIdentifierÍ#Í(¥errorÂÂ”MªIdentifierÍ)Í/¦DOMAINMªIdentifierÍ1Í4£TAG]§LiteralÍ6ÍLÙ$è·å–ä»»åŠ¡åˆ—è¡¨å¤±è´¥: %{public}sÙ&'è·å–ä»»åŠ¡åˆ—è¡¨å¤±è´¥: %{public}s'U®CallExpressionÍNÍ[MªIdentifierÍNÍT¦String‘MªIdentifierÍUÍZ¥errorÂÂY¯ReturnStatementÍkÍud¯ArrayExpressionÍrÍtÀO°MethodDefinitionÍ®ÍÂÂMªIdentifierÍ´ÍÃ¯getPendingTasks¦methodP²FunctionExpressionÍÃÍÀÂÂÃN®BlockStatementÍÆÍ‘Y¯ReturnStatementÍÑÍY¯AwaitExpressionÍØÍU®CallExpressionÍŞÍS°MemberExpressionÍŞÍóT®ThisExpressionÍŞÍâMªIdentifierÍãÍó°getTasksByStatusÂÂ‘S°MemberExpressionÍôÍMªIdentifierÍôÍı©ConstantsMªIdentifierÍşÍ³TASK_STATUS_PENDINGÂÂÂO°MethodDefinitionÍCÍ¶ÂÂMªIdentifierÍIÍ[²getInProgressTasks¦methodP²FunctionExpressionÍ[Í¶ÀÂÂÃN®BlockStatementÍ^Í¶‘Y¯ReturnStatementÍiÍ¯Y¯AwaitExpressionÍpÍ®U®CallExpressionÍvÍ®S°MemberExpressionÍvÍ‹T®ThisExpressionÍvÍzMªIdentifierÍ{Í‹°getTasksByStatusÂÂ‘S°MemberExpressionÍŒÍ­MªIdentifierÍŒÍ•©ConstantsMªIdentifierÍ–Í­·TASK_STATUS_IN_PROGRESSÂÂÂO°MethodDefinitionÍßÍOÂÂMªIdentifierÍåÍö±getCompletedTasks¦methodP²FunctionExpressionÍöÍOÀÂÂÃN®BlockStatementÍùÍO‘Y¯ReturnStatementÍÍHY¯AwaitExpressionÍÍGU®CallExpressionÍÍGS°MemberExpressionÍÍ&T®ThisExpressionÍÍMªIdentifierÍÍ&°getTasksByStatusÂÂ‘S°MemberExpressionÍ'ÍFMªIdentifierÍ'Í0©ConstantsMªIdentifierÍ1ÍFµTASK_STATUS_COMPLETEDÂÂÂO°MethodDefinitionÍxÍØÂÂMªIdentifierÍ~Í°getTasksByStatus¦methodP²FunctionExpressionÍÍØÀÂÂÃ‘MªIdentifierÍÍ•¦statusN®BlockStatementÍ—ÍØ‘e¬TryStatementÍ¢ÍÑN®BlockStatementÍ¦ÍG’Z³VariableDeclarationÍµÍö‘[²VariableDeclaratorÍ»ÍõMªIdentifierÍ»ÍÅªlocalTasksY¯AwaitExpressionÍÈÍõU®CallExpressionÍÎÍõS°MemberExpressionÍÎÍíS°MemberExpressionÍÎÍÚT®ThisExpressionÍÎÍÒMªIdentifierÍÓÍÚ§localDBÂÂMªIdentifierÍÛÍí²queryTasksByStatusÂÂ‘MªIdentifierÍîÍô¦statusÂ¥constY¯ReturnStatementÍÍ<U®CallExpressionÍÍ;S°MemberExpressionÍÍMªIdentifierÍÍªlocalTasksMªIdentifierÍÍ£mapÂÂ‘P·ArrowFunctionExpressionÍÍ:ÀÃÂÂ‘MªIdentifierÍÍ¥localU®CallExpressionÍ#Í:S°MemberExpressionÍ#Í3T®ThisExpressionÍ#Í'MªIdentifierÍ(Í3«localToTaskÂÂ‘MªIdentifierÍ4Í9¥localÂÂf«CatchClauseÍQÍÑMªIdentifierÍXÍ]¥errorN®BlockStatementÍ_ÍÑ’Q³ExpressionStatementÍnÍ®U®CallExpressionÍnÍ­S°MemberExpressionÍnÍyMªIdentifierÍnÍs¥hilogMªIdentifierÍtÍy¥errorÂÂ”MªIdentifierÍzÍ€¦DOMAINMªIdentifierÍ‚Í…£TAG]§LiteralÍ‡ÍÙ$è·å–ä»»åŠ¡åˆ—è¡¨å¤±è´¥: %{public}sÙ&'è·å–ä»»åŠ¡åˆ—è¡¨å¤±è´¥: %{public}s'U®CallExpressionÍŸÍ¬MªIdentifierÍŸÍ¥¦String‘MªIdentifierÍ¦Í«¥errorÂÂY¯ReturnStatementÍ¼ÍÆd¯ArrayExpressionÍÃÍÅÀO°MethodDefinitionÍıÍÍÂÂMªIdentifierÍÍ¬completeTask¦methodP²FunctionExpressionÍÍÍÀÂÂÃ‘MªIdentifierÍÍ¤taskN®BlockStatementÍÍÍ”Q³ExpressionStatementÍ!ÍOR´AssignmentExpressionÍ!ÍN¡=S°MemberExpressionÍ!Í,MªIdentifierÍ!Í%¤taskMªIdentifierÍ&Í,¦statusÂÂS°MemberExpressionÍ/ÍNMªIdentifierÍ/Í8©ConstantsMªIdentifierÍ9ÍNµTASK_STATUS_COMPLETEDÂÂQ³ExpressionStatementÍYÍyR´AssignmentExpressionÍYÍx¡=S°MemberExpressionÍYÍkMªIdentifierÍYÍ]¤taskMªIdentifierÍ^Ík­completedTimeÂÂX­NewExpressionÍnÍxMªIdentifierÍrÍv¤DateQ³ExpressionStatementÍƒÍ R´AssignmentExpressionÍƒÍŸ¡=S°MemberExpressionÍƒÍ’MªIdentifierÍƒÍ‡¤taskMªIdentifierÍˆÍ’ªupdateTimeÂÂX­NewExpressionÍ•ÍŸMªIdentifierÍ™Í¤DateQ³ExpressionStatementÍªÍÆY¯AwaitExpressionÍªÍÅU®CallExpressionÍ°ÍÅS°MemberExpressionÍ°Í¿T®ThisExpressionÍ°Í´MªIdentifierÍµÍ¿ªupdateTaskÂÂ‘MªIdentifierÍÀÍÄ¤taskÂO°MethodDefinitionÍôÍ¾ÂÂMªIdentifierÍúÍ®uncompleteTask¦methodP²FunctionExpressionÍÍ¾ÀÂÂÃ‘MªIdentifierÍ	Í¤taskN®BlockStatementÍÍ¾”Q³ExpressionStatementÍÍFR´AssignmentExpressionÍÍE¡=S°MemberExpressionÍÍ%MªIdentifierÍÍ¤taskMªIdentifierÍÍ%¦statusÂÂS°MemberExpressionÍ(ÍEMªIdentifierÍ(Í1©ConstantsMªIdentifierÍ2ÍE³TASK_STATUS_PENDINGÂÂQ³ExpressionStatementÍPÍjR´AssignmentExpressionÍPÍi¡=S°MemberExpressionÍPÍbMªIdentifierÍPÍT¤taskMªIdentifierÍUÍb­completedTimeÂÂ]§LiteralÍeÍiÀ¤nullQ³ExpressionStatementÍtÍ‘R´AssignmentExpressionÍtÍ¡=S°MemberExpressionÍtÍƒMªIdentifierÍtÍx¤taskMªIdentifierÍyÍƒªupdateTimeÂÂX­NewExpressionÍ†ÍMªIdentifierÍŠÍ¤DateQ³ExpressionStatementÍ›Í·Y¯AwaitExpressionÍ›Í¶U®CallExpressionÍ¡Í¶S°MemberExpressionÍ¡Í°T®ThisExpressionÍ¡Í¥MªIdentifierÍ¦Í°ªupdateTaskÂÂ‘MªIdentifierÍ±Íµ¤taskÂO°MethodDefinitionÍ ÍÕÂÂMªIdentifierÍÍ®getTasksByDate¦methodP²FunctionExpressionÍÍÕÀÂÂÃ‘MªIdentifierÍÍ¤dateN®BlockStatementÍÍÕ‘e¬TryStatementÍ&ÍÎN®BlockStatementÍ*ÍD–Z³VariableDeclarationÍ9Íc‘[²VariableDeclaratorÍ?ÍbMªIdentifierÍ?ÍG¨allTasksY¯AwaitExpressionÍJÍbU®CallExpressionÍPÍbS°MemberExpressionÍPÍ`T®ThisExpressionÍPÍTMªIdentifierÍUÍ`«getAllTasksÂÂÂ¥constZ³VariableDeclarationÍqÍ“‘[²VariableDeclaratorÍwÍ’MªIdentifierÍwÍªstartOfDayX­NewExpressionÍ„Í’MªIdentifierÍˆÍŒ¤Date‘MªIdentifierÍÍ‘¤date¥constQ³ExpressionStatementÍ¡ÍÁU®CallExpressionÍ¡ÍÀS°MemberExpressionÍ¡Í´MªIdentifierÍ¡Í«ªstartOfDayMªIdentifierÍ¬Í´¨setHoursÂÂ”]§LiteralÍµÍ¶ ¡0]§LiteralÍ¸Í¹ ¡0]§LiteralÍ»Í¼ ¡0]§LiteralÍ¾Í¿ ¡0ÂZ³VariableDeclarationÍÏÍï‘[²VariableDeclaratorÍÕÍîMªIdentifierÍÕÍİ¨endOfDayX­NewExpressionÍàÍîMªIdentifierÍäÍè¤Date‘MªIdentifierÍéÍí¤date¥constQ³ExpressionStatementÍıÍ U®CallExpressionÍıÍS°MemberExpressionÍıÍMªIdentifierÍıÍ¨endOfDayMªIdentifierÍÍ¨setHoursÂÂ”]§LiteralÍÍ¢23]§LiteralÍÍ;¢59]§LiteralÍÍ;¢59]§LiteralÍÍÍç£999ÂY¯ReturnStatementÍ.Í9U®CallExpressionÍ5Í8S°MemberExpressionÍ5ÍDMªIdentifierÍ5Í=¨allTasksMªIdentifierÍ>ÍD¦filterÂÂ‘P·ArrowFunctionExpressionÍEÍ7ÀÂÂÂ‘MªIdentifierÍEÍI¤taskN®BlockStatementÍMÍ7“V«IfStatementÍ`Í•W¯UnaryExpressionÍdÍq¡!ÃS°MemberExpressionÍeÍqMªIdentifierÍeÍi¤taskMªIdentifierÍjÍq§dueDateÂÂY¯ReturnStatementÍˆÍ•]§LiteralÍÍ”Â¥falseÀZ³VariableDeclarationÍ§ÍÎ‘[²VariableDeclaratorÍ­ÍÍMªIdentifierÍ­Í´§dueTimeU®CallExpressionÍ·ÍÍS°MemberExpressionÍ·ÍËS°MemberExpressionÍ·ÍÃMªIdentifierÍ·Í»¤taskMªIdentifierÍ¼ÍÃ§dueDateÂÂMªIdentifierÍÄÍË§getTimeÂÂÂ¥constY¯ReturnStatementÍàÍ(\±LogicalExpressionÍçÍ'\°BinaryExpressionÍçÍMªIdentifierÍçÍî§dueTime¢>=U®CallExpressionÍòÍS°MemberExpressionÍòÍMªIdentifierÍòÍüªstartOfDayMªIdentifierÍıÍ§getTimeÂÂÂ¢&&\°BinaryExpressionÍ
+Í'MªIdentifierÍ
+Í§dueTime¢<=U®CallExpressionÍÍ'S°MemberExpressionÍÍ%MªIdentifierÍÍ¨endOfDayMªIdentifierÍÍ%§getTimeÂÂÂÂf«CatchClauseÍNÍÎMªIdentifierÍUÍZ¥errorN®BlockStatementÍ\ÍÎ’Q³ExpressionStatementÍkÍ«U®CallExpressionÍkÍªS°MemberExpressionÍkÍvMªIdentifierÍkÍp¥hilogMªIdentifierÍqÍv¥errorÂÂ”MªIdentifierÍwÍ}¦DOMAINMªIdentifierÍÍ‚£TAG]§LiteralÍ„ÍšÙ$è·å–ä»»åŠ¡åˆ—è¡¨å¤±è´¥: %{public}sÙ&'è·å–ä»»åŠ¡åˆ—è¡¨å¤±è´¥: %{public}s'U®CallExpressionÍœÍ©MªIdentifierÍœÍ¢¦String‘MªIdentifierÍ£Í¨¥errorÂÂY¯ReturnStatementÍ¹ÍÃd¯ArrayExpressionÍÀÍÂÀO°MethodDefinitionÍ Í"zÂÂMªIdentifierÍ Í ³getTasksByDateRange¦methodP²FunctionExpressionÍ Í"zÀÂÂÃ’MªIdentifierÍ Í $©startDateMªIdentifierÍ &Í -§endDateN®BlockStatementÍ /Í"z‘e¬TryStatementÍ :Í"sN®BlockStatementÍ >Í!é”Z³VariableDeclarationÍ MÍ w‘[²VariableDeclaratorÍ SÍ vMªIdentifierÍ SÍ [¨allTasksY¯AwaitExpressionÍ ^Í vU®CallExpressionÍ dÍ vS°MemberExpressionÍ dÍ tT®ThisExpressionÍ dÍ hMªIdentifierÍ iÍ t«getAllTasksÂÂÂ¥constZ³VariableDeclarationÍ …Í «‘[²VariableDeclaratorÍ ‹Í ªMªIdentifierÍ ‹Í ”©startTimeU®CallExpressionÍ —Í ªS°MemberExpressionÍ —Í ¨MªIdentifierÍ —Í  ©startDateMªIdentifierÍ ¡Í ¨§getTimeÂÂÂ¥constZ³VariableDeclarationÍ ¹Í Û‘[²VariableDeclaratorÍ ¿Í ÚMªIdentifierÍ ¿Í Æ§endTimeU®CallExpressionÍ ÉÍ ÚS°MemberExpressionÍ ÉÍ ØMªIdentifierÍ ÉÍ Ğ§endDateMªIdentifierÍ ÑÍ Ø§getTimeÂÂÂ¥constY¯ReturnStatementÍ éÍ!ŞU®CallExpressionÍ ğÍ!İS°MemberExpressionÍ ğÍ ÿMªIdentifierÍ ğÍ ø¨allTasksMªIdentifierÍ ùÍ ÿ¦filterÂÂ‘P·ArrowFunctionExpressionÍ! Í!ÜÀÂÂÂ‘MªIdentifierÍ! Í!¤taskN®BlockStatementÍ!Í!Ü“V«IfStatementÍ!Í!PW¯UnaryExpressionÍ!Í!,¡!ÃS°MemberExpressionÍ! Í!,MªIdentifierÍ! Í!$¤taskMªIdentifierÍ!%Í!,§dueDateÂÂY¯ReturnStatementÍ!CÍ!P]§LiteralÍ!JÍ!OÂ¥falseÀZ³VariableDeclarationÍ!bÍ!‰‘[²VariableDeclaratorÍ!hÍ!ˆMªIdentifierÍ!hÍ!o§dueTimeU®CallExpressionÍ!rÍ!ˆS°MemberExpressionÍ!rÍ!†S°MemberExpressionÍ!rÍ!~MªIdentifierÍ!rÍ!v¤taskMªIdentifierÍ!wÍ!~§dueDateÂÂMªIdentifierÍ!Í!†§getTimeÂÂÂ¥constY¯ReturnStatementÍ!›Í!Í\±LogicalExpressionÍ!¢Í!Ì\°BinaryExpressionÍ!¢Í!¶MªIdentifierÍ!¢Í!©§dueTime¢>=MªIdentifierÍ!­Í!¶©startTime¢&&\°BinaryExpressionÍ!ºÍ!ÌMªIdentifierÍ!ºÍ!Á§dueTime¢<=MªIdentifierÍ!ÅÍ!Ì§endTimeÂf«CatchClauseÍ!óÍ"sMªIdentifierÍ!úÍ!ÿ¥errorN®BlockStatementÍ"Í"s’Q³ExpressionStatementÍ"Í"PU®CallExpressionÍ"Í"OS°MemberExpressionÍ"Í"MªIdentifierÍ"Í"¥hilogMªIdentifierÍ"Í"¥errorÂÂ”MªIdentifierÍ"Í""¦DOMAINMªIdentifierÍ"$Í"'£TAG]§LiteralÍ")Í"?Ù$è·å–ä»»åŠ¡åˆ—è¡¨å¤±è´¥: %{public}sÙ&'è·å–ä»»åŠ¡åˆ—è¡¨å¤±è´¥: %{public}s'U®CallExpressionÍ"AÍ"NMªIdentifierÍ"AÍ"G¦String‘MªIdentifierÍ"HÍ"M¥errorÂÂY¯ReturnStatementÍ"^Í"hd¯ArrayExpressionÍ"eÍ"gÀO°MethodDefinitionÍ"¡Í"öÂÂMªIdentifierÍ"§Í"´­getTodayTasks¦methodP²FunctionExpressionÍ"´Í"öÀÂÂÃN®BlockStatementÍ"·Í"ö‘Y¯ReturnStatementÍ"ÂÍ"ïY¯AwaitExpressionÍ"ÉÍ"îU®CallExpressionÍ"ÏÍ"îS°MemberExpressionÍ"ÏÍ"âT®ThisExpressionÍ"ÏÍ"ÓMªIdentifierÍ"ÔÍ"â®getTasksByDateÂÂ‘X­NewExpressionÍ"ãÍ"íMªIdentifierÍ"çÍ"ë¤DateÂO°MethodDefinitionÍ#Í$	ÂÂMªIdentifierÍ##Í#/¬getWeekTasks¦methodP²FunctionExpressionÍ#/Í$	ÀÂÂÃN®BlockStatementÍ#2Í$	”Z³VariableDeclarationÍ#=Í#V‘[²VariableDeclaratorÍ#CÍ#UMªIdentifierÍ#CÍ#H¥todayX­NewExpressionÍ#KÍ#UMªIdentifierÍ#OÍ#S¤Date¥constZ³VariableDeclarationÍ#`Í#Œ‘[²VariableDeclaratorÍ#fÍ#‹MªIdentifierÍ#fÍ#o©weekStartU®CallExpressionÍ#rÍ#‹S°MemberExpressionÍ#rÍ#„MªIdentifierÍ#rÍ#w¥UtilsMªIdentifierÍ#xÍ#„¬getWeekStartÂÂ‘MªIdentifierÍ#…Í#Š¥todayÂ¥constZ³VariableDeclarationÍ#–Í#¾‘[²VariableDeclaratorÍ#œÍ#½MªIdentifierÍ#œÍ#£§weekEndU®CallExpressionÍ#¦Í#½S°MemberExpressionÍ#¦Í#¶MªIdentifierÍ#¦Í#«¥UtilsMªIdentifierÍ#¬Í#¶ªgetWeekEndÂÂ‘MªIdentifierÍ#·Í#¼¥todayÂ¥constY¯ReturnStatementÍ#ÈÍ$Y¯AwaitExpressionÍ#ÏÍ$U®CallExpressionÍ#ÕÍ$S°MemberExpressionÍ#ÕÍ#íT®ThisExpressionÍ#ÕÍ#ÙMªIdentifierÍ#ÚÍ#í³getTasksByDateRangeÂÂ’MªIdentifierÍ#îÍ#÷©weekStartMªIdentifierÍ#ùÍ$ §weekEndÂO°MethodDefinitionÍ$0Í%#ÂÂMªIdentifierÍ$6Í$C­getMonthTasks¦methodP²FunctionExpressionÍ$CÍ%#ÀÂÂÃN®BlockStatementÍ$FÍ%#”Z³VariableDeclarationÍ$QÍ$j‘[²VariableDeclaratorÍ$WÍ$iMªIdentifierÍ$WÍ$\¥todayX­NewExpressionÍ$_Í$iMªIdentifierÍ$cÍ$g¤Date¥constZ³VariableDeclarationÍ$tÍ$¢‘[²VariableDeclaratorÍ$zÍ$¡MªIdentifierÍ$zÍ$„ªmonthStartU®CallExpressionÍ$‡Í$¡S°MemberExpressionÍ$‡Í$šMªIdentifierÍ$‡Í$Œ¥UtilsMªIdentifierÍ$Í$š­getMonthStartÂÂ‘MªIdentifierÍ$›Í$ ¥todayÂ¥constZ³VariableDeclarationÍ$¬Í$Ö‘[²VariableDeclaratorÍ$²Í$ÕMªIdentifierÍ$²Í$º¨monthEndU®CallExpressionÍ$½Í$ÕS°MemberExpressionÍ$½Í$ÎMªIdentifierÍ$½Í$Â¥UtilsMªIdentifierÍ$ÃÍ$Î«getMonthEndÂÂ‘MªIdentifierÍ$ÏÍ$Ô¥todayÂ¥constY¯ReturnStatementÍ$àÍ%Y¯AwaitExpressionÍ$çÍ%U®CallExpressionÍ$íÍ%S°MemberExpressionÍ$íÍ%T®ThisExpressionÍ$íÍ$ñMªIdentifierÍ$òÍ%³getTasksByDateRangeÂÂ’MªIdentifierÍ%Í%ªmonthStartMªIdentifierÍ%Í%¨monthEndÂO°MethodDefinitionÍ%OÍ&YÂÂMªIdentifierÍ%OÍ%Z«triggerSync¦methodP²FunctionExpressionÍ%ZÍ&YÀÂÂÂN®BlockStatementÍ%]Í&Y‘Q³ExpressionStatementÍ%Í&RU®CallExpressionÍ%Í&QMªIdentifierÍ%Í%™ªsetTimeout’P·ArrowFunctionExpressionÍ%šÍ&KÀÂÂÂN®BlockStatementÍ% Í&K‘Q³ExpressionStatementÍ%¯Í&@U®CallExpressionÍ%¯Í&?S°MemberExpressionÍ%¯Í%ÏU®CallExpressionÍ%¯Í%ÉS°MemberExpressionÍ%¯Í%ÇS°MemberExpressionÍ%¯Í%¿T®ThisExpressionÍ%¯Í%³MªIdentifierÍ%´Í%¿«syncServiceÂÂMªIdentifierÍ%ÀÍ%Ç§syncAllÂÂÂMªIdentifierÍ%ÊÍ%Ï¥catchÂÂ‘P·ArrowFunctionExpressionÍ%ĞÍ&>ÀÂÂÂ‘MªIdentifierÍ%ÑÍ%Ô£errN®BlockStatementÍ%ÙÍ&>‘Q³ExpressionStatementÍ%ìÍ&/U®CallExpressionÍ%ìÍ&.S°MemberExpressionÍ%ìÍ%öMªIdentifierÍ%ìÍ%ñ¥hilogMªIdentifierÍ%òÍ%ö¤warnÂÂ”MªIdentifierÍ%÷Í%ı¦DOMAINMªIdentifierÍ%ÿÍ&£TAG]§LiteralÍ&Í& Ù6åå°åŒæ­¥å¤±è´¥ï¼ˆå°†åœ¨ä¸‹æ¬¡é‡è¯•ï¼‰: %{public}sÙ8'åå°åŒæ­¥å¤±è´¥ï¼ˆå°†åœ¨ä¸‹æ¬¡é‡è¯•ï¼‰: %{public}s'U®CallExpressionÍ&"Í&-MªIdentifierÍ&"Í&(¦String‘MªIdentifierÍ&)Í&,£errÂÂÂ]§LiteralÍ&MÍ&PÌd£100ÂO°MethodDefinitionÍ&€Í&ÆÂÂMªIdentifierÍ&†Í&ªmanualSync¦methodP²FunctionExpressionÍ&Í&ÆÀÂÂÃN®BlockStatementÍ&“Í&Æ‘Q³ExpressionStatementÍ&Í&¿Y¯AwaitExpressionÍ&Í&¾U®CallExpressionÍ&¤Í&¾S°MemberExpressionÍ&¤Í&¼S°MemberExpressionÍ&¤Í&´T®ThisExpressionÍ&¤Í&¨MªIdentifierÍ&©Í&´«syncServiceÂÂMªIdentifierÍ&µÍ&¼§syncAllÂÂÂÀ–Ôrg•¤type¥start£endªspecifiers¦source±ImportDeclaration %‘Ôrh•¤type¥start£end¨imported¥local¯ImportSpecifier	MªIdentifier	¤TaskMªIdentifier	¤Task]§Literal$­../model/Task¯'../model/Task'g±ImportDeclaration'ÌW‘h¯ImportSpecifier09MªIdentifier09©ConstantsMªIdentifier09©Constants]§LiteralÌAÌV³../common/Constantsµ'../common/Constants'g±ImportDeclarationÌYÌ‘h¯ImportSpecifierÌbÌgMªIdentifierÌbÌg¥UtilsMªIdentifierÌbÌg¥Utils]§LiteralÌoÌ€¯../common/Utils±'../common/Utils'g±ImportDeclarationÌƒÌÁ’h¯ImportSpecifierÌŒÌšMªIdentifierÌŒÌš®LocalDBServiceMªIdentifierÌŒÌš®LocalDBServiceh¯ImportSpecifierÌœÌ¦MªIdentifierÌœÌ¦ªSyncStatusMªIdentifierÌœÌ¦ªSyncStatus]§LiteralÌ®ÌÀ°./LocalDBService²'./LocalDBService'g±ImportDeclarationÌÃÌï‘h¯ImportSpecifierÌÌÌ×MªIdentifierÌÌÌ×«SyncServiceMªIdentifierÌÌÌ×«SyncService]§LiteralÌßÌî­./SyncService¯'./SyncService'g±ImportDeclarationÌñÍ‘Ôri”¤type¥start£end¥local¶ImportDefaultSpecifierÌøÌıMªIdentifierÌøÌı¥hilog]§LiteralÍÍ«@ohos.hilog­"@ohos.hilog"

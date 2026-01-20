@@ -1,0 +1,30 @@
+{
+  "modulePathMap": {
+    "entry": "E:\\CODE\\Chronos\\Chronos\\entry"
+  },
+  "compileMode": "esmodule",
+  "projectRootPath": "E:\\CODE\\Chronos\\Chronos",
+  "nodeModulesPath": "E:\\CODE\\Chronos\\Chronos\\entry\\.preview\\default\\intermediates\\loader_out\\default\\node_modules",
+  "byteCodeHarInfo": {
+    "@hw-agconnect/auth": {
+      "abcPath": "E:\\CODE\\Chronos\\Chronos\\oh_modules\\.ohpm\\@hw-agconnect+auth@1.0.5\\oh_modules\\@hw-agconnect\\auth\\ets\\modules.abc",
+      "compatibleSdkVersion": 12
+    }
+  },
+  "declarationEntry": [],
+  "moduleName": "entry",
+  "hspNameOhmMap": {},
+  "harNameOhmMap": {},
+  "packageManagerType": "ohpm",
+  "compileEntry": [],
+  "otherCompileFiles": [],
+  "dynamicImportLibInfo": {},
+  "routerMap": [],
+  "hspResourcesMap": {},
+  "updateVersionInfo": {
+    "@hw-agconnect/auth": {}
+  },
+  "anBuildOutPut": "E:\\CODE\\Chronos\\Chronos\\entry\\.preview\\default\\intermediates\\loader_out\\default\\an\\arm64-v8a",
+  "anBuildMode": "type",
+  "buildConfigPath": ".preview\\config\\buildConfig.json"
+}

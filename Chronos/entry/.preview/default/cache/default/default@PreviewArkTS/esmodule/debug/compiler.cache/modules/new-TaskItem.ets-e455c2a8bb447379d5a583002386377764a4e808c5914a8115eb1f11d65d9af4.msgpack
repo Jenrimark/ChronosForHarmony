@@ -1,0 +1,640 @@
+Ôr@Ÿªassertions¤code´customTransformCache¬dependencies¢id¤meta±moduleSideEffects¬originalCode±originalSourcemap«resolvedIds®sourcemapChainµsyntheticNamedExportsµtransformDependencies®transformFiles¨cacheAstÔrAÚ7øif (!("finalizeConstruction" in ViewPU.prototype)) {
+    Reflect.set(ViewPU.prototype, "finalizeConstruction", () => { });
+}
+import { Task } from '../model/Task';
+import { Utils } from '../common/Utils';
+import { Constants } from '../common/Constants';
+export class TaskItem extends ViewPU {
+    constructor(parent, params, __localStorage, elmtId = -1, paramsLambda = undefined, extraInfo) {
+        super(parent, __localStorage, elmtId, extraInfo);
+        if (typeof paramsLambda === "function") {
+            this.paramsGenerator_ = paramsLambda;
+        }
+        this.__task = new SynchedPropertyObjectOneWayPU(params.task, this, "task");
+        this.onComplete = () => { };
+        this.onDelete = () => { };
+        this.onTap = () => { };
+        this.setInitiallyProvidedValue(params);
+        this.finalizeConstruction();
+    }
+    setInitiallyProvidedValue(params) {
+        if (params.task === undefined) {
+            this.__task.set(new Task());
+        }
+        if (params.onComplete !== undefined) {
+            this.onComplete = params.onComplete;
+        }
+        if (params.onDelete !== undefined) {
+            this.onDelete = params.onDelete;
+        }
+        if (params.onTap !== undefined) {
+            this.onTap = params.onTap;
+        }
+    }
+    updateStateVars(params) {
+        this.__task.reset(params.task);
+    }
+    purgeVariableDependenciesOnElmtId(rmElmtId) {
+        this.__task.purgeDependencyOnElmtId(rmElmtId);
+    }
+    aboutToBeDeleted() {
+        this.__task.aboutToBeDeleted();
+        SubscriberManager.Get().delete(this.id__());
+        this.aboutToBeDeletedInternal();
+    }
+    get task() {
+        return this.__task.get();
+    }
+    set task(newValue) {
+        this.__task.set(newValue);
+    }
+    initialRender() {
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Row.create();
+            Row.debugLine("entry/src/main/ets/components/TaskItem.ets(19:5)", "entry");
+            Row.width('100%');
+            Row.padding({ top: 16, bottom: 16, left: 16, right: 14 });
+            Row.backgroundColor(this.task.status === Constants.TASK_STATUS_COMPLETED
+                ? Constants.COLOR_BACKGROUND
+                : Constants.COLOR_CARD_BACKGROUND);
+            Row.borderRadius(14);
+            Row.margin({ bottom: 10 });
+            Row.shadow(this.task.status === Constants.TASK_STATUS_COMPLETED ? {
+                radius: 0,
+                color: 'transparent',
+                offsetX: 0,
+                offsetY: 0
+            } : {
+                radius: 8,
+                color: 'rgba(0, 0, 0, 0.04)',
+                offsetX: 0,
+                offsetY: 2
+            });
+            Row.opacity(this.task.status === Constants.TASK_STATUS_COMPLETED
+                ? 0.75
+                : 1.0);
+        }, Row);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            If.create();
+            // å®ŒæˆçŠ¶æ€åœ†åœˆæŒ‰é’®
+            if (this.task.status === Constants.TASK_STATUS_COMPLETED) {
+                this.ifElseBranchUpdateFunction(0, () => {
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        // å·²å®Œæˆï¼šå®å¿ƒåœ†åœˆå¸¦å¯¹å‹¾
+                        Column.create();
+                        Column.debugLine("entry/src/main/ets/components/TaskItem.ets(23:9)", "entry");
+                        // å·²å®Œæˆï¼šå®å¿ƒåœ†åœˆå¸¦å¯¹å‹¾
+                        Column.width(26);
+                        // å·²å®Œæˆï¼šå®å¿ƒåœ†åœˆå¸¦å¯¹å‹¾
+                        Column.height(26);
+                        // å·²å®Œæˆï¼šå®å¿ƒåœ†åœˆå¸¦å¯¹å‹¾
+                        Column.borderRadius(13);
+                        // å·²å®Œæˆï¼šå®å¿ƒåœ†åœˆå¸¦å¯¹å‹¾
+                        Column.backgroundColor(Constants.COLOR_SUCCESS);
+                        // å·²å®Œæˆï¼šå®å¿ƒåœ†åœˆå¸¦å¯¹å‹¾
+                        Column.justifyContent(FlexAlign.Center);
+                        // å·²å®Œæˆï¼šå®å¿ƒåœ†åœˆå¸¦å¯¹å‹¾
+                        Column.onClick(() => {
+                            this.onComplete(ObservedObject.GetRawObject(this.task));
+                        });
+                    }, Column);
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Text.create('âœ“');
+                        Text.debugLine("entry/src/main/ets/components/TaskItem.ets(24:11)", "entry");
+                        Text.fontSize(14);
+                        Text.fontColor('#FFFFFF');
+                        Text.fontWeight(FontWeight.Bold);
+                    }, Text);
+                    Text.pop();
+                    // å·²å®Œæˆï¼šå®å¿ƒåœ†åœˆå¸¦å¯¹å‹¾
+                    Column.pop();
+                });
+            }
+            else {
+                this.ifElseBranchUpdateFunction(1, () => {
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        // æœªå®Œæˆï¼šç©ºå¿ƒåœ†åœˆï¼Œå¸¦ä¸»é¢˜è‰²è¾¹æ¡†
+                        Column.create();
+                        Column.debugLine("entry/src/main/ets/components/TaskItem.ets(39:9)", "entry");
+                        // æœªå®Œæˆï¼šç©ºå¿ƒåœ†åœˆï¼Œå¸¦ä¸»é¢˜è‰²è¾¹æ¡†
+                        Column.width(26);
+                        // æœªå®Œæˆï¼šç©ºå¿ƒåœ†åœˆï¼Œå¸¦ä¸»é¢˜è‰²è¾¹æ¡†
+                        Column.height(26);
+                        // æœªå®Œæˆï¼šç©ºå¿ƒåœ†åœˆï¼Œå¸¦ä¸»é¢˜è‰²è¾¹æ¡†
+                        Column.borderRadius(13);
+                        // æœªå®Œæˆï¼šç©ºå¿ƒåœ†åœˆï¼Œå¸¦ä¸»é¢˜è‰²è¾¹æ¡†
+                        Column.border({ width: 2, color: Constants.COLOR_PRIMARY_LIGHT });
+                        // æœªå®Œæˆï¼šç©ºå¿ƒåœ†åœˆï¼Œå¸¦ä¸»é¢˜è‰²è¾¹æ¡†
+                        Column.backgroundColor('transparent');
+                        // æœªå®Œæˆï¼šç©ºå¿ƒåœ†åœˆï¼Œå¸¦ä¸»é¢˜è‰²è¾¹æ¡†
+                        Column.onClick(() => {
+                            this.onComplete(ObservedObject.GetRawObject(this.task));
+                        });
+                    }, Column);
+                    // æœªå®Œæˆï¼šç©ºå¿ƒåœ†åœˆï¼Œå¸¦ä¸»é¢˜è‰²è¾¹æ¡†
+                    Column.pop();
+                });
+            }
+        }, If);
+        If.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            // ä»»åŠ¡ä¿¡æ¯åŒºåŸŸ
+            Column.create();
+            Column.debugLine("entry/src/main/ets/components/TaskItem.ets(51:7)", "entry");
+            // ä»»åŠ¡ä¿¡æ¯åŒºåŸŸ
+            Column.layoutWeight(1);
+            // ä»»åŠ¡ä¿¡æ¯åŒºåŸŸ
+            Column.alignItems(HorizontalAlign.Start);
+            // ä»»åŠ¡ä¿¡æ¯åŒºåŸŸ
+            Column.margin({ left: 14 });
+            // ä»»åŠ¡ä¿¡æ¯åŒºåŸŸ
+            Column.onClick(() => {
+                this.onTap(ObservedObject.GetRawObject(this.task));
+            });
+        }, Column);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Text.create(this.task.title);
+            Text.debugLine("entry/src/main/ets/components/TaskItem.ets(52:9)", "entry");
+            Text.fontSize(16);
+            Text.fontColor(this.task.status === Constants.TASK_STATUS_COMPLETED
+                ? Constants.COLOR_TEXT_TERTIARY
+                : Constants.COLOR_TEXT_PRIMARY);
+            Text.fontWeight(this.task.status === Constants.TASK_STATUS_COMPLETED
+                ? FontWeight.Normal
+                : FontWeight.Medium);
+            Text.decoration(this.task.status === Constants.TASK_STATUS_COMPLETED
+                ? { type: TextDecorationType.LineThrough, color: Constants.COLOR_TEXT_TERTIARY }
+                : { type: TextDecorationType.None });
+            Text.maxLines(2);
+            Text.textOverflow({ overflow: TextOverflow.Ellipsis });
+        }, Text);
+        Text.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            If.create();
+            if (this.task.description) {
+                this.ifElseBranchUpdateFunction(0, () => {
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Text.create(this.task.description);
+                        Text.debugLine("entry/src/main/ets/components/TaskItem.ets(73:11)", "entry");
+                        Text.fontSize(14);
+                        Text.fontColor(Constants.COLOR_TEXT_SECONDARY);
+                        Text.maxLines(2);
+                        Text.textOverflow({ overflow: TextOverflow.Ellipsis });
+                        Text.margin({ top: 6 });
+                    }, Text);
+                    Text.pop();
+                });
+            }
+            // ä»»åŠ¡å…ƒä¿¡æ¯
+            else {
+                this.ifElseBranchUpdateFunction(1, () => {
+                });
+            }
+        }, If);
+        If.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            // ä»»åŠ¡å…ƒä¿¡æ¯
+            Row.create();
+            Row.debugLine("entry/src/main/ets/components/TaskItem.ets(82:9)", "entry");
+            // ä»»åŠ¡å…ƒä¿¡æ¯
+            Row.width('100%');
+            // ä»»åŠ¡å…ƒä¿¡æ¯
+            Row.margin({ top: 10 });
+        }, Row);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            // ä¼˜å…ˆçº§æ ‡ç­¾
+            Text.create(Utils.getPriorityText(this.task.priority));
+            Text.debugLine("entry/src/main/ets/components/TaskItem.ets(84:11)", "entry");
+            // ä¼˜å…ˆçº§æ ‡ç­¾
+            Text.fontSize(11);
+            // ä¼˜å…ˆçº§æ ‡ç­¾
+            Text.fontWeight(FontWeight.Medium);
+            // ä¼˜å…ˆçº§æ ‡ç­¾
+            Text.fontColor('#FFFFFF');
+            // ä¼˜å…ˆçº§æ ‡ç­¾
+            Text.backgroundColor(Utils.getPriorityColor(this.task.priority));
+            // ä¼˜å…ˆçº§æ ‡ç­¾
+            Text.padding({ left: 8, right: 8, top: 3, bottom: 3 });
+            // ä¼˜å…ˆçº§æ ‡ç­¾
+            Text.borderRadius(10);
+        }, Text);
+        // ä¼˜å…ˆçº§æ ‡ç­¾
+        Text.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            If.create();
+            // æˆªæ­¢æ—¥æœŸ
+            if (this.task.dueDate) {
+                this.ifElseBranchUpdateFunction(0, () => {
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Row.create();
+                        Row.debugLine("entry/src/main/ets/components/TaskItem.ets(94:13)", "entry");
+                        Row.margin({ left: 10 });
+                    }, Row);
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Text.create('ğŸ“…');
+                        Text.debugLine("entry/src/main/ets/components/TaskItem.ets(95:15)", "entry");
+                        Text.fontSize(12);
+                    }, Text);
+                    Text.pop();
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Text.create(Utils.formatDate(this.task.dueDate, 'MM-DD'));
+                        Text.debugLine("entry/src/main/ets/components/TaskItem.ets(97:15)", "entry");
+                        Text.fontSize(12);
+                        Text.fontWeight(FontWeight.Medium);
+                        Text.fontColor(this.task.isOverdue()
+                            ? Constants.COLOR_DANGER
+                            : (this.task.isDueToday() ? Constants.COLOR_WARNING : Constants.COLOR_TEXT_SECONDARY));
+                        Text.margin({ left: 4 });
+                    }, Text);
+                    Text.pop();
+                    Row.pop();
+                });
+            }
+            else {
+                this.ifElseBranchUpdateFunction(1, () => {
+                });
+            }
+        }, If);
+        If.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Blank.create();
+            Blank.debugLine("entry/src/main/ets/components/TaskItem.ets(110:11)", "entry");
+        }, Blank);
+        Blank.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            // çŠ¶æ€æ ‡ç­¾
+            Text.create(Utils.getStatusText(this.task.status));
+            Text.debugLine("entry/src/main/ets/components/TaskItem.ets(113:11)", "entry");
+            // çŠ¶æ€æ ‡ç­¾
+            Text.fontSize(11);
+            // çŠ¶æ€æ ‡ç­¾
+            Text.fontColor(Constants.COLOR_TEXT_SECONDARY);
+            // çŠ¶æ€æ ‡ç­¾
+            Text.backgroundColor(Constants.COLOR_BACKGROUND);
+            // çŠ¶æ€æ ‡ç­¾
+            Text.padding({ left: 8, right: 8, top: 3, bottom: 3 });
+            // çŠ¶æ€æ ‡ç­¾
+            Text.borderRadius(10);
+        }, Text);
+        // çŠ¶æ€æ ‡ç­¾
+        Text.pop();
+        // ä»»åŠ¡å…ƒä¿¡æ¯
+        Row.pop();
+        // ä»»åŠ¡ä¿¡æ¯åŒºåŸŸ
+        Column.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            // åˆ é™¤æŒ‰é’®
+            Column.create();
+            Column.debugLine("entry/src/main/ets/components/TaskItem.ets(131:7)", "entry");
+            // åˆ é™¤æŒ‰é’®
+            Column.width(32);
+            // åˆ é™¤æŒ‰é’®
+            Column.height(32);
+            // åˆ é™¤æŒ‰é’®
+            Column.borderRadius(16);
+            // åˆ é™¤æŒ‰é’®
+            Column.backgroundColor(Constants.COLOR_BACKGROUND);
+            // åˆ é™¤æŒ‰é’®
+            Column.justifyContent(FlexAlign.Center);
+            // åˆ é™¤æŒ‰é’®
+            Column.onClick(() => {
+                this.onDelete(ObservedObject.GetRawObject(this.task));
+            });
+        }, Column);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Text.create('Ã—');
+            Text.debugLine("entry/src/main/ets/components/TaskItem.ets(132:9)", "entry");
+            Text.fontSize(18);
+            Text.fontColor(Constants.COLOR_TEXT_SECONDARY);
+        }, Text);
+        Text.pop();
+        // åˆ é™¤æŒ‰é’®
+        Column.pop();
+        Row.pop();
+    }
+    rerender() {
+        this.updateDirtyElements();
+    }
+}
+//# sourceMappingURL=TaskItem.js.mapÂ“Ù9E:\CODE\Chronos\Chronos\entry\src\main\ets\model\Task.etsÙ;E:\CODE\Chronos\Chronos\entry\src\main\ets\common\Utils.etsÙ?E:\CODE\Chronos\Chronos\entry\src\main\ets\common\Constants.etsÙBE:\CODE\Chronos\Chronos\entry\src\main\ets\components\TaskItem.etsÔrBœªmoduleName±isLocalDependency¯isNodeEntryFile§pkgPath±belongProjectPath§pkgNameªpkgVersion±dependencyPkgInfo¯hostModulesInfo°belongModulePath§checker¬shouldEmitJs¥entryÃÂ½E:\CODE\Chronos\Chronos\entry·E:\CODE\Chronos\Chronos¥entry¥1.0.0Ô  ’ÔrC’²hostDependencyName®hostModuleName¶../components/TaskItem¥entryC¶../components/TaskItem¥entry½E:\CODE\Chronos\Chronos\entryÔrDÜ ®¬getNodeCount²getIdentifierCount®getSymbolCount¬getTypeCountµgetInstantiationCountµgetRelationCacheSizes±isUndefinedSymbol±isArgumentsSymbol¯isUnknownSymbol¯getMergedSymbol®getDiagnostics´getGlobalDiagnostics´getRecursionIdentity¶getUnmatchedProperties¹getTypeOfSymbolAtLocation¯getTypeOfSymbolÙ(getSymbolsOfParameterPropertyDeclaration·getDeclaredTypeOfSymbol³getPropertiesOfType±getPropertyOfTypeÙ"getPrivateIdentifierPropertyOfType·getTypeOfPropertyOfType²getIndexInfoOfType³getIndexInfosOfTypeºgetIndexInfosOfIndexSymbol³getSignaturesOfType²getIndexTypeOfType¬getIndexType¬getBaseTypes¸getBaseTypeOfLiteralType®getWidenedType³getTypeFromTypeNode°getParameterTypeÙ$getParameterIdentifierNameAtPosition¸getPromisedTypeOfPromise®getAwaitedType¸getReturnTypeOfSignature®isNullableType¯getNullableType²getNonNullableType²getNonOptionalType°getTypeArguments®typeToTypeNodeÙ$indexInfoToIndexSignatureDeclaration¿signatureToSignatureDeclaration²symbolToEntityName²symbolToExpression¬symbolToNodeÙ!symbolToTypeParameterDeclarations¼symbolToParameterDeclarationºtypeParameterToDeclaration±getSymbolsInScope³getSymbolAtLocation·getIndexInfosAtLocationÙ!getShorthandAssignmentValueSymbolÙ#getExportSpecifierLocalTargetSymbol·getExportSymbolOfSymbol±getTypeAtLocationÙ tryGetTypeAtLocationWithoutCheckºgetTypeOfAssignmentPatternÙ*getPropertySymbolOfDestructuringAssignment±signatureToString¬typeToString®symbolToStringµtypePredicateToString®writeSignature©writeType«writeSymbol²writeTypePredicate¼getAugmentedPropertiesOfType®getRootSymbols²getSymbolOfExpando±getContextualTypeÙ(getContextualTypeForObjectLiteralElementÙ#getContextualTypeForArgumentAtIndexÙ getContextualTypeForJsxAttribute²isContextSensitiveÙ!getTypeOfPropertyOfContextualTypeµgetFullyQualifiedNameÙ#tryGetResolvedSignatureWithoutCheck´getResolvedSignatureÙ/getResolvedSignatureForStringLiteralCompletionsÙ$getResolvedSignatureForSignatureHelpµgetExpandedParameters¹hasEffectiveRestParameterºcontainsArgumentsReference°getConstantValueµisValidPropertyAccessÙ#isValidPropertyAccessForCompletions»getSignatureFromDeclarationºisImplementationOfOverload¹getImmediateAliasedSymbol°getAliasedSymbol¯getEmitResolver²getExportsOfModule¿getExportsAndPropertiesOfModuleÙ forEachExportAndPropertyOfModule¯getSymbolWalker±getAmbientModules¹getJsxIntrinsicTagNamesAt³isOptionalParameter»tryGetMemberInModuleExportsÙ(tryGetMemberInModuleExportsAndProperties´tryFindAmbientModuleÙ(tryFindAmbientModuleWithoutAugmentations¯getApparentType¬getUnionType²isTypeAssignableTo³createAnonymousType¯createSignature¬createSymbol¯createIndexInfoªgetAnyType­getStringType­getNumberType±createPromiseType¯createArrayType¹getElementTypeOfArrayType®getBooleanType¬getFalseType«getTrueType«getVoidType°getUndefinedType«getNullType¯getESSymbolType¬getNeverType¯getOptionalType®getPromiseType²getPromiseLikeType´getAsyncIterableType²isSymbolAccessible«isArrayType«isTupleType¯isArrayLikeTypeÙ#isTypeInvalidDueToUnionDiscriminantºgetExactOptionalProperties¿getAllPossiblePropertiesOfTypesÙ(getSuggestedSymbolForNonexistentPropertyÙ#getSuggestionForNonexistentPropertyÙ,getSuggestedSymbolForNonexistentJSXAttributeÙ&getSuggestedSymbolForNonexistentSymbolÙ!getSuggestionForNonexistentSymbolÙ&getSuggestedSymbolForNonexistentModuleÙ!getSuggestionForNonexistentExportÙ+getSuggestedSymbolForNonexistentClassMember·getBaseConstraintOfType»getDefaultFromTypeParameter«resolveName¯getJsxNamespaceµgetJsxFragmentFactory¸getAccessibleSymbolChain»getTypePredicateOfSignature¹resolveExternalModuleName»resolveExternalModuleSymbol°tryGetThisTypeAt¹getTypeArgumentConstraint¸getSuggestionDiagnostics¸runWithCancellationTokenÙ3getLocalTypeParametersOfClassOrInterfaceOrTypeAlias´isDeclarationVisible´isPropertyAccessible»getTypeOnlyAliasDeclaration¿getMemberOverrideModifierStatusÙ!isTypeParameterPossiblyReferenced²getConstEnumRelate´clearConstEnumRelateµdeleteConstEnumRelateÙ$getTypeArgumentsForResolvedSignatureµgetCheckedSourceFilesÙ"collectHaveTsNoCheckFilesForLinter·clearQualifiedNameCache®isStaticRecord²isStaticSourceFile³createIntrinsicTypeÔ  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  ÃÃÚÆimport { Task } from '../model/Task';
+import { Utils } from '../common/Utils';
+import { Constants } from '../common/Constants';
+
+/**
+ * ä»»åŠ¡é¡¹ç»„ä»¶
+ * ä½¿ç”¨å›è°ƒå‡½æ•°å¤„ç†ç”¨æˆ·äº¤äº’ï¼Œæ›¿ä»£ @Link çŠ¶æ€ä¼ é€’
+ */
+@Component
+export struct TaskItem {
+  @Prop task: Task = new Task();
+  
+  // å›è°ƒå‡½æ•° - æ›¿ä»£ @Link çŠ¶æ€å˜é‡
+  onComplete: (task: Task) => void = () => {};
+  onDelete: (task: Task) => void = () => {};
+  onTap: (task: Task) => void = () => {};
+
+  build() {
+    Row() {
+      // å®ŒæˆçŠ¶æ€åœ†åœˆæŒ‰é’®
+      if (this.task.status === Constants.TASK_STATUS_COMPLETED) {
+        // å·²å®Œæˆï¼šå®å¿ƒåœ†åœˆå¸¦å¯¹å‹¾
+        Column() {
+          Text('âœ“')
+            .fontSize(14)
+            .fontColor('#FFFFFF')
+            .fontWeight(FontWeight.Bold)
+        }
+        .width(26)
+        .height(26)
+        .borderRadius(13)
+        .backgroundColor(Constants.COLOR_SUCCESS)
+        .justifyContent(FlexAlign.Center)
+        .onClick(() => {
+          this.onComplete(this.task);
+        })
+      } else {
+        // æœªå®Œæˆï¼šç©ºå¿ƒåœ†åœˆï¼Œå¸¦ä¸»é¢˜è‰²è¾¹æ¡†
+        Column()
+          .width(26)
+          .height(26)
+          .borderRadius(13)
+          .border({ width: 2, color: Constants.COLOR_PRIMARY_LIGHT })
+          .backgroundColor('transparent')
+          .onClick(() => {
+            this.onComplete(this.task);
+          })
+      }
+
+      // ä»»åŠ¡ä¿¡æ¯åŒºåŸŸ
+      Column() {
+        Text(this.task.title)
+          .fontSize(16)
+          .fontColor(
+            this.task.status === Constants.TASK_STATUS_COMPLETED
+              ? Constants.COLOR_TEXT_TERTIARY
+              : Constants.COLOR_TEXT_PRIMARY
+          )
+          .fontWeight(
+            this.task.status === Constants.TASK_STATUS_COMPLETED
+              ? FontWeight.Normal
+              : FontWeight.Medium
+          )
+          .decoration(
+            this.task.status === Constants.TASK_STATUS_COMPLETED
+              ? { type: TextDecorationType.LineThrough, color: Constants.COLOR_TEXT_TERTIARY }
+              : { type: TextDecorationType.None }
+          )
+          .maxLines(2)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+
+        if (this.task.description) {
+          Text(this.task.description)
+            .fontSize(14)
+            .fontColor(Constants.COLOR_TEXT_SECONDARY)
+            .maxLines(2)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .margin({ top: 6 })
+        }
+
+        // ä»»åŠ¡å…ƒä¿¡æ¯
+        Row() {
+          // ä¼˜å…ˆçº§æ ‡ç­¾
+          Text(Utils.getPriorityText(this.task.priority))
+            .fontSize(11)
+            .fontWeight(FontWeight.Medium)
+            .fontColor('#FFFFFF')
+            .backgroundColor(Utils.getPriorityColor(this.task.priority))
+            .padding({ left: 8, right: 8, top: 3, bottom: 3 })
+            .borderRadius(10)
+
+          // æˆªæ­¢æ—¥æœŸ
+          if (this.task.dueDate) {
+            Row() {
+              Text('ğŸ“…')
+                .fontSize(12)
+              Text(Utils.formatDate(this.task.dueDate, 'MM-DD'))
+                .fontSize(12)
+                .fontWeight(FontWeight.Medium)
+                .fontColor(
+                  this.task.isOverdue()
+                    ? Constants.COLOR_DANGER
+                    : (this.task.isDueToday() ? Constants.COLOR_WARNING : Constants.COLOR_TEXT_SECONDARY)
+                )
+                .margin({ left: 4 })
+            }
+            .margin({ left: 10 })
+          }
+
+          Blank()
+
+          // çŠ¶æ€æ ‡ç­¾
+          Text(Utils.getStatusText(this.task.status))
+            .fontSize(11)
+            .fontColor(Constants.COLOR_TEXT_SECONDARY)
+            .backgroundColor(Constants.COLOR_BACKGROUND)
+            .padding({ left: 8, right: 8, top: 3, bottom: 3 })
+            .borderRadius(10)
+        }
+        .width('100%')
+        .margin({ top: 10 })
+      }
+      .layoutWeight(1)
+      .alignItems(HorizontalAlign.Start)
+      .margin({ left: 14 })
+      .onClick(() => {
+        this.onTap(this.task);
+      })
+
+      // åˆ é™¤æŒ‰é’®
+      Column() {
+        Text('Ã—')
+          .fontSize(18)
+          .fontColor(Constants.COLOR_TEXT_SECONDARY)
+      }
+      .width(32)
+      .height(32)
+      .borderRadius(16)
+      .backgroundColor(Constants.COLOR_BACKGROUND)
+      .justifyContent(FlexAlign.Center)
+      .onClick(() => {
+        this.onDelete(this.task);
+      })
+    }
+    .width('100%')
+    .padding({ top: 16, bottom: 16, left: 16, right: 14 })
+    .backgroundColor(
+      this.task.status === Constants.TASK_STATUS_COMPLETED
+        ? Constants.COLOR_BACKGROUND
+        : Constants.COLOR_CARD_BACKGROUND
+    )
+    .borderRadius(14)
+    .margin({ bottom: 10 })
+    .shadow(this.task.status === Constants.TASK_STATUS_COMPLETED ? {
+      radius: 0,
+      color: 'transparent',
+      offsetX: 0,
+      offsetY: 0
+    } : {
+      radius: 8,
+      color: 'rgba(0, 0, 0, 0.04)',
+      offsetX: 0,
+      offsetY: 2
+    })
+    .opacity(
+      this.task.status === Constants.TASK_STATUS_COMPLETED
+        ? 0.75
+        : 1.0
+    )
+  }
+}
+ÀÔrE“¯../common/Utils­../model/Task³../common/ConstantsÔrF—ªassertions¨external¢id¤meta±moduleSideEffectsªresolvedByµsyntheticNamedExportsAÂÙ;E:\CODE\Chronos\Chronos\entry\src\main\ets\common\Utils.etsAÃªoh-resolveÂFAÂÙ9E:\CODE\Chronos\Chronos\entry\src\main\ets\model\Task.etsAÃªoh-resolveÂFAÂÙ?E:\CODE\Chronos\Chronos\entry\src\main\ets\common\Constants.etsAÃªoh-resolveÂ“ÔrG–§version¤fileªsourceRoot§sources¥names¨mappings«TaskItem.js ‘¬TaskItem.etsÜ:˜”    ”  ”	  	”  ”  ”  ”$  $”%  %˜”   ” ”	 	” ” ” ”' '”( (˜”   ” ”	 	” ” ” ”/ /”0 0””  	 ” 	” 	” 	‘”  •” %” (” *”" ,”# -•” #” &” (”  *”! +•”  ” #” %” '” (‘” 0”” 
+”  
+”$ 
+”& 
+’”! 
+”% 
+’” 
+” 
+’” 
+” 
+‘” ’” ” –” ” ” Ì” Ì
+” Ì” ÌÜ ” ” ” Ì‘” Ì‘” Ì‘” Ì‘” Ì‘” Ì‘”! Ì‘”# Ì‘”) Ì‘”+ Ì‘ ”- Ì‘"”/ Ì‘$”3 Ì‘(”5 Ì‘*”7 Ì‘,”9 Ì‘.”> Ì‘3”Ì@ Ì‘5”ÌB Ì‘7”ÌD Ì‘9” ” ” Ì’” Ì’”  Ì“”$ Ì“
+”% Ì“”) Ì“”* Ì“”0 Ì“”5 Ì“”> Ì“$”? Ì“%”ÌT Ì“:–” Ì”” Ì”	” Ì”
+” Ì”” Ì””, Ì”$–” Ì•” Ì•	” Ì•
+” Ì•” Ì•”1 Ì•)–” ” ” Ì—” Ì—” Ì—” Ì—š” ” ” Ì˜” Ì˜” Ì˜” Ì˜” Ì˜”! Ì˜”# Ì˜”% Ì˜Ü ” ” ” Ì™” Ì™” Ì™” Ì™” Ì™”  Ì™”! Ì™”' Ì™”, Ì™!”5 Ì™*”6 Ì™+”ÌK Ì™Ì@”ÌL Ì™ÌA”ÌM Ì™ÌB”ÌN Ì™ÌC”” Ìš” Ìš” Ìš” Ìš”” Ì›” Ì›” Ì›”$ Ì›”” Ìœ” Ìœ” Ìœ” Ìœ”” Ì” Ì” Ì” Ì”” Ì” Ì” Ì” Ì”” ÌŸ” ÌŸ” ÌŸ” ÌŸ”” Ì ” Ì ” Ì ”, Ì "”” Ì¡” Ì¡” Ì¡” Ì¡”” Ì¢” Ì¢” Ì¢” Ì¢‘” Ì£” ” ” Ì¤” Ì¤” Ì¥” Ì¥
+” Ì¥”! Ì¥”" Ì¥”( Ì¥”- Ì¥”6 Ì¥$”7 Ì¥%”ÌL Ì¥:”” Ì¦” Ì¦	” Ì¦
+” Ì¦”” Ì§” Ì§	” Ì§
+” Ì§’” ” œ” ” 
+” ” ” ” ”  ”% ”. (”/ )”ÌD >”ÌF Ì@’” ”& ’” ” ’” ”& –” ” ” 	”$ ”% ”' ’” ”& –” ” ” 	”% ”& ”( ’” ”& –” ” ” 	”+ ”, ”. ’” ”& ˜” ” ” 	”. ”/ ”8 "”9 #”ÌF 0’” ”& ˜” ” ”  	”-  ”.  ”7  !”8  "”>  (’” ”& —” ” ” !	”& !”' !”* !”, !š” "
+”  "”! "”+ "”ÌH "”ÌL "”ÌM "”ÌQ "#”ÌS "$”ÌT "%’” #” #	”” 
+” ”$ ”' –” 
+” ” ”% ”& ”( –” 
+” ” ”& ”' ”0  ˜” 
+” ” ”' ”( ”2 "”3 #”7 '’” 
+” ’” ”" ’” ” ‘” $‘” $’” %”* %’” &” &’” %”* %–” &” &” '”$ '”% '”' '’” %”* %–” &” &” (”% (”& (”( (’” %”* %–” &” &” )”+ )”, )”. )’” %”* %Ü ” &” &” *”% *”& *”( *”- *”/ *”0 *”2 *”7 *#”9 *%”ÌB *.”ÌC */”ÌV *ÌB”ÌX *ÌD’” %”* %–” &” &” +”. +”/ +”< +(’” %”* %—” &” &” ,”& ,”' ,”* ,”, ,š” -”  -”! -”+ -”ÌH -”ÌL - ”ÌM -!”ÌQ -%”ÌS -&”ÌT -'’” .
+” .’” %”& %’” &” &‘” /’” 1” 1’” 2” 2’” 1” 1–” 2” 2” Ìz” Ìz”  Ìz”! Ìz’” 1” 1˜” 2” 2” Ì{” Ì{” Ì{”- Ì{!”. Ì{"”3 Ì{'’” 1” 1š” 2” 2” Ì|” Ì|” Ì|” Ì|”  Ì|”" Ì|”$ Ì|”& Ì|’” 1” 1—” 2” 2” Ì}” Ì}” Ì}” Ì}”  Ì}š” Ì~” Ì~” Ì~” Ì~”7 Ì~”; Ì~”< Ì~”Ì@ Ì~”ÌB Ì~”ÌC Ì~’” Ì” Ì˜” 3” 3” 3” 3” 3”! 3”" 3”' 3–” 3” 3” 4” 4” 4” 4” 3” 3” 5” 5” 6” 6”  6”$ 6”% 6”+ 6”0 6!”9 6*”: 6+”ÌO 6Ì@–” 7” 7” 7” 7” 7”/ 7-–” 8” 8” 8” 8” 8”. 8,” 3” 3” :” :” ;”  ;”! ;”% ;”& ;”, ;”1 ;!”: ;*”; ;+”ÌP ;Ì@–” <” <” <” <” <”# <!–” =” =” =” =” =”# =!” 3” 3” ?” ?” Ì@”  Ì@”! Ì@”% Ì@”& Ì@”, Ì@”1 Ì@!”: Ì@*”; Ì@+”ÌP Ì@Ì@Ü ” ÌA” ÌA” ÌA” ÌA” ÌA” ÌA”, ÌA*”- ÌA+”8 ÌA6”: ÌA8”? ÌA=”ÌA ÌA?”ÌJ ÌAÌH”ÌK ÌAÌI”Ì^ ÌAÌ\”Ì` ÌAÌ^š” ÌB” ÌB” ÌB” ÌB” ÌB” ÌB”, ÌB*”- ÌB+”1 ÌB/”3 ÌB1–” 3” 3” ÌD” ÌD” ÌD” ÌDœ” 3” 3” ÌE” ÌE” ÌE”  ÌE”( ÌE"”* ÌE$”6 ÌE0”7 ÌE1”? ÌE9”ÌA ÌE;’” 3” 3˜” ÌG” ÌG” ÌG” ÌG” ÌG” ÌG”% ÌG!”' ÌG#˜” ÌH
+” ÌH”$ ÌH”( ÌH”) ÌH”- ÌH”. ÌH”9 ÌH$–” ÌH
+” ÌH” ÌI”% ÌI”& ÌI”( ÌI˜” ÌH
+” ÌH” ÌJ”& ÌJ”' ÌJ”0 ÌJ ”1 ÌJ!”ÌE ÌJ5–” ÌH
+” ÌH” ÌK”% ÌK”& ÌK”' ÌKœ” ÌH
+” ÌH” ÌL”) ÌL”* ÌL”, ÌL”4 ÌL$”6 ÌL&”ÌB ÌL2”ÌC ÌL3”ÌK ÌL;”ÌM ÌL=š” ÌH
+” ÌH” ÌM”# ÌM”$ ÌM”& ÌM”) ÌM”+ ÌM”, ÌM”. ÌM’” ÌH
+” ÌH‘” ÌN	’” ÌP” ÌP‘” ÌN	’” ÌP” ÌP’” ÌQ” ÌQ’” ÌP” ÌP–” ÌQ” ÌQ” Ìw	” Ìw” Ìw” Ìw’” ÌP” ÌPš” ÌQ” ÌQ” Ìx	” Ìx” Ìx” Ìx” Ìx” Ìx”  Ìx”" Ìx’” ÌR
+” ÌR” ÌS
+” ÌS” ÌS” ÌS” ÌS”- ÌS$”. ÌS%”2 ÌS)”3 ÌS*”7 ÌS.”8 ÌS/”Ì@ ÌS7”ÌA ÌS8’” ÌR
+” ÌR–” ÌS
+” ÌS” ÌT” ÌT” ÌT” ÌT’” ÌR
+” ÌR˜” ÌS
+” ÌS” ÌU” ÌU” ÌU”& ÌU"”' ÌU#”- ÌU)’” ÌR
+” ÌR–” ÌS
+” ÌS” ÌV” ÌV” ÌV”$ ÌV ’” ÌR
+” ÌRŸ” ÌS
+” ÌS” ÌW”  ÌW”! ÌW”& ÌW"”' ÌW#”7 ÌW3”8 ÌW4”< ÌW8”= ÌW9”ÌA ÌW=”ÌB ÌW>”ÌJ ÌWÌF”ÌK ÌWÌG’” ÌR
+” ÌRÜ ” ÌS
+” ÌS” ÌX” ÌX” ÌX” ÌX” ÌX”! ÌX”" ÌX”$ ÌX ”) ÌX%”+ ÌX'”, ÌX(”. ÌX*”1 ÌX-”3 ÌX/”4 ÌX0”6 ÌX2”< ÌX8”> ÌX:”? ÌX;”ÌA ÌX=’” ÌR
+” ÌR–” ÌS
+” ÌS” ÌY” ÌY” ÌY”  ÌY’” ÌR
+” ÌR’” ÌS
+” ÌS’” Ì[
+” Ì[˜” Ì\
+” Ì\” Ì\” Ì\” Ì\” Ì\”! Ì\”# Ì\!’” Ì]” Ì]š” Ì]” Ì]” Ìj”" Ìj”# Ìj”% Ìj”) Ìj”+ Ìj”- Ìj”/ Ìj ”” Ì^” Ì^”$ Ì^”( Ì^–” Ì^” Ì^” Ì_”% Ì_”& Ì_”( Ì_’” Ì^” Ì^Ÿ” Ì`” Ì`”$ Ì`”) Ì`”* Ì`”4 Ì`#”5 Ì`$”9 Ì`(”: Ì`)”> Ì`-”? Ì`.”ÌF Ì`5”ÌH Ì`7”ÌO Ì`>”ÌP Ì`?–” Ì`” Ì`” Ìa”% Ìa”& Ìa”( Ìa˜” Ì`” Ì`” Ìb”' Ìb”( Ìb”2 Ìb&”3 Ìb'”9 Ìb-›” Ì`” Ì`” Ìc”& Ìc”' Ìd”+ Ìd”, Ìd”0 Ìd”1 Ìd”: Ìd%”< Ìd'–” Ìe” Ìe” Ìe”' Ìe”( Ìe ”4 Ìe,Ü ” Ìf” Ìf” Ìf” Ìf”# Ìf”$ Ìf”( Ìf ”) Ìf!”3 Ìf+”5 Ìf-”6 Ìf.”7 Ìf/”8 Ìf0”ÌA Ìf9”ÌB Ìf:”ÌO ÌfÌG”ÌP ÌfÌH”ÌQ ÌfÌI”ÌR ÌfÌJ”Ì[ ÌfÌS”Ì\ ÌfÌT”Ìp ÌfÌh”Ìq ÌfÌiš” Ì`” Ì`” Ìh”# Ìh”$ Ìh”& Ìh”* Ìh”, Ìh ”- Ìh!”/ Ìh#’” Ì`” Ì`’” Ì]” Ì]‘” Ìk‘” Ìk’” Ìm
+” Ìm’” Ìm
+” Ìm’” Ìo
+” Ìo” Ìp
+” Ìp” Ìp” Ìp” Ìp”+ Ìp"”, Ìp#”0 Ìp'”1 Ìp(”5 Ìp,”6 Ìp-”< Ìp3”= Ìp4’” Ìo
+” Ìo–” Ìp
+” Ìp” Ìq” Ìq” Ìq” Ìq’” Ìo
+” Ìo˜” Ìp
+” Ìp” Ìr” Ìr” Ìr”$ Ìr ”% Ìr!”9 Ìr5’” Ìo
+” Ìo˜” Ìp
+” Ìp” Ìs”  Ìs”! Ìs”* Ìs&”+ Ìs'”; Ìs7’” Ìo
+” ÌoÜ ” Ìp
+” Ìp” Ìt” Ìt” Ìt” Ìt” Ìt”! Ìt”" Ìt”$ Ìt ”) Ìt%”+ Ìt'”, Ìt(”. Ìt*”1 Ìt-”3 Ìt/”4 Ìt0”6 Ìt2”< Ìt8”> Ìt:”? Ìt;”ÌA Ìt=’” Ìo
+” Ìo–” Ìp
+” Ìp” Ìu” Ìu” Ìu”  Ìu’” Ìo
+” Ìo’” Ìp
+” Ìp’” ÌP” ÌP’” ÌQ” ÌQ’” 1” 1’” 2” 2’” Ì” Ì’” Ì‚” Ì‚’” Ì” Ì–” Ì‚” Ì‚” Ì‡” Ì‡” Ì‡” Ì‡’” Ì” Ì–” Ì‚” Ì‚” Ìˆ” Ìˆ” Ìˆ” Ìˆ’” Ì” Ì–” Ì‚” Ì‚” Ì‰” Ì‰”  Ì‰”" Ì‰’” Ì” Ì˜” Ì‚” Ì‚” ÌŠ”" ÌŠ”# ÌŠ”, ÌŠ ”- ÌŠ!”= ÌŠ1’” Ì” Ì˜” Ì‚” Ì‚” Ì‹”! Ì‹”" Ì‹”+ Ì‹”, Ì‹ ”2 Ì‹&’” Ì” Ì—” Ì‚” Ì‚” ÌŒ” ÌŒ” ÌŒ” ÌŒ”  ÌŒš” Ì” Ì” Ì” Ì”: Ì”> Ì”? Ì”ÌC Ì”ÌE Ì ”ÌF Ì!’” Ì” Ì”” Ìƒ” Ìƒ” Ìƒ” Ìƒ–” Ìƒ” Ìƒ” Ì„” Ì„” Ì„” Ì„˜” Ìƒ” Ìƒ” Ì…” Ì…” Ì…”$ Ì…”% Ì…”9 Ì…3’” Ìƒ” Ìƒ’” Ì” Ì’” Ì‚” Ì‚’” ” ‘” Ì©ÔrH–§version¤file§sources®sourcesContent¥names¨mappingsÀ‘À‘ÀÜ?‘”    ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”  	 ‘”  
+ ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”    ‘”  ! ‘”  " ‘”  # ‘”  $ ‘”  % ‘”  & ‘”  ' ‘”  ( ‘”  ) ‘”  * ‘”  + ‘”  , ‘”  - ‘”  . ‘”  / ‘”  0 ‘”  1 ‘”  2 ‘”  3 ‘”  4 ‘”  5 ‘”  6 ‘”  7 ‘”  8 ‘”  9 ‘”  : ‘”  ; ‘”  < ‘”  = ‘”  > ‘”  ? ‘”  Ì@ ‘”  ÌA ‘”  ÌB ‘”  ÌC ‘”  ÌD ‘”  ÌE ‘”  ÌF ‘”  ÌG ‘”  ÌH ‘”  ÌI ‘”  ÌJ ‘”  ÌK ‘”  ÌL ‘”  ÌM ‘”  ÌN ‘”  ÌO ‘”  ÌP ‘”  ÌQ ‘”  ÌR ‘”  ÌS ‘”  ÌT ‘”  ÌU ‘”  ÌV ‘”  ÌW ‘”  ÌX ‘”  ÌY ‘”  ÌZ ‘”  Ì[ ‘”  Ì\ ‘”  Ì] ‘”  Ì^ ‘”  Ì_ ‘”  Ì` ‘”  Ìa ‘”  Ìb ‘”  Ìc ‘”  Ìd ‘”  Ìe ‘”  Ìf ‘”  Ìg ‘”  Ìh ‘”  Ìi ‘”  Ìj ‘”  Ìk ‘”  Ìl ‘”  Ìm ‘”  Ìn ‘”  Ìo ‘”  Ìp ‘”  Ìq ‘”  Ìr ‘”  Ìs ‘”  Ìt ‘”  Ìu ‘”  Ìv ‘”  Ìw ‘”  Ìx ‘”  Ìy ‘”  Ìz ‘”  Ì{ ‘”  Ì| ‘”  Ì} ‘”  Ì~ ‘”  Ì ‘”  Ì€ ‘”  Ì ‘”  Ì‚ ‘”  Ìƒ ‘”  Ì„ ‘”  Ì… ‘”  Ì† ‘”  Ì‡ ‘”  Ìˆ ‘”  Ì‰ ‘”  ÌŠ ‘”  Ì‹ ‘”  ÌŒ ‘”  Ì ‘”  Ì ‘”  Ì ‘”  Ì ‘”  Ì‘ ‘”  Ì’ ‘”  Ì“ ‘”  Ì” ‘”  Ì• ‘”  Ì– ‘”  Ì— ‘”  Ì˜ ‘”  Ì™ ‘”  Ìš ‘”  Ì› ‘”  Ìœ ‘”  Ì ‘”  Ì ‘”  ÌŸ ‘”  Ì  ‘”  Ì¡ ‘”  Ì¢ ‘”  Ì£ ‘”  Ì¤ ‘”  Ì¥ ‘”  Ì¦ ‘”  Ì§ ‘”  Ì¨ ‘”  Ì© ‘”  Ìª ‘”  Ì« ‘”  Ì¬ ‘”  Ì­ ‘”  Ì® ‘”  Ì¯ ‘”  Ì° ‘”  Ì± ‘”  Ì² ‘”  Ì³ ‘”  Ì´ ‘”  Ìµ ‘”  Ì¶ ‘”  Ì· ‘”  Ì¸ ‘”  Ì¹ ‘”  Ìº ‘”  Ì» ‘”  Ì¼ ‘”  Ì½ ‘”  Ì¾ ‘”  Ì¿ ‘”  ÌÀ ‘”  ÌÁ ‘”  ÌÂ ‘”  ÌÃ ‘”  ÌÄ ‘”  ÌÅ ‘”  ÌÆ ‘”  ÌÇ ‘”  ÌÈ ‘”  ÌÉ ‘”  ÌÊ ‘”  ÌË ‘”  ÌÌ ‘”  ÌÍ ‘”  ÌÎ ‘”  ÌÏ ‘”  ÌĞ ‘”  ÌÑ ‘”  ÌÒ ‘”  ÌÓ ‘”  ÌÔ ‘”  ÌÕ ‘”  ÌÖ ‘”  Ì× ‘”  ÌØ ‘”  ÌÙ ‘”  ÌÚ ‘”  ÌÛ ‘”  ÌÜ ‘”  Ìİ ‘”  ÌŞ ‘”  Ìß ‘”  Ìà ‘”  Ìá ‘”  Ìâ ‘”  Ìã ‘”  Ìä ‘”  Ìå ‘”  Ìæ ‘”  Ìç ‘”  Ìè ‘”  Ìé ‘”  Ìê ‘”  Ìë ‘”  Ìì ‘”  Ìí ‘”  Ìî ‘”  Ìï ‘”  Ìğ ‘”  Ìñ ‘”  Ìò ‘”  Ìó ‘”  Ìô ‘”  Ìõ ‘”  Ìö ‘”  Ì÷ ‘”  Ìø ‘”  Ìù ‘”  Ìú ‘”  Ìû ‘”  Ìü ‘”  Ìı ‘”  Ìş ‘”  Ìÿ ‘”  Í  ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í	 ‘”  Í
+ ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í  ‘”  Í! ‘”  Í" ‘”  Í# ‘”  Í$ ‘”  Í% ‘”  Í& ‘”  Í' ‘”  Í( ‘”  Í) ‘”  Í* ‘”  Í+ ‘”  Í, ‘”  Í- ‘”  Í. ‘”  Í/ ‘”  Í0 ‘”  Í1 ‘”  Í2 ‘”  Í3 ‘”  Í4 ‘”  Í5 ‘”  Í6 ‘”  Í7 ‘”  Í8 ‘”  Í9 ‘”  Í: ‘”  Í; ‘”  Í< ‘”  Í= ‘”  Í> ÔrI’§missing¦pluginÃ¦genAbcÂÔ  ÔrJ”²dynamicImportCache¹exportAllDeclarationCache»exportNamedDeclarationCache«importCache‘ÔrK–¤type¥start£end«declarationªspecifiers¦source¶ExportNamedDeclarationÍÍ4ÓÔrL–¤type¥start£end¢idªsuperClass¤body°ClassDeclarationÍ
+Í4ÓÔrM”¤type¥start£end¤nameªIdentifierÍÍ¨TaskItemMªIdentifierÍ!Í'¦ViewPUÔrN”¤type¥start£end¤body©ClassBodyÍ(Í4Ó™ÔrO˜¤type¥start£end¦static¨computed£key¤kind¥value°MethodDefinitionÍ/ÍXÂÂMªIdentifierÍ/Í:«constructor«constructorÔrP™¤type¥start£end¢idªexpression©generator¥async¦params¤body²FunctionExpressionÍ:ÍXÀÂÂÂ–MªIdentifierÍ;ÍA¦parentMªIdentifierÍCÍI¦paramsMªIdentifierÍKÍY®__localStorageÔrQ•¤type¥start£end¤left¥right±AssignmentPatternÍ[ÍfMªIdentifierÍ[Ía¦elmtIdÔrR–¤type¥start£end¨operator¦prefix¨argument¯UnaryExpressionÍdÍf¡-ÃÔrS•¤type¥start£end¥value£raw§LiteralÍeÍf¡1Q±AssignmentPatternÍhÍ€MªIdentifierÍhÍt¬paramsLambdaMªIdentifierÍwÍ€©undefinedMªIdentifierÍ‚Í‹©extraInfoN®BlockStatementÍÍX˜ÔrT”¤type¥start£endªexpression³ExpressionStatementÍ˜ÍÉÔrU–¤type¥start£end¦callee©arguments¨optional®CallExpressionÍ˜ÍÈÔrV“¤type¥start£end¥SuperÍ˜Í”MªIdentifierÍÍ¤¦parentMªIdentifierÍ¦Í´®__localStorageMªIdentifierÍ¶Í¼¦elmtIdMªIdentifierÍ¾ÍÇ©extraInfoÂÔrW–¤type¥start£end¤testªconsequent©alternate«IfStatementÍÓÍ:ÔrX–¤type¥start£end¤left¨operator¥right°BinaryExpressionÍ×ÍùR¯UnaryExpressionÍ×Íê¦typeofÃMªIdentifierÍŞÍê¬paramsLambda£===S§LiteralÍïÍù¨functionª"function"N®BlockStatementÍûÍ:‘T³ExpressionStatementÍ
+Í/ÔrY–¤type¥start£end¨operator¤left¥right´AssignmentExpressionÍ
+Í.¡=ÔrZ—¤type¥start£end¦object¨property¨computed¨optional°MemberExpressionÍ
+ÍV®ThisExpressionÍ
+ÍMªIdentifierÍÍ°paramsGenerator_ÂÂMªIdentifierÍ"Í.¬paramsLambdaÀT³ExpressionStatementÍDÍY´AssignmentExpressionÍDÍ¡=Z°MemberExpressionÍDÍOV®ThisExpressionÍDÍHMªIdentifierÍIÍO¦__taskÂÂÔr[•¤type¥start£end¦callee©arguments­NewExpressionÍRÍMªIdentifierÍVÍs½SynchedPropertyObjectOneWayPU“Z°MemberExpressionÍtÍMªIdentifierÍtÍz¦paramsMªIdentifierÍ{Í¤taskÂÂV®ThisExpressionÍÍ…S§LiteralÍ‡Í¤task¦"task"T³ExpressionStatementÍ™ÍµY´AssignmentExpressionÍ™Í´¡=Z°MemberExpressionÍ™Í¨V®ThisExpressionÍ™ÍMªIdentifierÍÍ¨ªonCompleteÂÂP·ArrowFunctionExpressionÍ«Í´ÀÂÂÂN®BlockStatementÍ±Í´T³ExpressionStatementÍ¿ÍÙY´AssignmentExpressionÍ¿ÍØ¡=Z°MemberExpressionÍ¿ÍÌV®ThisExpressionÍ¿ÍÃMªIdentifierÍÄÍÌ¨onDeleteÂÂP·ArrowFunctionExpressionÍÏÍØÀÂÂÂN®BlockStatementÍÕÍØT³ExpressionStatementÍãÍúY´AssignmentExpressionÍãÍù¡=Z°MemberExpressionÍãÍíV®ThisExpressionÍãÍçMªIdentifierÍèÍí¥onTapÂÂP·ArrowFunctionExpressionÍğÍùÀÂÂÂN®BlockStatementÍöÍùT³ExpressionStatementÍÍ+U®CallExpressionÍÍ*Z°MemberExpressionÍÍ"V®ThisExpressionÍÍMªIdentifierÍ	Í"¹setInitiallyProvidedValueÂÂ‘MªIdentifierÍ#Í)¦paramsÂT³ExpressionStatementÍ5ÍQU®CallExpressionÍ5ÍPZ°MemberExpressionÍ5ÍNV®ThisExpressionÍ5Í9MªIdentifierÍ:ÍN´finalizeConstructionÂÂÂO°MethodDefinitionÍ^ÍÂÂMªIdentifierÍ^Íw¹setInitiallyProvidedValue¦methodP²FunctionExpressionÍwÍÀÂÂÂ‘MªIdentifierÍxÍ~¦paramsN®BlockStatementÍ€Í”W«IfStatementÍ‹ÍàX°BinaryExpressionÍÍ¨Z°MemberExpressionÍÍšMªIdentifierÍÍ•¦paramsMªIdentifierÍ–Íš¤taskÂÂ£===MªIdentifierÍŸÍ¨©undefinedN®BlockStatementÍªÍà‘T³ExpressionStatementÍ¹ÍÕU®CallExpressionÍ¹ÍÔZ°MemberExpressionÍ¹ÍÈZ°MemberExpressionÍ¹ÍÄV®ThisExpressionÍ¹Í½MªIdentifierÍ¾ÍÄ¦__taskÂÂMªIdentifierÍÅÍÈ£setÂÂ‘[­NewExpressionÍÉÍÓMªIdentifierÍÍÍÑ¤TaskÂÀW«IfStatementÍêÍMX°BinaryExpressionÍîÍZ°MemberExpressionÍîÍÿMªIdentifierÍîÍô¦paramsMªIdentifierÍõÍÿªonCompleteÂÂ£!==MªIdentifierÍÍ©undefinedN®BlockStatementÍÍM‘T³ExpressionStatementÍÍBY´AssignmentExpressionÍÍA¡=Z°MemberExpressionÍÍ-V®ThisExpressionÍÍ"MªIdentifierÍ#Í-ªonCompleteÂÂZ°MemberExpressionÍ0ÍAMªIdentifierÍ0Í6¦paramsMªIdentifierÍ7ÍAªonCompleteÂÂÀW«IfStatementÍWÍ´X°BinaryExpressionÍ[ÍxZ°MemberExpressionÍ[ÍjMªIdentifierÍ[Ía¦paramsMªIdentifierÍbÍj¨onDeleteÂÂ£!==MªIdentifierÍoÍx©undefinedN®BlockStatementÍzÍ´‘T³ExpressionStatementÍ‰Í©Y´AssignmentExpressionÍ‰Í¨¡=Z°MemberExpressionÍ‰Í–V®ThisExpressionÍ‰ÍMªIdentifierÍÍ–¨onDeleteÂÂZ°MemberExpressionÍ™Í¨MªIdentifierÍ™ÍŸ¦paramsMªIdentifierÍ Í¨¨onDeleteÂÂÀW«IfStatementÍ¾ÍX°BinaryExpressionÍÂÍÜZ°MemberExpressionÍÂÍÎMªIdentifierÍÂÍÈ¦paramsMªIdentifierÍÉÍÎ¥onTapÂÂ£!==MªIdentifierÍÓÍÜ©undefinedN®BlockStatementÍŞÍ‘T³ExpressionStatementÍíÍY´AssignmentExpressionÍíÍ¡=Z°MemberExpressionÍíÍ÷V®ThisExpressionÍíÍñMªIdentifierÍòÍ÷¥onTapÂÂZ°MemberExpressionÍúÍMªIdentifierÍúÍ ¦paramsMªIdentifierÍÍ¥onTapÂÂÀO°MethodDefinitionÍÍhÂÂMªIdentifierÍÍ.¯updateStateVars¦methodP²FunctionExpressionÍ.ÍhÀÂÂÂ‘MªIdentifierÍ/Í5¦paramsN®BlockStatementÍ7Íh‘T³ExpressionStatementÍBÍaU®CallExpressionÍBÍ`Z°MemberExpressionÍBÍSZ°MemberExpressionÍBÍMV®ThisExpressionÍBÍFMªIdentifierÍGÍM¦__taskÂÂMªIdentifierÍNÍS¥resetÂÂ‘Z°MemberExpressionÍTÍ_MªIdentifierÍTÍZ¦paramsMªIdentifierÍ[Í_¤taskÂÂÂO°MethodDefinitionÍnÍÚÂÂMªIdentifierÍnÍÙ!purgeVariableDependenciesOnElmtId¦methodP²FunctionExpressionÍÍÚÀÂÂÂ‘MªIdentifierÍÍ˜¨rmElmtIdN®BlockStatementÍšÍÚ‘T³ExpressionStatementÍ¥ÍÓU®CallExpressionÍ¥ÍÒZ°MemberExpressionÍ¥ÍÈZ°MemberExpressionÍ¥Í°V®ThisExpressionÍ¥Í©MªIdentifierÍªÍ°¦__taskÂÂMªIdentifierÍ±ÍÈ·purgeDependencyOnElmtIdÂÂ‘MªIdentifierÍÉÍÑ¨rmElmtIdÂO°MethodDefinitionÍàÍ„ÂÂMªIdentifierÍàÍğ°aboutToBeDeleted¦methodP²FunctionExpressionÍğÍ„ÀÂÂÂN®BlockStatementÍóÍ„“T³ExpressionStatementÍşÍU®CallExpressionÍşÍZ°MemberExpressionÍşÍZ°MemberExpressionÍşÍ	V®ThisExpressionÍşÍMªIdentifierÍÍ	¦__taskÂÂMªIdentifierÍ
+Í°aboutToBeDeletedÂÂÂT³ExpressionStatementÍ'ÍSU®CallExpressionÍ'ÍRZ°MemberExpressionÍ'ÍEU®CallExpressionÍ'Í>Z°MemberExpressionÍ'Í<MªIdentifierÍ'Í8±SubscriberManagerMªIdentifierÍ9Í<£GetÂÂÂMªIdentifierÍ?ÍE¦deleteÂÂ‘U®CallExpressionÍFÍQZ°MemberExpressionÍFÍOV®ThisExpressionÍFÍJMªIdentifierÍKÍO¤id__ÂÂÂÂT³ExpressionStatementÍ]Í}U®CallExpressionÍ]Í|Z°MemberExpressionÍ]ÍzV®ThisExpressionÍ]ÍaMªIdentifierÍbÍz¸aboutToBeDeletedInternalÂÂÂO°MethodDefinitionÍŠÍÀÂÂMªIdentifierÍÍ’¤task£getP²FunctionExpressionÍ’ÍÀÀÂÂÂN®BlockStatementÍ•ÍÀ‘Ôr\”¤type¥start£end¨argument¯ReturnStatementÍ Í¹U®CallExpressionÍ§Í¸Z°MemberExpressionÍ§Í¶Z°MemberExpressionÍ§Í²V®ThisExpressionÍ§Í«MªIdentifierÍ¬Í²¦__taskÂÂMªIdentifierÍ³Í¶£getÂÂÂO°MethodDefinitionÍÆÍÂÂMªIdentifierÍÊÍÎ¤task£setP²FunctionExpressionÍÎÍÀÂÂÂ‘MªIdentifierÍÏÍ×¨newValueN®BlockStatementÍÙÍ‘T³ExpressionStatementÍäÍşU®CallExpressionÍäÍıZ°MemberExpressionÍäÍóZ°MemberExpressionÍäÍïV®ThisExpressionÍäÍèMªIdentifierÍéÍï¦__taskÂÂMªIdentifierÍğÍó£setÂÂ‘MªIdentifierÍôÍü¨newValueÂO°MethodDefinitionÍÍ4’ÂÂMªIdentifierÍÍ­initialRender¦methodP²FunctionExpressionÍÍ4’ÀÂÂÂN®BlockStatementÍÍ4’Ü T³ExpressionStatementÍ&ÍJU®CallExpressionÍ&ÍIZ°MemberExpressionÍ&ÍDV®ThisExpressionÍ&Í*MªIdentifierÍ+ÍD¹observeComponentCreation2ÂÂ’P·ArrowFunctionExpressionÍEÍCÀÂÂÂ’MªIdentifierÍFÍL¦elmtIdMªIdentifierÍNÍ]¯isInitialRenderN®BlockStatementÍbÍC™T³ExpressionStatementÍqÍ~U®CallExpressionÍqÍ}Z°MemberExpressionÍqÍ{MªIdentifierÍqÍt£RowMªIdentifierÍuÍ{¦createÂÂÂT³ExpressionStatementÍŒÍ×U®CallExpressionÍŒÍÖZ°MemberExpressionÍŒÍ™MªIdentifierÍŒÍ£RowMªIdentifierÍÍ™©debugLineÂÂ’S§LiteralÍšÍÌÙ0entry/src/main/ets/components/TaskItem.ets(19:5)Ù2"entry/src/main/ets/components/TaskItem.ets(19:5)"S§LiteralÍÎÍÕ¥entry§"entry"ÂT³ExpressionStatementÍåÍ÷U®CallExpressionÍåÍöZ°MemberExpressionÍåÍîMªIdentifierÍåÍè£RowMªIdentifierÍéÍî¥widthÂÂ‘S§LiteralÍïÍõ¤100%¦'100%'ÂT³ExpressionStatementÍÍ?U®CallExpressionÍÍ>Z°MemberExpressionÍÍMªIdentifierÍÍ£RowMªIdentifierÍ	Í§paddingÂÂ‘Ôr]”¤type¥start£endªproperties°ObjectExpressionÍÍ=”Ôr^™¤type¥start£end¦method©shorthand¨computed£key¥value¤kind¨PropertyÍÍÂÂÂMªIdentifierÍÍ£topS§LiteralÍÍ¢16¤init^¨PropertyÍÍ&ÂÂÂMªIdentifierÍÍ"¦bottomS§LiteralÍ$Í&¢16¤init^¨PropertyÍ(Í0ÂÂÂMªIdentifierÍ(Í,¤leftS§LiteralÍ.Í0¢16¤init^¨PropertyÍ2Í;ÂÂÂMªIdentifierÍ2Í7¥rightS§LiteralÍ9Í;¢14¤initÂT³ExpressionStatementÍMÍøU®CallExpressionÍMÍ÷Z°MemberExpressionÍMÍ`MªIdentifierÍMÍP£RowMªIdentifierÍQÍ`¯backgroundColorÂÂ‘WµConditionalExpressionÍaÍöX°BinaryExpressionÍaÍ•Z°MemberExpressionÍaÍqZ°MemberExpressionÍaÍjV®ThisExpressionÍaÍeMªIdentifierÍfÍj¤taskÂÂMªIdentifierÍkÍq¦statusÂÂ£===Z°MemberExpressionÍvÍ•MªIdentifierÍvÍ©ConstantsMªIdentifierÍ€Í•µTASK_STATUS_COMPLETEDÂÂZ°MemberExpressionÍ©ÍÃMªIdentifierÍ©Í²©ConstantsMªIdentifierÍ³ÍÃ°COLOR_BACKGROUNDÂÂZ°MemberExpressionÍ×ÍöMªIdentifierÍ×Íà©ConstantsMªIdentifierÍáÍöµCOLOR_CARD_BACKGROUNDÂÂÂT³ExpressionStatementÍ	Í	U®CallExpressionÍ	Í	Z°MemberExpressionÍ	Í	MªIdentifierÍ	Í		£RowMªIdentifierÍ	
+Í	¬borderRadiusÂÂ‘S§LiteralÍ	Í	¢14ÂT³ExpressionStatementÍ	)Í	DU®CallExpressionÍ	)Í	CZ°MemberExpressionÍ	)Í	3MªIdentifierÍ	)Í	,£RowMªIdentifierÍ	-Í	3¦marginÂÂ‘]°ObjectExpressionÍ	4Í	B‘^¨PropertyÍ	6Í	@ÂÂÂMªIdentifierÍ	6Í	<¦bottomS§LiteralÍ	>Í	@
+¢10¤initÂT³ExpressionStatementÍ	RÍ
+¹U®CallExpressionÍ	RÍ
+¸Z°MemberExpressionÍ	RÍ	\MªIdentifierÍ	RÍ	U£RowMªIdentifierÍ	VÍ	\¦shadowÂÂ‘WµConditionalExpressionÍ	]Í
+·X°BinaryExpressionÍ	]Í	‘Z°MemberExpressionÍ	]Í	mZ°MemberExpressionÍ	]Í	fV®ThisExpressionÍ	]Í	aMªIdentifierÍ	bÍ	f¤taskÂÂMªIdentifierÍ	gÍ	m¦statusÂÂ£===Z°MemberExpressionÍ	rÍ	‘MªIdentifierÍ	rÍ	{©ConstantsMªIdentifierÍ	|Í	‘µTASK_STATUS_COMPLETEDÂÂ]°ObjectExpressionÍ	”Í
+ ”^¨PropertyÍ	§Í	°ÂÂÂMªIdentifierÍ	§Í	­¦radiusS§LiteralÍ	¯Í	° ¡0¤init^¨PropertyÍ	ÃÍ	×ÂÂÂMªIdentifierÍ	ÃÍ	È¥colorS§LiteralÍ	ÊÍ	×«transparent­'transparent'¤init^¨PropertyÍ	êÍ	ôÂÂÂMªIdentifierÍ	êÍ	ñ§offsetXS§LiteralÍ	óÍ	ô ¡0¤init^¨PropertyÍ
+Í
+ÂÂÂMªIdentifierÍ
+Í
+§offsetYS§LiteralÍ
+Í
+ ¡0¤init]°ObjectExpressionÍ
+#Í
+·”^¨PropertyÍ
+6Í
+?ÂÂÂMªIdentifierÍ
+6Í
+<¦radiusS§LiteralÍ
+>Í
+?¡8¤init^¨PropertyÍ
+RÍ
+nÂÂÂMªIdentifierÍ
+RÍ
+W¥colorS§LiteralÍ
+YÍ
+n³rgba(0, 0, 0, 0.04)µ'rgba(0, 0, 0, 0.04)'¤init^¨PropertyÍ
+Í
+‹ÂÂÂMªIdentifierÍ
+Í
+ˆ§offsetXS§LiteralÍ
+ŠÍ
+‹ ¡0¤init^¨PropertyÍ
+Í
+¨ÂÂÂMªIdentifierÍ
+Í
+¥§offsetYS§LiteralÍ
+§Í
+¨¡2¤initÂT³ExpressionStatementÍ
+ÇÍ8U®CallExpressionÍ
+ÇÍ7Z°MemberExpressionÍ
+ÇÍ
+ÒMªIdentifierÍ
+ÇÍ
+Ê£RowMªIdentifierÍ
+ËÍ
+Ò§opacityÂÂ‘WµConditionalExpressionÍ
+ÓÍ6X°BinaryExpressionÍ
+ÓÍZ°MemberExpressionÍ
+ÓÍ
+ãZ°MemberExpressionÍ
+ÓÍ
+ÜV®ThisExpressionÍ
+ÓÍ
+×MªIdentifierÍ
+ØÍ
+Ü¤taskÂÂMªIdentifierÍ
+İÍ
+ã¦statusÂÂ£===Z°MemberExpressionÍ
+èÍMªIdentifierÍ
+èÍ
+ñ©ConstantsMªIdentifierÍ
+òÍµTASK_STATUS_COMPLETEDÂÂS§LiteralÍÍË?è      ¤0.75S§LiteralÍ3Í6£1.0ÂMªIdentifierÍEÍH£RowÂT³ExpressionStatementÍTÍU®CallExpressionÍTÍZ°MemberExpressionÍTÍrV®ThisExpressionÍTÍXMªIdentifierÍYÍr¹observeComponentCreation2ÂÂ’P·ArrowFunctionExpressionÍsÍÀÂÂÂ’MªIdentifierÍtÍz¦elmtIdMªIdentifierÍ|Í‹¯isInitialRenderN®BlockStatementÍÍ’T³ExpressionStatementÍŸÍ«U®CallExpressionÍŸÍªZ°MemberExpressionÍŸÍ¨MªIdentifierÍŸÍ¡¢IfMªIdentifierÍ¢Í¨¦createÂÂÂW«IfStatementÍÒÍX°BinaryExpressionÍÖÍ
+Z°MemberExpressionÍÖÍæZ°MemberExpressionÍÖÍßV®ThisExpressionÍÖÍÚMªIdentifierÍÛÍß¤taskÂÂMªIdentifierÍàÍæ¦statusÂÂ£===Z°MemberExpressionÍëÍ
+MªIdentifierÍëÍô©ConstantsMªIdentifierÍõÍ
+µTASK_STATUS_COMPLETEDÂÂN®BlockStatementÍÍJ‘T³ExpressionStatementÍÍ;U®CallExpressionÍÍ:Z°MemberExpressionÍÍ>V®ThisExpressionÍÍ#MªIdentifierÍ$Í>ºifElseBranchUpdateFunctionÂÂ’S§LiteralÍ?Í@ ¡0P·ArrowFunctionExpressionÍBÍ9ÀÂÂÂN®BlockStatementÍHÍ9”T³ExpressionStatementÍ_ÍU®CallExpressionÍ_ÍZ°MemberExpressionÍ_Í}V®ThisExpressionÍ_ÍcMªIdentifierÍdÍ}¹observeComponentCreation2ÂÂ’P·ArrowFunctionExpressionÍ~ÍÀÂÂÂ’MªIdentifierÍÍ…¦elmtIdMªIdentifierÍ‡Í–¯isInitialRenderN®BlockStatementÍ›Í˜T³ExpressionStatementÍŞÍîU®CallExpressionÍŞÍíZ°MemberExpressionÍŞÍëMªIdentifierÍŞÍä¦ColumnMªIdentifierÍåÍë¦createÂÂÂT³ExpressionStatementÍÍVU®CallExpressionÍÍUZ°MemberExpressionÍÍMªIdentifierÍÍ¦ColumnMªIdentifierÍÍ©debugLineÂÂ’S§LiteralÍÍKÙ0entry/src/main/ets/components/TaskItem.ets(23:9)Ù2"entry/src/main/ets/components/TaskItem.ets(23:9)"S§LiteralÍMÍT¥entry§"entry"ÂT³ExpressionStatementÍ˜Í©U®CallExpressionÍ˜Í¨Z°MemberExpressionÍ˜Í¤MªIdentifierÍ˜Í¦ColumnMªIdentifierÍŸÍ¤¥widthÂÂ‘S§LiteralÍ¥Í§¢26ÂT³ExpressionStatementÍëÍıU®CallExpressionÍëÍüZ°MemberExpressionÍëÍøMªIdentifierÍëÍñ¦ColumnMªIdentifierÍòÍø¦heightÂÂ‘S§LiteralÍùÍû¢26ÂT³ExpressionStatementÍ?ÍWU®CallExpressionÍ?ÍVZ°MemberExpressionÍ?ÍRMªIdentifierÍ?ÍE¦ColumnMªIdentifierÍFÍR¬borderRadiusÂÂ‘S§LiteralÍSÍU¢13ÂT³ExpressionStatementÍ™ÍÉU®CallExpressionÍ™ÍÈZ°MemberExpressionÍ™Í¯MªIdentifierÍ™ÍŸ¦ColumnMªIdentifierÍ Í¯¯backgroundColorÂÂ‘Z°MemberExpressionÍ°ÍÇMªIdentifierÍ°Í¹©ConstantsMªIdentifierÍºÍÇ­COLOR_SUCCESSÂÂÂT³ExpressionStatementÍÍ3U®CallExpressionÍÍ2Z°MemberExpressionÍÍ MªIdentifierÍÍ¦ColumnMªIdentifierÍÍ ®justifyContentÂÂ‘Z°MemberExpressionÍ!Í1MªIdentifierÍ!Í*©FlexAlignMªIdentifierÍ+Í1¦CenterÂÂÂT³ExpressionStatementÍuÍşU®CallExpressionÍuÍıZ°MemberExpressionÍuÍƒMªIdentifierÍuÍ{¦ColumnMªIdentifierÍ|Íƒ§onClickÂÂ‘P·ArrowFunctionExpressionÍ„ÍüÀÂÂÂN®BlockStatementÍŠÍü‘T³ExpressionStatementÍ©ÍáU®CallExpressionÍ©ÍàZ°MemberExpressionÍ©Í¸V®ThisExpressionÍ©Í­MªIdentifierÍ®Í¸ªonCompleteÂÂ‘U®CallExpressionÍ¹ÍßZ°MemberExpressionÍ¹ÍÔMªIdentifierÍ¹ÍÇ®ObservedObjectMªIdentifierÍÈÍÔ¬GetRawObjectÂÂ‘Z°MemberExpressionÍÕÍŞV®ThisExpressionÍÕÍÙMªIdentifierÍÚÍŞ¤taskÂÂÂÂÂMªIdentifierÍÍ¦ColumnÂT³ExpressionStatementÍ5Í¾U®CallExpressionÍ5Í½Z°MemberExpressionÍ5ÍSV®ThisExpressionÍ5Í9MªIdentifierÍ:ÍS¹observeComponentCreation2ÂÂ’P·ArrowFunctionExpressionÍTÍ¶ÀÂÂÂ’MªIdentifierÍUÍ[¦elmtIdMªIdentifierÍ]Íl¯isInitialRenderN®BlockStatementÍqÍ¶•T³ExpressionStatementÍŒÍU®CallExpressionÍŒÍœZ°MemberExpressionÍŒÍ—MªIdentifierÍŒÍ¤TextMªIdentifierÍ‘Í—¦createÂÂ‘S§LiteralÍ˜Í›£âœ“¥'âœ“'ÂT³ExpressionStatementÍ·ÍU®CallExpressionÍ·ÍZ°MemberExpressionÍ·ÍÅMªIdentifierÍ·Í»¤TextMªIdentifierÍ¼ÍÅ©debugLineÂÂ’S§LiteralÍÆÍùÙ1entry/src/main/ets/components/TaskItem.ets(24:11)Ù3"entry/src/main/ets/components/TaskItem.ets(24:11)"S§LiteralÍûÍ¥entry§"entry"ÂT³ExpressionStatementÍÍ0U®CallExpressionÍÍ/Z°MemberExpressionÍÍ+MªIdentifierÍÍ"¤TextMªIdentifierÍ#Í+¨fontSizeÂÂ‘S§LiteralÍ,Í.¢14ÂT³ExpressionStatementÍJÍdU®CallExpressionÍJÍcZ°MemberExpressionÍJÍXMªIdentifierÍJÍN¤TextMªIdentifierÍOÍX©fontColorÂÂ‘S§LiteralÍYÍb§#FFFFFF©'#FFFFFF'ÂT³ExpressionStatementÍ~ÍŸU®CallExpressionÍ~ÍZ°MemberExpressionÍ~ÍMªIdentifierÍ~Í‚¤TextMªIdentifierÍƒÍªfontWeightÂÂ‘Z°MemberExpressionÍÍMªIdentifierÍÍ˜ªFontWeightMªIdentifierÍ™Í¤BoldÂÂÂMªIdentifierÍ¸Í¼¤TextÂT³ExpressionStatementÍÔÍßU®CallExpressionÍÔÍŞZ°MemberExpressionÍÔÍÜMªIdentifierÍÔÍØ¤TextMªIdentifierÍÙÍÜ£popÂÂÂT³ExpressionStatementÍÍ&U®CallExpressionÍÍ%Z°MemberExpressionÍÍ#MªIdentifierÍÍ¦ColumnMªIdentifierÍ Í#£popÂÂÂÂN®BlockStatementÍ]Í‘T³ExpressionStatementÍpÍüU®CallExpressionÍpÍûZ°MemberExpressionÍpÍV®ThisExpressionÍpÍtMªIdentifierÍuÍºifElseBranchUpdateFunctionÂÂ’S§LiteralÍÍ‘¡1P·ArrowFunctionExpressionÍ“ÍúÀÂÂÂN®BlockStatementÍ™Íú’T³ExpressionStatementÍ°ÍœU®CallExpressionÍ°Í›Z°MemberExpressionÍ°ÍÎV®ThisExpressionÍ°Í´MªIdentifierÍµÍÎ¹observeComponentCreation2ÂÂ’P·ArrowFunctionExpressionÍÏÍ’ÀÂÂÂ’MªIdentifierÍĞÍÖ¦elmtIdMªIdentifierÍØÍç¯isInitialRenderN®BlockStatementÍìÍ’˜T³ExpressionStatementÍ3ÍCU®CallExpressionÍ3ÍBZ°MemberExpressionÍ3Í@MªIdentifierÍ3Í9¦ColumnMªIdentifierÍ:Í@¦createÂÂÂT³ExpressionStatementÍ]Í«U®CallExpressionÍ]ÍªZ°MemberExpressionÍ]ÍmMªIdentifierÍ]Íc¦ColumnMªIdentifierÍdÍm©debugLineÂÂ’S§LiteralÍnÍ Ù0entry/src/main/ets/components/TaskItem.ets(39:9)Ù2"entry/src/main/ets/components/TaskItem.ets(39:9)"S§LiteralÍ¢Í©¥entry§"entry"ÂT³ExpressionStatementÍñÍU®CallExpressionÍñÍZ°MemberExpressionÍñÍıMªIdentifierÍñÍ÷¦ColumnMªIdentifierÍøÍı¥widthÂÂ‘S§LiteralÍşÍ ¢26ÂT³ExpressionStatementÍHÍZU®CallExpressionÍHÍYZ°MemberExpressionÍHÍUMªIdentifierÍHÍN¦ColumnMªIdentifierÍOÍU¦heightÂÂ‘S§LiteralÍVÍX¢26ÂT³ExpressionStatementÍ Í¸U®CallExpressionÍ Í·Z°MemberExpressionÍ Í³MªIdentifierÍ Í¦¦ColumnMªIdentifierÍ§Í³¬borderRadiusÂÂ‘S§LiteralÍ´Í¶¢13ÂT³ExpressionStatementÍşÍ@U®CallExpressionÍşÍ?Z°MemberExpressionÍşÍMªIdentifierÍşÍ¦ColumnMªIdentifierÍÍ¦borderÂÂ‘]°ObjectExpressionÍÍ>’^¨PropertyÍÍÂÂÂMªIdentifierÍÍ¥widthS§LiteralÍÍ¡2¤init^¨PropertyÍÍ<ÂÂÂMªIdentifierÍÍ¥colorZ°MemberExpressionÍÍ<MªIdentifierÍÍ(©ConstantsMªIdentifierÍ)Í<³COLOR_PRIMARY_LIGHTÂÂ¤initÂT³ExpressionStatementÍ†Í¬U®CallExpressionÍ†Í«Z°MemberExpressionÍ†ÍœMªIdentifierÍ†ÍŒ¦ColumnMªIdentifierÍÍœ¯backgroundColorÂÂ‘S§LiteralÍÍª«transparent­'transparent'ÂT³ExpressionStatementÍòÍ{U®CallExpressionÍòÍzZ°MemberExpressionÍòÍ MªIdentifierÍòÍø¦ColumnMªIdentifierÍùÍ §onClickÂÂ‘P·ArrowFunctionExpressionÍÍyÀÂÂÂN®BlockStatementÍÍy‘T³ExpressionStatementÍ&Í^U®CallExpressionÍ&Í]Z°MemberExpressionÍ&Í5V®ThisExpressionÍ&Í*MªIdentifierÍ+Í5ªonCompleteÂÂ‘U®CallExpressionÍ6Í\Z°MemberExpressionÍ6ÍQMªIdentifierÍ6ÍD®ObservedObjectMªIdentifierÍEÍQ¬GetRawObjectÂÂ‘Z°MemberExpressionÍRÍ[V®ThisExpressionÍRÍVMªIdentifierÍWÍ[¤taskÂÂÂÂÂMªIdentifierÍ”Íš¦ColumnÂT³ExpressionStatementÍÚÍçU®CallExpressionÍÚÍæZ°MemberExpressionÍÚÍäMªIdentifierÍÚÍà¦ColumnMªIdentifierÍáÍä£popÂÂÂÂMªIdentifierÍÍ¢IfÂT³ExpressionStatementÍ&Í/U®CallExpressionÍ&Í.Z°MemberExpressionÍ&Í,MªIdentifierÍ&Í(¢IfMªIdentifierÍ)Í,£popÂÂÂT³ExpressionStatementÍ9ÍxU®CallExpressionÍ9ÍwZ°MemberExpressionÍ9ÍWV®ThisExpressionÍ9Í=MªIdentifierÍ>ÍW¹observeComponentCreation2ÂÂ’P·ArrowFunctionExpressionÍXÍnÀÂÂÂ’MªIdentifierÍYÍ_¦elmtIdMªIdentifierÍaÍp¯isInitialRenderN®BlockStatementÍuÍn–T³ExpressionStatementÍ›Í«U®CallExpressionÍ›ÍªZ°MemberExpressionÍ›Í¨MªIdentifierÍ›Í¡¦ColumnMªIdentifierÍ¢Í¨¦createÂÂÂT³ExpressionStatementÍ¹ÍU®CallExpressionÍ¹ÍZ°MemberExpressionÍ¹ÍÉMªIdentifierÍ¹Í¿¦ColumnMªIdentifierÍÀÍÉ©debugLineÂÂ’S§LiteralÍÊÍüÙ0entry/src/main/ets/components/TaskItem.ets(51:7)Ù2"entry/src/main/ets/components/TaskItem.ets(51:7)"S§LiteralÍşÍ¥entry§"entry"ÂT³ExpressionStatementÍ,ÍCU®CallExpressionÍ,ÍBZ°MemberExpressionÍ,Í?MªIdentifierÍ,Í2¦ColumnMªIdentifierÍ3Í?¬layoutWeightÂÂ‘S§LiteralÍ@ÍA¡1ÂT³ExpressionStatementÍhÍ‘U®CallExpressionÍhÍZ°MemberExpressionÍhÍyMªIdentifierÍhÍn¦ColumnMªIdentifierÍoÍyªalignItemsÂÂ‘Z°MemberExpressionÍzÍMªIdentifierÍzÍ‰¯HorizontalAlignMªIdentifierÍŠÍ¥StartÂÂÂT³ExpressionStatementÍ¶ÍÒU®CallExpressionÍ¶ÍÑZ°MemberExpressionÍ¶ÍÃMªIdentifierÍ¶Í¼¦ColumnMªIdentifierÍ½ÍÃ¦marginÂÂ‘]°ObjectExpressionÍÄÍĞ‘^¨PropertyÍÆÍÎÂÂÂMªIdentifierÍÆÍÊ¤leftS§LiteralÍÌÍÎ¢14¤initÂT³ExpressionStatementÍ÷ÍcU®CallExpressionÍ÷ÍbZ°MemberExpressionÍ÷ÍMªIdentifierÍ÷Íı¦ColumnMªIdentifierÍşÍ§onClickÂÂ‘P·ArrowFunctionExpressionÍÍaÀÂÂÂN®BlockStatementÍÍa‘T³ExpressionStatementÍÍRU®CallExpressionÍÍQZ°MemberExpressionÍÍ)V®ThisExpressionÍÍ#MªIdentifierÍ$Í)¥onTapÂÂ‘U®CallExpressionÍ*ÍPZ°MemberExpressionÍ*ÍEMªIdentifierÍ*Í8®ObservedObjectMªIdentifierÍ9ÍE¬GetRawObjectÂÂ‘Z°MemberExpressionÍFÍOV®ThisExpressionÍFÍJMªIdentifierÍKÍO¤taskÂÂÂÂÂMªIdentifierÍpÍv¦ColumnÂT³ExpressionStatementÍ‚ÍU®CallExpressionÍ‚ÍZ°MemberExpressionÍ‚Í V®ThisExpressionÍ‚Í†MªIdentifierÍ‡Í ¹observeComponentCreation2ÂÂ’P·ArrowFunctionExpressionÍ¡ÍÀÂÂÂ’MªIdentifierÍ¢Í¨¦elmtIdMªIdentifierÍªÍ¹¯isInitialRenderN®BlockStatementÍ¾Í˜T³ExpressionStatementÍÍÍêU®CallExpressionÍÍÍéZ°MemberExpressionÍÍÍØMªIdentifierÍÍÍÑ¤TextMªIdentifierÍÒÍØ¦createÂÂ‘Z°MemberExpressionÍÙÍèZ°MemberExpressionÍÙÍâV®ThisExpressionÍÙÍİMªIdentifierÍŞÍâ¤taskÂÂMªIdentifierÍãÍè¥titleÂÂÂT³ExpressionStatementÍøÍDU®CallExpressionÍøÍCZ°MemberExpressionÍøÍMªIdentifierÍøÍü¤TextMªIdentifierÍıÍ©debugLineÂÂ’S§LiteralÍÍ9Ù0entry/src/main/ets/components/TaskItem.ets(52:9)Ù2"entry/src/main/ets/components/TaskItem.ets(52:9)"S§LiteralÍ;ÍB¥entry§"entry"ÂT³ExpressionStatementÍRÍdU®CallExpressionÍRÍcZ°MemberExpressionÍRÍ_MªIdentifierÍRÍV¤TextMªIdentifierÍWÍ_¨fontSizeÂÂ‘S§LiteralÍ`Íb¢16ÂT³ExpressionStatementÍrÍU®CallExpressionÍrÍZ°MemberExpressionÍrÍ€MªIdentifierÍrÍv¤TextMªIdentifierÍwÍ€©fontColorÂÂ‘WµConditionalExpressionÍÍX°BinaryExpressionÍÍµZ°MemberExpressionÍÍ‘Z°MemberExpressionÍÍŠV®ThisExpressionÍÍ…MªIdentifierÍ†ÍŠ¤taskÂÂMªIdentifierÍ‹Í‘¦statusÂÂ£===Z°MemberExpressionÍ–ÍµMªIdentifierÍ–ÍŸ©ConstantsMªIdentifierÍ ÍµµTASK_STATUS_COMPLETEDÂÂZ°MemberExpressionÍÉÍæMªIdentifierÍÉÍÒ©ConstantsMªIdentifierÍÓÍæ³COLOR_TEXT_TERTIARYÂÂZ°MemberExpressionÍúÍMªIdentifierÍúÍ©ConstantsMªIdentifierÍÍ²COLOR_TEXT_PRIMARYÂÂÂT³ExpressionStatementÍ&Í¶U®CallExpressionÍ&ÍµZ°MemberExpressionÍ&Í5MªIdentifierÍ&Í*¤TextMªIdentifierÍ+Í5ªfontWeightÂÂ‘WµConditionalExpressionÍ6Í´X°BinaryExpressionÍ6ÍjZ°MemberExpressionÍ6ÍFZ°MemberExpressionÍ6Í?V®ThisExpressionÍ6Í:MªIdentifierÍ;Í?¤taskÂÂMªIdentifierÍ@ÍF¦statusÂÂ£===Z°MemberExpressionÍKÍjMªIdentifierÍKÍT©ConstantsMªIdentifierÍUÍjµTASK_STATUS_COMPLETEDÂÂZ°MemberExpressionÍ~ÍMªIdentifierÍ~ÍˆªFontWeightMªIdentifierÍ‰Í¦NormalÂÂZ°MemberExpressionÍ£Í´MªIdentifierÍ£Í­ªFontWeightMªIdentifierÍ®Í´¦MediumÂÂÂT³ExpressionStatementÍÄÍ¡U®CallExpressionÍÄÍ Z°MemberExpressionÍÄÍÓMªIdentifierÍÄÍÈ¤TextMªIdentifierÍÉÍÓªdecorationÂÂ‘WµConditionalExpressionÍÔÍŸX°BinaryExpressionÍÔÍZ°MemberExpressionÍÔÍäZ°MemberExpressionÍÔÍİV®ThisExpressionÍÔÍØMªIdentifierÍÙÍİ¤taskÂÂMªIdentifierÍŞÍä¦statusÂÂ£===Z°MemberExpressionÍéÍMªIdentifierÍéÍò©ConstantsMªIdentifierÍóÍµTASK_STATUS_COMPLETEDÂÂ]°ObjectExpressionÍÍj’^¨PropertyÍÍBÂÂÂMªIdentifierÍÍ"¤typeZ°MemberExpressionÍ$ÍBMªIdentifierÍ$Í6²TextDecorationTypeMªIdentifierÍ7ÍB«LineThroughÂÂ¤init^¨PropertyÍDÍhÂÂÂMªIdentifierÍDÍI¥colorZ°MemberExpressionÍKÍhMªIdentifierÍKÍT©ConstantsMªIdentifierÍUÍh³COLOR_TEXT_TERTIARYÂÂ¤init]°ObjectExpressionÍ~ÍŸ‘^¨PropertyÍ€ÍÂÂÂMªIdentifierÍ€Í„¤typeZ°MemberExpressionÍ†ÍMªIdentifierÍ†Í˜²TextDecorationTypeMªIdentifierÍ™Í¤NoneÂÂ¤initÂT³ExpressionStatementÍ¯ÍÀU®CallExpressionÍ¯Í¿Z°MemberExpressionÍ¯Í¼MªIdentifierÍ¯Í³¤TextMªIdentifierÍ´Í¼¨maxLinesÂÂ‘S§LiteralÍ½Í¾¡2ÂT³ExpressionStatementÍÎÍU®CallExpressionÍÎÍZ°MemberExpressionÍÎÍßMªIdentifierÍÎÍÒ¤TextMªIdentifierÍÓÍß¬textOverflowÂÂ‘]°ObjectExpressionÍàÍ‘^¨PropertyÍâÍÂÂÂMªIdentifierÍâÍê¨overflowZ°MemberExpressionÍìÍMªIdentifierÍìÍø¬TextOverflowMªIdentifierÍùÍ¨EllipsisÂÂ¤initÂMªIdentifierÍÍ¤TextÂT³ExpressionStatementÍ"Í-U®CallExpressionÍ"Í,Z°MemberExpressionÍ"Í*MªIdentifierÍ"Í&¤TextMªIdentifierÍ'Í*£popÂÂÂT³ExpressionStatementÍ7Í!U®CallExpressionÍ7Í!Z°MemberExpressionÍ7ÍUV®ThisExpressionÍ7Í;MªIdentifierÍ<ÍU¹observeComponentCreation2ÂÂ’P·ArrowFunctionExpressionÍVÍ!ÀÂÂÂ’MªIdentifierÍWÍ]¦elmtIdMªIdentifierÍ_Ín¯isInitialRenderN®BlockStatementÍsÍ!’T³ExpressionStatementÍ‚ÍU®CallExpressionÍ‚ÍZ°MemberExpressionÍ‚Í‹MªIdentifierÍ‚Í„¢IfMªIdentifierÍ…Í‹¦createÂÂÂW«IfStatementÍœÍ üZ°MemberExpressionÍ ÍµZ°MemberExpressionÍ Í©V®ThisExpressionÍ Í¤MªIdentifierÍ¥Í©¤taskÂÂMªIdentifierÍªÍµ«descriptionÂÂN®BlockStatementÍ·Í r‘T³ExpressionStatementÍÊÍ cU®CallExpressionÍÊÍ bZ°MemberExpressionÍÊÍéV®ThisExpressionÍÊÍÎMªIdentifierÍÏÍéºifElseBranchUpdateFunctionÂÂ’S§LiteralÍêÍë ¡0P·ArrowFunctionExpressionÍíÍ aÀÂÂÂN®BlockStatementÍóÍ a’T³ExpressionStatementÍ
+Í -U®CallExpressionÍ
+Í ,Z°MemberExpressionÍ
+Í(V®ThisExpressionÍ
+ÍMªIdentifierÍÍ(¹observeComponentCreation2ÂÂ’P·ArrowFunctionExpressionÍ)Í %ÀÂÂÂ’MªIdentifierÍ*Í0¦elmtIdMªIdentifierÍ2ÍA¯isInitialRenderN®BlockStatementÍFÍ %—T³ExpressionStatementÍaÍ„U®CallExpressionÍaÍƒZ°MemberExpressionÍaÍlMªIdentifierÍaÍe¤TextMªIdentifierÍfÍl¦createÂÂ‘Z°MemberExpressionÍmÍ‚Z°MemberExpressionÍmÍvV®ThisExpressionÍmÍqMªIdentifierÍrÍv¤taskÂÂMªIdentifierÍwÍ‚«descriptionÂÂÂT³ExpressionStatementÍÍëU®CallExpressionÍÍêZ°MemberExpressionÍÍ¬MªIdentifierÍÍ¢¤TextMªIdentifierÍ£Í¬©debugLineÂÂ’S§LiteralÍ­ÍàÙ1entry/src/main/ets/components/TaskItem.ets(73:11)Ù3"entry/src/main/ets/components/TaskItem.ets(73:11)"S§LiteralÍâÍé¥entry§"entry"ÂT³ExpressionStatementÍÍU®CallExpressionÍÍZ°MemberExpressionÍÍMªIdentifierÍÍ	¤TextMªIdentifierÍ
+Í¨fontSizeÂÂ‘S§LiteralÍÍ¢14ÂT³ExpressionStatementÍ1Í`U®CallExpressionÍ1Í_Z°MemberExpressionÍ1Í?MªIdentifierÍ1Í5¤TextMªIdentifierÍ6Í?©fontColorÂÂ‘Z°MemberExpressionÍ@Í^MªIdentifierÍ@ÍI©ConstantsMªIdentifierÍJÍ^´COLOR_TEXT_SECONDARYÂÂÂT³ExpressionStatementÍzÍ‹U®CallExpressionÍzÍŠZ°MemberExpressionÍzÍ‡MªIdentifierÍzÍ~¤TextMªIdentifierÍÍ‡¨maxLinesÂÂ‘S§LiteralÍˆÍ‰¡2ÂT³ExpressionStatementÍ¥ÍÜU®CallExpressionÍ¥ÍÛZ°MemberExpressionÍ¥Í¶MªIdentifierÍ¥Í©¤TextMªIdentifierÍªÍ¶¬textOverflowÂÂ‘]°ObjectExpressionÍ·ÍÚ‘^¨PropertyÍ¹ÍØÂÂÂMªIdentifierÍ¹ÍÁ¨overflowZ°MemberExpressionÍÃÍØMªIdentifierÍÃÍÏ¬TextOverflowMªIdentifierÍĞÍØ¨EllipsisÂÂ¤initÂT³ExpressionStatementÍöÍ U®CallExpressionÍöÍ Z°MemberExpressionÍöÍ MªIdentifierÍöÍú¤TextMªIdentifierÍûÍ ¦marginÂÂ‘]°ObjectExpressionÍ Í ‘^¨PropertyÍ Í 
+ÂÂÂMªIdentifierÍ Í £topS§LiteralÍ 	Í 
+¡6¤initÂMªIdentifierÍ 'Í +¤TextÂT³ExpressionStatementÍ CÍ NU®CallExpressionÍ CÍ MZ°MemberExpressionÍ CÍ KMªIdentifierÍ CÍ G¤TextMªIdentifierÍ HÍ K£popÂÂÂÂN®BlockStatementÍ ›Í ü‘T³ExpressionStatementÍ ®Í íU®CallExpressionÍ ®Í ìZ°MemberExpressionÍ ®Í ÍV®ThisExpressionÍ ®Í ²MªIdentifierÍ ³Í ÍºifElseBranchUpdateFunctionÂÂ’S§LiteralÍ ÎÍ Ï¡1P·ArrowFunctionExpressionÍ ÑÍ ëÀÂÂÂN®BlockStatementÍ ×Í ëÂMªIdentifierÍ!	Í!¢IfÂT³ExpressionStatementÍ!Í! U®CallExpressionÍ!Í!Z°MemberExpressionÍ!Í!MªIdentifierÍ!Í!¢IfMªIdentifierÍ!Í!£popÂÂÂT³ExpressionStatementÍ!*Í"uU®CallExpressionÍ!*Í"tZ°MemberExpressionÍ!*Í!HV®ThisExpressionÍ!*Í!.MªIdentifierÍ!/Í!H¹observeComponentCreation2ÂÂ’P·ArrowFunctionExpressionÍ!IÍ"nÀÂÂÂ’MªIdentifierÍ!JÍ!P¦elmtIdMªIdentifierÍ!RÍ!a¯isInitialRenderN®BlockStatementÍ!fÍ"n”T³ExpressionStatementÍ!‹Í!˜U®CallExpressionÍ!‹Í!—Z°MemberExpressionÍ!‹Í!•MªIdentifierÍ!‹Í!£RowMªIdentifierÍ!Í!•¦createÂÂÂT³ExpressionStatementÍ!¦Í!ñU®CallExpressionÍ!¦Í!ğZ°MemberExpressionÍ!¦Í!³MªIdentifierÍ!¦Í!©£RowMªIdentifierÍ!ªÍ!³©debugLineÂÂ’S§LiteralÍ!´Í!æÙ0entry/src/main/ets/components/TaskItem.ets(82:9)Ù2"entry/src/main/ets/components/TaskItem.ets(82:9)"S§LiteralÍ!èÍ!ï¥entry§"entry"ÂT³ExpressionStatementÍ"Í"'U®CallExpressionÍ"Í"&Z°MemberExpressionÍ"Í"MªIdentifierÍ"Í"£RowMªIdentifierÍ"Í"¥widthÂÂ‘S§LiteralÍ"Í"%¤100%¦'100%'ÂT³ExpressionStatementÍ"KÍ"cU®CallExpressionÍ"KÍ"bZ°MemberExpressionÍ"KÍ"UMªIdentifierÍ"KÍ"N£RowMªIdentifierÍ"OÍ"U¦marginÂÂ‘]°ObjectExpressionÍ"VÍ"a‘^¨PropertyÍ"XÍ"_ÂÂÂMªIdentifierÍ"XÍ"[£topS§LiteralÍ"]Í"_
+¢10¤initÂMªIdentifierÍ"pÍ"s£RowÂT³ExpressionStatementÍ"Í%:U®CallExpressionÍ"Í%9Z°MemberExpressionÍ"Í"V®ThisExpressionÍ"Í"ƒMªIdentifierÍ"„Í"¹observeComponentCreation2ÂÂ’P·ArrowFunctionExpressionÍ"Í%2ÀÂÂÂ’MªIdentifierÍ"ŸÍ"¥¦elmtIdMªIdentifierÍ"§Í"¶¯isInitialRenderN®BlockStatementÍ"»Í%2˜T³ExpressionStatementÍ"àÍ#U®CallExpressionÍ"àÍ#Z°MemberExpressionÍ"àÍ"ëMªIdentifierÍ"àÍ"ä¤TextMªIdentifierÍ"åÍ"ë¦createÂÂ‘U®CallExpressionÍ"ìÍ#Z°MemberExpressionÍ"ìÍ#MªIdentifierÍ"ìÍ"ñ¥UtilsMªIdentifierÍ"òÍ#¯getPriorityTextÂÂ‘Z°MemberExpressionÍ#Í#Z°MemberExpressionÍ#Í#V®ThisExpressionÍ#Í#MªIdentifierÍ#Í#¤taskÂÂMªIdentifierÍ#Í#¨priorityÂÂÂÂT³ExpressionStatementÍ#%Í#rU®CallExpressionÍ#%Í#qZ°MemberExpressionÍ#%Í#3MªIdentifierÍ#%Í#)¤TextMªIdentifierÍ#*Í#3©debugLineÂÂ’S§LiteralÍ#4Í#gÙ1entry/src/main/ets/components/TaskItem.ets(84:11)Ù3"entry/src/main/ets/components/TaskItem.ets(84:11)"S§LiteralÍ#iÍ#p¥entry§"entry"ÂT³ExpressionStatementÍ#–Í#¨U®CallExpressionÍ#–Í#§Z°MemberExpressionÍ#–Í#£MªIdentifierÍ#–Í#š¤TextMªIdentifierÍ#›Í#£¨fontSizeÂÂ‘S§LiteralÍ#¤Í#¦¢11ÂT³ExpressionStatementÍ#ÌÍ#ïU®CallExpressionÍ#ÌÍ#îZ°MemberExpressionÍ#ÌÍ#ÛMªIdentifierÍ#ÌÍ#Ğ¤TextMªIdentifierÍ#ÑÍ#ÛªfontWeightÂÂ‘Z°MemberExpressionÍ#ÜÍ#íMªIdentifierÍ#ÜÍ#æªFontWeightMªIdentifierÍ#çÍ#í¦MediumÂÂÂT³ExpressionStatementÍ$Í$-U®CallExpressionÍ$Í$,Z°MemberExpressionÍ$Í$!MªIdentifierÍ$Í$¤TextMªIdentifierÍ$Í$!©fontColorÂÂ‘S§LiteralÍ$"Í$+§#FFFFFF©'#FFFFFF'ÂT³ExpressionStatementÍ$QÍ$’U®CallExpressionÍ$QÍ$‘Z°MemberExpressionÍ$QÍ$eMªIdentifierÍ$QÍ$U¤TextMªIdentifierÍ$VÍ$e¯backgroundColorÂÂ‘U®CallExpressionÍ$fÍ$Z°MemberExpressionÍ$fÍ$|MªIdentifierÍ$fÍ$k¥UtilsMªIdentifierÍ$lÍ$|°getPriorityColorÂÂ‘Z°MemberExpressionÍ$}Í$Z°MemberExpressionÍ$}Í$†V®ThisExpressionÍ$}Í$MªIdentifierÍ$‚Í$†¤taskÂÂMªIdentifierÍ$‡Í$¨priorityÂÂÂÂT³ExpressionStatementÍ$¶Í$íU®CallExpressionÍ$¶Í$ìZ°MemberExpressionÍ$¶Í$ÂMªIdentifierÍ$¶Í$º¤TextMªIdentifierÍ$»Í$Â§paddingÂÂ‘]°ObjectExpressionÍ$ÃÍ$ë”^¨PropertyÍ$ÅÍ$ÌÂÂÂMªIdentifierÍ$ÅÍ$É¤leftS§LiteralÍ$ËÍ$Ì¡8¤init^¨PropertyÍ$ÎÍ$ÖÂÂÂMªIdentifierÍ$ÎÍ$Ó¥rightS§LiteralÍ$ÕÍ$Ö¡8¤init^¨PropertyÍ$ØÍ$ŞÂÂÂMªIdentifierÍ$ØÍ$Û£topS§LiteralÍ$İÍ$Ş¡3¤init^¨PropertyÍ$àÍ$éÂÂÂMªIdentifierÍ$àÍ$æ¦bottomS§LiteralÍ$èÍ$é¡3¤initÂT³ExpressionStatementÍ%Í%'U®CallExpressionÍ%Í%&Z°MemberExpressionÍ%Í%"MªIdentifierÍ%Í%¤TextMªIdentifierÍ%Í%"¬borderRadiusÂÂ‘S§LiteralÍ%#Í%%
+¢10ÂMªIdentifierÍ%4Í%8¤TextÂT³ExpressionStatementÍ%VÍ%aU®CallExpressionÍ%VÍ%`Z°MemberExpressionÍ%VÍ%^MªIdentifierÍ%VÍ%Z¤TextMªIdentifierÍ%[Í%^£popÂÂÂT³ExpressionStatementÍ%kÍ,XU®CallExpressionÍ%kÍ,WZ°MemberExpressionÍ%kÍ%‰V®ThisExpressionÍ%kÍ%oMªIdentifierÍ%pÍ%‰¹observeComponentCreation2ÂÂ’P·ArrowFunctionExpressionÍ%ŠÍ,RÀÂÂÂ’MªIdentifierÍ%‹Í%‘¦elmtIdMªIdentifierÍ%“Í%¢¯isInitialRenderN®BlockStatementÍ%§Í,R’T³ExpressionStatementÍ%¶Í%ÂU®CallExpressionÍ%¶Í%ÁZ°MemberExpressionÍ%¶Í%¿MªIdentifierÍ%¶Í%¸¢IfMªIdentifierÍ%¹Í%¿¦createÂÂÂW«IfStatementÍ%åÍ,GZ°MemberExpressionÍ%éÍ%úZ°MemberExpressionÍ%éÍ%òV®ThisExpressionÍ%éÍ%íMªIdentifierÍ%îÍ%ò¤taskÂÂMªIdentifierÍ%óÍ%ú§dueDateÂÂN®BlockStatementÍ%üÍ+Ó‘T³ExpressionStatementÍ&Í+ÄU®CallExpressionÍ&Í+ÃZ°MemberExpressionÍ&Í&.V®ThisExpressionÍ&Í&MªIdentifierÍ&Í&.ºifElseBranchUpdateFunctionÂÂ’S§LiteralÍ&/Í&0 ¡0P·ArrowFunctionExpressionÍ&2Í+ÂÀÂÂÂN®BlockStatementÍ&8Í+Â–T³ExpressionStatementÍ&OÍ'jU®CallExpressionÍ&OÍ'iZ°MemberExpressionÍ&OÍ&mV®ThisExpressionÍ&OÍ&SMªIdentifierÍ&TÍ&m¹observeComponentCreation2ÂÂ’P·ArrowFunctionExpressionÍ&nÍ'cÀÂÂÂ’MªIdentifierÍ&oÍ&u¦elmtIdMªIdentifierÍ&wÍ&†¯isInitialRenderN®BlockStatementÍ&‹Í'c“T³ExpressionStatementÍ&¦Í&³U®CallExpressionÍ&¦Í&²Z°MemberExpressionÍ&¦Í&°MªIdentifierÍ&¦Í&©£RowMªIdentifierÍ&ªÍ&°¦createÂÂÂT³ExpressionStatementÍ&ÍÍ'U®CallExpressionÍ&ÍÍ'Z°MemberExpressionÍ&ÍÍ&ÚMªIdentifierÍ&ÍÍ&Ğ£RowMªIdentifierÍ&ÑÍ&Ú©debugLineÂÂ’S§LiteralÍ&ÛÍ'Ù1entry/src/main/ets/components/TaskItem.ets(94:13)Ù3"entry/src/main/ets/components/TaskItem.ets(94:13)"S§LiteralÍ'Í'¥entry§"entry"ÂT³ExpressionStatementÍ'3Í'LU®CallExpressionÍ'3Í'KZ°MemberExpressionÍ'3Í'=MªIdentifierÍ'3Í'6£RowMªIdentifierÍ'7Í'=¦marginÂÂ‘]°ObjectExpressionÍ'>Í'J‘^¨PropertyÍ'@Í'HÂÂÂMªIdentifierÍ'@Í'D¤leftS§LiteralÍ'FÍ'H
+¢10¤initÂMªIdentifierÍ'eÍ'h£RowÂT³ExpressionStatementÍ'€Í(›U®CallExpressionÍ'€Í(šZ°MemberExpressionÍ'€Í'V®ThisExpressionÍ'€Í'„MªIdentifierÍ'…Í'¹observeComponentCreation2ÂÂ’P·ArrowFunctionExpressionÍ'ŸÍ(“ÀÂÂÂ’MªIdentifierÍ' Í'¦¦elmtIdMªIdentifierÍ'¨Í'·¯isInitialRenderN®BlockStatementÍ'¼Í(““T³ExpressionStatementÍ'×Í'éU®CallExpressionÍ'×Í'èZ°MemberExpressionÍ'×Í'âMªIdentifierÍ'×Í'Û¤TextMªIdentifierÍ'ÜÍ'â¦createÂÂ‘S§LiteralÍ'ãÍ'ç¤ğŸ“…¦'ğŸ“…'ÂT³ExpressionStatementÍ(Í(PU®CallExpressionÍ(Í(OZ°MemberExpressionÍ(Í(MªIdentifierÍ(Í(¤TextMªIdentifierÍ(Í(©debugLineÂÂ’S§LiteralÍ(Í(EÙ1entry/src/main/ets/components/TaskItem.ets(95:15)Ù3"entry/src/main/ets/components/TaskItem.ets(95:15)"S§LiteralÍ(GÍ(N¥entry§"entry"ÂT³ExpressionStatementÍ(jÍ(|U®CallExpressionÍ(jÍ({Z°MemberExpressionÍ(jÍ(wMªIdentifierÍ(jÍ(n¤TextMªIdentifierÍ(oÍ(w¨fontSizeÂÂ‘S§LiteralÍ(xÍ(z¢12ÂMªIdentifierÍ(•Í(™¤TextÂT³ExpressionStatementÍ(±Í(¼U®CallExpressionÍ(±Í(»Z°MemberExpressionÍ(±Í(¹MªIdentifierÍ(±Í(µ¤TextMªIdentifierÍ(¶Í(¹£popÂÂÂT³ExpressionStatementÍ(ÒÍ+nU®CallExpressionÍ(ÒÍ+mZ°MemberExpressionÍ(ÒÍ(ğV®ThisExpressionÍ(ÒÍ(ÖMªIdentifierÍ(×Í(ğ¹observeComponentCreation2ÂÂ’P·ArrowFunctionExpressionÍ(ñÍ+fÀÂÂÂ’MªIdentifierÍ(òÍ(ø¦elmtIdMªIdentifierÍ(úÍ)	¯isInitialRenderN®BlockStatementÍ)Í+f–T³ExpressionStatementÍ))Í)cU®CallExpressionÍ))Í)bZ°MemberExpressionÍ))Í)4MªIdentifierÍ))Í)-¤TextMªIdentifierÍ).Í)4¦createÂÂ‘U®CallExpressionÍ)5Í)aZ°MemberExpressionÍ)5Í)EMªIdentifierÍ)5Í):¥UtilsMªIdentifierÍ);Í)EªformatDateÂÂ’Z°MemberExpressionÍ)FÍ)WZ°MemberExpressionÍ)FÍ)OV®ThisExpressionÍ)FÍ)JMªIdentifierÍ)KÍ)O¤taskÂÂMªIdentifierÍ)PÍ)W§dueDateÂÂS§LiteralÍ)YÍ)`¥MM-DD§'MM-DD'ÂÂT³ExpressionStatementÍ)}Í)ÊU®CallExpressionÍ)}Í)ÉZ°MemberExpressionÍ)}Í)‹MªIdentifierÍ)}Í)¤TextMªIdentifierÍ)‚Í)‹©debugLineÂÂ’S§LiteralÍ)ŒÍ)¿Ù1entry/src/main/ets/components/TaskItem.ets(97:15)Ù3"entry/src/main/ets/components/TaskItem.ets(97:15)"S§LiteralÍ)ÁÍ)È¥entry§"entry"ÂT³ExpressionStatementÍ)äÍ)öU®CallExpressionÍ)äÍ)õZ°MemberExpressionÍ)äÍ)ñMªIdentifierÍ)äÍ)è¤TextMªIdentifierÍ)éÍ)ñ¨fontSizeÂÂ‘S§LiteralÍ)òÍ)ô¢12ÂT³ExpressionStatementÍ*Í*3U®CallExpressionÍ*Í*2Z°MemberExpressionÍ*Í*MªIdentifierÍ*Í*¤TextMªIdentifierÍ*Í*ªfontWeightÂÂ‘Z°MemberExpressionÍ* Í*1MªIdentifierÍ* Í**ªFontWeightMªIdentifierÍ*+Í*1¦MediumÂÂÂT³ExpressionStatementÍ*MÍ+U®CallExpressionÍ*MÍ+Z°MemberExpressionÍ*MÍ*[MªIdentifierÍ*MÍ*Q¤TextMªIdentifierÍ*RÍ*[©fontColorÂÂ‘WµConditionalExpressionÍ*\Í+U®CallExpressionÍ*\Í*qZ°MemberExpressionÍ*\Í*oZ°MemberExpressionÍ*\Í*eV®ThisExpressionÍ*\Í*`MªIdentifierÍ*aÍ*e¤taskÂÂMªIdentifierÍ*fÍ*o©isOverdueÂÂÂZ°MemberExpressionÍ*‘Í*§MªIdentifierÍ*‘Í*š©ConstantsMªIdentifierÍ*›Í*§¬COLOR_DANGERÂÂWµConditionalExpressionÍ*ÈÍ+U®CallExpressionÍ*ÈÍ*ŞZ°MemberExpressionÍ*ÈÍ*ÜZ°MemberExpressionÍ*ÈÍ*ÑV®ThisExpressionÍ*ÈÍ*ÌMªIdentifierÍ*ÍÍ*Ñ¤taskÂÂMªIdentifierÍ*ÒÍ*ÜªisDueTodayÂÂÂZ°MemberExpressionÍ*áÍ*øMªIdentifierÍ*áÍ*ê©ConstantsMªIdentifierÍ*ëÍ*ø­COLOR_WARNINGÂÂZ°MemberExpressionÍ*ûÍ+MªIdentifierÍ*ûÍ+©ConstantsMªIdentifierÍ+Í+´COLOR_TEXT_SECONDARYÂÂÂT³ExpressionStatementÍ+6Í+OU®CallExpressionÍ+6Í+NZ°MemberExpressionÍ+6Í+AMªIdentifierÍ+6Í+:¤TextMªIdentifierÍ+;Í+A¦marginÂÂ‘]°ObjectExpressionÍ+BÍ+M‘^¨PropertyÍ+DÍ+KÂÂÂMªIdentifierÍ+DÍ+H¤leftS§LiteralÍ+JÍ+K¡4¤initÂMªIdentifierÍ+hÍ+l¤TextÂT³ExpressionStatementÍ+„Í+U®CallExpressionÍ+„Í+Z°MemberExpressionÍ+„Í+ŒMªIdentifierÍ+„Í+ˆ¤TextMªIdentifierÍ+‰Í+Œ£popÂÂÂT³ExpressionStatementÍ+¥Í+¯U®CallExpressionÍ+¥Í+®Z°MemberExpressionÍ+¥Í+¬MªIdentifierÍ+¥Í+¨£RowMªIdentifierÍ+©Í+¬£popÂÂÂÂN®BlockStatementÍ+æÍ,G‘T³ExpressionStatementÍ+ùÍ,8U®CallExpressionÍ+ùÍ,7Z°MemberExpressionÍ+ùÍ,V®ThisExpressionÍ+ùÍ+ıMªIdentifierÍ+şÍ,ºifElseBranchUpdateFunctionÂÂ’S§LiteralÍ,Í,¡1P·ArrowFunctionExpressionÍ,Í,6ÀÂÂÂN®BlockStatementÍ,"Í,6ÂMªIdentifierÍ,TÍ,V¢IfÂT³ExpressionStatementÍ,bÍ,kU®CallExpressionÍ,bÍ,jZ°MemberExpressionÍ,bÍ,hMªIdentifierÍ,bÍ,d¢IfMªIdentifierÍ,eÍ,h£popÂÂÂT³ExpressionStatementÍ,uÍ-@U®CallExpressionÍ,uÍ-?Z°MemberExpressionÍ,uÍ,“V®ThisExpressionÍ,uÍ,yMªIdentifierÍ,zÍ,“¹observeComponentCreation2ÂÂ’P·ArrowFunctionExpressionÍ,”Í-7ÀÂÂÂ’MªIdentifierÍ,•Í,›¦elmtIdMªIdentifierÍ,Í,¬¯isInitialRenderN®BlockStatementÍ,±Í-7’T³ExpressionStatementÍ,ÀÍ,ÏU®CallExpressionÍ,ÀÍ,ÎZ°MemberExpressionÍ,ÀÍ,ÌMªIdentifierÍ,ÀÍ,Å¥BlankMªIdentifierÍ,ÆÍ,Ì¦createÂÂÂT³ExpressionStatementÍ,İÍ-,U®CallExpressionÍ,İÍ-+Z°MemberExpressionÍ,İÍ,ìMªIdentifierÍ,İÍ,â¥BlankMªIdentifierÍ,ãÍ,ì©debugLineÂÂ’S§LiteralÍ,íÍ-!Ù2entry/src/main/ets/components/TaskItem.ets(110:11)Ù4"entry/src/main/ets/components/TaskItem.ets(110:11)"S§LiteralÍ-#Í-*¥entry§"entry"ÂMªIdentifierÍ-9Í->¥BlankÂT³ExpressionStatementÍ-JÍ-VU®CallExpressionÍ-JÍ-UZ°MemberExpressionÍ-JÍ-SMªIdentifierÍ-JÍ-O¥BlankMªIdentifierÍ-PÍ-S£popÂÂÂT³ExpressionStatementÍ-`Í/ĞU®CallExpressionÍ-`Í/ÏZ°MemberExpressionÍ-`Í-~V®ThisExpressionÍ-`Í-dMªIdentifierÍ-eÍ-~¹observeComponentCreation2ÂÂ’P·ArrowFunctionExpressionÍ-Í/ÈÀÂÂÂ’MªIdentifierÍ-€Í-†¦elmtIdMªIdentifierÍ-ˆÍ-—¯isInitialRenderN®BlockStatementÍ-œÍ/È—T³ExpressionStatementÍ-ÀÍ-óU®CallExpressionÍ-ÀÍ-òZ°MemberExpressionÍ-ÀÍ-ËMªIdentifierÍ-ÀÍ-Ä¤TextMªIdentifierÍ-ÅÍ-Ë¦createÂÂ‘U®CallExpressionÍ-ÌÍ-ñZ°MemberExpressionÍ-ÌÍ-ßMªIdentifierÍ-ÌÍ-Ñ¥UtilsMªIdentifierÍ-ÒÍ-ß­getStatusTextÂÂ‘Z°MemberExpressionÍ-àÍ-ğZ°MemberExpressionÍ-àÍ-éV®ThisExpressionÍ-àÍ-äMªIdentifierÍ-åÍ-é¤taskÂÂMªIdentifierÍ-êÍ-ğ¦statusÂÂÂÂT³ExpressionStatementÍ.Í.OU®CallExpressionÍ.Í.NZ°MemberExpressionÍ.Í.MªIdentifierÍ.Í.¤TextMªIdentifierÍ.Í.©debugLineÂÂ’S§LiteralÍ.Í.DÙ2entry/src/main/ets/components/TaskItem.ets(113:11)Ù4"entry/src/main/ets/components/TaskItem.ets(113:11)"S§LiteralÍ.FÍ.M¥entry§"entry"ÂT³ExpressionStatementÍ.rÍ.„U®CallExpressionÍ.rÍ.ƒZ°MemberExpressionÍ.rÍ.MªIdentifierÍ.rÍ.v¤TextMªIdentifierÍ.wÍ.¨fontSizeÂÂ‘S§LiteralÍ.€Í.‚¢11ÂT³ExpressionStatementÍ.§Í.ÖU®CallExpressionÍ.§Í.ÕZ°MemberExpressionÍ.§Í.µMªIdentifierÍ.§Í.«¤TextMªIdentifierÍ.¬Í.µ©fontColorÂÂ‘Z°MemberExpressionÍ.¶Í.ÔMªIdentifierÍ.¶Í.¿©ConstantsMªIdentifierÍ.ÀÍ.Ô´COLOR_TEXT_SECONDARYÂÂÂT³ExpressionStatementÍ.ùÍ/*U®CallExpressionÍ.ùÍ/)Z°MemberExpressionÍ.ùÍ/MªIdentifierÍ.ùÍ.ı¤TextMªIdentifierÍ.şÍ/¯backgroundColorÂÂ‘Z°MemberExpressionÍ/Í/(MªIdentifierÍ/Í/©ConstantsMªIdentifierÍ/Í/(°COLOR_BACKGROUNDÂÂÂT³ExpressionStatementÍ/MÍ/„U®CallExpressionÍ/MÍ/ƒZ°MemberExpressionÍ/MÍ/YMªIdentifierÍ/MÍ/Q¤TextMªIdentifierÍ/RÍ/Y§paddingÂÂ‘]°ObjectExpressionÍ/ZÍ/‚”^¨PropertyÍ/\Í/cÂÂÂMªIdentifierÍ/\Í/`¤leftS§LiteralÍ/bÍ/c¡8¤init^¨PropertyÍ/eÍ/mÂÂÂMªIdentifierÍ/eÍ/j¥rightS§LiteralÍ/lÍ/m¡8¤init^¨PropertyÍ/oÍ/uÂÂÂMªIdentifierÍ/oÍ/r£topS§LiteralÍ/tÍ/u¡3¤init^¨PropertyÍ/wÍ/€ÂÂÂMªIdentifierÍ/wÍ/}¦bottomS§LiteralÍ/Í/€¡3¤initÂT³ExpressionStatementÍ/§Í/½U®CallExpressionÍ/§Í/¼Z°MemberExpressionÍ/§Í/¸MªIdentifierÍ/§Í/«¤TextMªIdentifierÍ/¬Í/¸¬borderRadiusÂÂ‘S§LiteralÍ/¹Í/»
+¢10ÂMªIdentifierÍ/ÊÍ/Î¤TextÂT³ExpressionStatementÍ/ëÍ/öU®CallExpressionÍ/ëÍ/õZ°MemberExpressionÍ/ëÍ/óMªIdentifierÍ/ëÍ/ï¤TextMªIdentifierÍ/ğÍ/ó£popÂÂÂT³ExpressionStatementÍ0Í0U®CallExpressionÍ0Í0Z°MemberExpressionÍ0Í0MªIdentifierÍ0Í0£RowMªIdentifierÍ0Í0£popÂÂÂT³ExpressionStatementÍ09Í0FU®CallExpressionÍ09Í0EZ°MemberExpressionÍ09Í0CMªIdentifierÍ09Í0?¦ColumnMªIdentifierÍ0@Í0C£popÂÂÂT³ExpressionStatementÍ0PÍ3	U®CallExpressionÍ0PÍ3Z°MemberExpressionÍ0PÍ0nV®ThisExpressionÍ0PÍ0TMªIdentifierÍ0UÍ0n¹observeComponentCreation2ÂÂ’P·ArrowFunctionExpressionÍ0oÍ2ÿÀÂÂÂ’MªIdentifierÍ0pÍ0v¦elmtIdMªIdentifierÍ0xÍ0‡¯isInitialRenderN®BlockStatementÍ0ŒÍ2ÿ˜T³ExpressionStatementÍ0°Í0ÀU®CallExpressionÍ0°Í0¿Z°MemberExpressionÍ0°Í0½MªIdentifierÍ0°Í0¶¦ColumnMªIdentifierÍ0·Í0½¦createÂÂÂT³ExpressionStatementÍ0ÎÍ1U®CallExpressionÍ0ÎÍ1Z°MemberExpressionÍ0ÎÍ0ŞMªIdentifierÍ0ÎÍ0Ô¦ColumnMªIdentifierÍ0ÕÍ0Ş©debugLineÂÂ’S§LiteralÍ0ßÍ1Ù1entry/src/main/ets/components/TaskItem.ets(131:7)Ù3"entry/src/main/ets/components/TaskItem.ets(131:7)"S§LiteralÍ1Í1¥entry§"entry"ÂT³ExpressionStatementÍ1@Í1QU®CallExpressionÍ1@Í1PZ°MemberExpressionÍ1@Í1LMªIdentifierÍ1@Í1F¦ColumnMªIdentifierÍ1GÍ1L¥widthÂÂ‘S§LiteralÍ1MÍ1O ¢32ÂT³ExpressionStatementÍ1tÍ1†U®CallExpressionÍ1tÍ1…Z°MemberExpressionÍ1tÍ1MªIdentifierÍ1tÍ1z¦ColumnMªIdentifierÍ1{Í1¦heightÂÂ‘S§LiteralÍ1‚Í1„ ¢32ÂT³ExpressionStatementÍ1©Í1ÁU®CallExpressionÍ1©Í1ÀZ°MemberExpressionÍ1©Í1¼MªIdentifierÍ1©Í1¯¦ColumnMªIdentifierÍ1°Í1¼¬borderRadiusÂÂ‘S§LiteralÍ1½Í1¿¢16ÂT³ExpressionStatementÍ1äÍ2U®CallExpressionÍ1äÍ2Z°MemberExpressionÍ1äÍ1úMªIdentifierÍ1äÍ1ê¦ColumnMªIdentifierÍ1ëÍ1ú¯backgroundColorÂÂ‘Z°MemberExpressionÍ1ûÍ2MªIdentifierÍ1ûÍ2©ConstantsMªIdentifierÍ2Í2°COLOR_BACKGROUNDÂÂÂT³ExpressionStatementÍ2:Í2bU®CallExpressionÍ2:Í2aZ°MemberExpressionÍ2:Í2OMªIdentifierÍ2:Í2@¦ColumnMªIdentifierÍ2AÍ2O®justifyContentÂÂ‘Z°MemberExpressionÍ2PÍ2`MªIdentifierÍ2PÍ2Y©FlexAlignMªIdentifierÍ2ZÍ2`¦CenterÂÂÂT³ExpressionStatementÍ2…Í2ôU®CallExpressionÍ2…Í2óZ°MemberExpressionÍ2…Í2“MªIdentifierÍ2…Í2‹¦ColumnMªIdentifierÍ2ŒÍ2“§onClickÂÂ‘P·ArrowFunctionExpressionÍ2”Í2òÀÂÂÂN®BlockStatementÍ2šÍ2ò‘T³ExpressionStatementÍ2­Í2ãU®CallExpressionÍ2­Í2âZ°MemberExpressionÍ2­Í2ºV®ThisExpressionÍ2­Í2±MªIdentifierÍ2²Í2º¨onDeleteÂÂ‘U®CallExpressionÍ2»Í2áZ°MemberExpressionÍ2»Í2ÖMªIdentifierÍ2»Í2É®ObservedObjectMªIdentifierÍ2ÊÍ2Ö¬GetRawObjectÂÂ‘Z°MemberExpressionÍ2×Í2àV®ThisExpressionÍ2×Í2ÛMªIdentifierÍ2ÜÍ2à¤taskÂÂÂÂÂMªIdentifierÍ3Í3¦ColumnÂT³ExpressionStatementÍ3Í4:U®CallExpressionÍ3Í49Z°MemberExpressionÍ3Í31V®ThisExpressionÍ3Í3MªIdentifierÍ3Í31¹observeComponentCreation2ÂÂ’P·ArrowFunctionExpressionÍ32Í42ÀÂÂÂ’MªIdentifierÍ33Í39¦elmtIdMªIdentifierÍ3;Í3J¯isInitialRenderN®BlockStatementÍ3OÍ42”T³ExpressionStatementÍ3^Í3oU®CallExpressionÍ3^Í3nZ°MemberExpressionÍ3^Í3iMªIdentifierÍ3^Í3b¤TextMªIdentifierÍ3cÍ3i¦createÂÂ‘S§LiteralÍ3jÍ3m¢Ã—¤'Ã—'ÂT³ExpressionStatementÍ3}Í3ÊU®CallExpressionÍ3}Í3ÉZ°MemberExpressionÍ3}Í3‹MªIdentifierÍ3}Í3¤TextMªIdentifierÍ3‚Í3‹©debugLineÂÂ’S§LiteralÍ3ŒÍ3¿Ù1entry/src/main/ets/components/TaskItem.ets(132:9)Ù3"entry/src/main/ets/components/TaskItem.ets(132:9)"S§LiteralÍ3ÁÍ3È¥entry§"entry"ÂT³ExpressionStatementÍ3ØÍ3êU®CallExpressionÍ3ØÍ3éZ°MemberExpressionÍ3ØÍ3åMªIdentifierÍ3ØÍ3Ü¤TextMªIdentifierÍ3İÍ3å¨fontSizeÂÂ‘S§LiteralÍ3æÍ3è¢18ÂT³ExpressionStatementÍ3øÍ4'U®CallExpressionÍ3øÍ4&Z°MemberExpressionÍ3øÍ4MªIdentifierÍ3øÍ3ü¤TextMªIdentifierÍ3ıÍ4©fontColorÂÂ‘Z°MemberExpressionÍ4Í4%MªIdentifierÍ4Í4©ConstantsMªIdentifierÍ4Í4%´COLOR_TEXT_SECONDARYÂÂÂMªIdentifierÍ44Í48¤TextÂT³ExpressionStatementÍ4DÍ4OU®CallExpressionÍ4DÍ4NZ°MemberExpressionÍ4DÍ4LMªIdentifierÍ4DÍ4H¤TextMªIdentifierÍ4IÍ4L£popÂÂÂT³ExpressionStatementÍ4jÍ4wU®CallExpressionÍ4jÍ4vZ°MemberExpressionÍ4jÍ4tMªIdentifierÍ4jÍ4p¦ColumnMªIdentifierÍ4qÍ4t£popÂÂÂT³ExpressionStatementÍ4Í4‹U®CallExpressionÍ4Í4ŠZ°MemberExpressionÍ4Í4ˆMªIdentifierÍ4Í4„£RowMªIdentifierÍ4…Í4ˆ£popÂÂÂO°MethodDefinitionÍ4˜Í4ĞÂÂMªIdentifierÍ4˜Í4 ¨rerender¦methodP²FunctionExpressionÍ4 Í4ĞÀÂÂÂN®BlockStatementÍ4£Í4Ğ‘T³ExpressionStatementÍ4®Í4ÉU®CallExpressionÍ4®Í4ÈZ°MemberExpressionÍ4®Í4ÆV®ThisExpressionÍ4®Í4²MªIdentifierÍ4³Í4Æ³updateDirtyElementsÂÂÂÀ“Ôr_•¤type¥start£endªspecifiers¦source±ImportDeclarationÌ€Ì¥‘Ôr`•¤type¥start£end¨imported¥local¯ImportSpecifierÌ‰ÌMªIdentifierÌ‰Ì¤TaskMªIdentifierÌ‰Ì¤TaskS§LiteralÌ•Ì¤­../model/Task¯'../model/Task'_±ImportDeclarationÌ§ÌÏ‘`¯ImportSpecifierÌ°ÌµMªIdentifierÌ°Ìµ¥UtilsMªIdentifierÌ°Ìµ¥UtilsS§LiteralÌ½ÌÎ¯../common/Utils±'../common/Utils'_±ImportDeclarationÌÑÍ‘`¯ImportSpecifierÌÚÌãMªIdentifierÌÚÌã©ConstantsMªIdentifierÌÚÌã©ConstantsS§LiteralÌëÍ ³../common/Constantsµ'../common/Constants'

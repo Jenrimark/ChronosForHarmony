@@ -27,6 +27,8 @@ import { Constants } from "@normalized:N&&&entry/src/main/ets/common/Constants&"
 import { Utils } from "@normalized:N&&&entry/src/main/ets/common/Utils&";
 import promptAction from "@ohos:promptAction";
 import { CalendarComponent } from "@normalized:N&&&entry/src/main/ets/components/CalendarComponent&";
+import { IconComponent, IconType } from "@normalized:N&&&entry/src/main/ets/components/IconComponent&";
+import { ButtonAnimationUtils } from "@normalized:N&&&entry/src/main/ets/utils/AnimationUtils&";
 export class Tasks extends ViewPU {
     constructor(parent, params, __localStorage, elmtId = -1, paramsLambda = undefined, extraInfo) {
         super(parent, __localStorage, elmtId, extraInfo);
@@ -474,13 +476,13 @@ export class Tasks extends ViewPU {
     initialRender() {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Stack.create();
-            Stack.debugLine("entry/src/main/ets/pages/Tasks.ets(255:5)", "entry");
+            Stack.debugLine("entry/src/main/ets/pages/Tasks.ets(258:5)", "entry");
             Stack.width('100%');
             Stack.height('100%');
         }, Stack);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Column.create();
-            Column.debugLine("entry/src/main/ets/pages/Tasks.ets(256:7)", "entry");
+            Column.debugLine("entry/src/main/ets/pages/Tasks.ets(259:7)", "entry");
             Column.width('100%');
             Column.height('100%');
             Column.backgroundColor(Constants.COLOR_BACKGROUND);
@@ -488,7 +490,7 @@ export class Tasks extends ViewPU {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             // 统计数据卡片 - 直接内联渲染以确保响应式更新
             Row.create();
-            Row.debugLine("entry/src/main/ets/pages/Tasks.ets(258:9)", "entry");
+            Row.debugLine("entry/src/main/ets/pages/Tasks.ets(261:9)", "entry");
             // 统计数据卡片 - 直接内联渲染以确保响应式更新
             Row.width('100%');
             // 统计数据卡片 - 直接内联渲染以确保响应式更新
@@ -499,7 +501,7 @@ export class Tasks extends ViewPU {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             // 全部任务卡片
             Column.create();
-            Column.debugLine("entry/src/main/ets/pages/Tasks.ets(260:11)", "entry");
+            Column.debugLine("entry/src/main/ets/pages/Tasks.ets(263:11)", "entry");
             // 全部任务卡片
             Column.layoutWeight(1);
             // 全部任务卡片
@@ -522,7 +524,7 @@ export class Tasks extends ViewPU {
         }, Column);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Text.create(this.totalCount.toString());
-            Text.debugLine("entry/src/main/ets/pages/Tasks.ets(261:13)", "entry");
+            Text.debugLine("entry/src/main/ets/pages/Tasks.ets(264:13)", "entry");
             Text.fontSize(28);
             Text.fontWeight(FontWeight.Bold);
             Text.fontColor(Constants.COLOR_PRIMARY);
@@ -531,7 +533,7 @@ export class Tasks extends ViewPU {
         Text.pop();
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Text.create('全部任务');
-            Text.debugLine("entry/src/main/ets/pages/Tasks.ets(266:13)", "entry");
+            Text.debugLine("entry/src/main/ets/pages/Tasks.ets(269:13)", "entry");
             Text.fontSize(13);
             Text.fontColor(Constants.COLOR_TEXT_SECONDARY);
         }, Text);
@@ -541,7 +543,7 @@ export class Tasks extends ViewPU {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             // 已完成卡片
             Column.create();
-            Column.debugLine("entry/src/main/ets/pages/Tasks.ets(284:11)", "entry");
+            Column.debugLine("entry/src/main/ets/pages/Tasks.ets(287:11)", "entry");
             // 已完成卡片
             Column.layoutWeight(1);
             // 已完成卡片
@@ -564,7 +566,7 @@ export class Tasks extends ViewPU {
         }, Column);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Text.create(this.completedCount.toString());
-            Text.debugLine("entry/src/main/ets/pages/Tasks.ets(285:13)", "entry");
+            Text.debugLine("entry/src/main/ets/pages/Tasks.ets(288:13)", "entry");
             Text.fontSize(28);
             Text.fontWeight(FontWeight.Bold);
             Text.fontColor(Constants.COLOR_SUCCESS);
@@ -573,7 +575,7 @@ export class Tasks extends ViewPU {
         Text.pop();
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Text.create('已完成');
-            Text.debugLine("entry/src/main/ets/pages/Tasks.ets(290:13)", "entry");
+            Text.debugLine("entry/src/main/ets/pages/Tasks.ets(293:13)", "entry");
             Text.fontSize(13);
             Text.fontColor(Constants.COLOR_TEXT_SECONDARY);
         }, Text);
@@ -583,7 +585,7 @@ export class Tasks extends ViewPU {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             // 未完成卡片
             Column.create();
-            Column.debugLine("entry/src/main/ets/pages/Tasks.ets(308:11)", "entry");
+            Column.debugLine("entry/src/main/ets/pages/Tasks.ets(311:11)", "entry");
             // 未完成卡片
             Column.layoutWeight(1);
             // 未完成卡片
@@ -606,7 +608,7 @@ export class Tasks extends ViewPU {
         }, Column);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Text.create(this.pendingCount.toString());
-            Text.debugLine("entry/src/main/ets/pages/Tasks.ets(309:13)", "entry");
+            Text.debugLine("entry/src/main/ets/pages/Tasks.ets(312:13)", "entry");
             Text.fontSize(28);
             Text.fontWeight(FontWeight.Bold);
             Text.fontColor(Constants.COLOR_WARNING);
@@ -615,7 +617,7 @@ export class Tasks extends ViewPU {
         Text.pop();
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Text.create('未完成');
-            Text.debugLine("entry/src/main/ets/pages/Tasks.ets(314:13)", "entry");
+            Text.debugLine("entry/src/main/ets/pages/Tasks.ets(317:13)", "entry");
             Text.fontSize(13);
             Text.fontColor(Constants.COLOR_TEXT_SECONDARY);
         }, Text);
@@ -627,31 +629,72 @@ export class Tasks extends ViewPU {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             // 搜索框
             Row.create();
-            Row.debugLine("entry/src/main/ets/pages/Tasks.ets(336:9)", "entry");
+            Row.debugLine("entry/src/main/ets/pages/Tasks.ets(339:9)", "entry");
             // 搜索框
             Row.width('100%');
             // 搜索框
-            Row.padding({ left: 16, right: 16, top: 0, bottom: 12 });
+            Row.padding({ left: Constants.SPACING_MD, right: Constants.SPACING_MD, bottom: Constants.SPACING_SM });
         }, Row);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Row.create();
+            Row.debugLine("entry/src/main/ets/pages/Tasks.ets(340:11)", "entry");
+            Row.width('100%');
+            Row.height(44);
+            Row.padding({ left: Constants.SPACING_MD, right: Constants.SPACING_MD });
+            Row.backgroundColor(Constants.COLOR_CARD_BACKGROUND);
+            Row.borderRadius(Constants.BORDER_RADIUS_XL);
+        }, Row);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            __Common__.create();
+            __Common__.margin({ right: Constants.SPACING_SM });
+        }, __Common__);
+        {
+            this.observeComponentCreation2((elmtId, isInitialRender) => {
+                if (isInitialRender) {
+                    let componentCall = new IconComponent(this, {
+                        iconType: IconType.SEARCH,
+                        iconSize: 18,
+                        iconColor: Constants.COLOR_TEXT_TERTIARY
+                    }, undefined, elmtId, () => { }, { page: "entry/src/main/ets/pages/Tasks.ets", line: 341, col: 13 });
+                    ViewPU.create(componentCall);
+                    let paramsLambda = () => {
+                        return {
+                            iconType: IconType.SEARCH,
+                            iconSize: 18,
+                            iconColor: Constants.COLOR_TEXT_TERTIARY
+                        };
+                    };
+                    componentCall.paramsGenerator_ = paramsLambda;
+                }
+                else {
+                    this.updateStateVarsOfChildByElmtId(elmtId, {
+                        iconType: IconType.SEARCH,
+                        iconSize: 18,
+                        iconColor: Constants.COLOR_TEXT_TERTIARY
+                    });
+                }
+            }, { name: "IconComponent" });
+        }
+        __Common__.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
             TextInput.create({ placeholder: '搜索任务...', text: this.searchKeyword });
-            TextInput.debugLine("entry/src/main/ets/pages/Tasks.ets(337:11)", "entry");
+            TextInput.debugLine("entry/src/main/ets/pages/Tasks.ets(348:13)", "entry");
             TextInput.layoutWeight(1);
             TextInput.height(40);
-            TextInput.fontSize(14);
-            TextInput.backgroundColor(Constants.COLOR_CARD_BACKGROUND);
-            TextInput.borderRadius(20);
-            TextInput.padding({ left: 16, right: 16 });
+            TextInput.fontSize(Constants.FONT_SIZE_SM);
+            TextInput.backgroundColor('transparent');
+            TextInput.border({ width: 0 });
             TextInput.onChange((value: string) => {
                 this.onSearchChange(value);
             });
         }, TextInput);
+        Row.pop();
         // 搜索框
         Row.pop();
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             // 筛选标签栏
             Row.create();
-            Row.debugLine("entry/src/main/ets/pages/Tasks.ets(352:9)", "entry");
+            Row.debugLine("entry/src/main/ets/pages/Tasks.ets(368:9)", "entry");
             // 筛选标签栏
             Row.width('100%');
             // 筛选标签栏
@@ -668,7 +711,7 @@ export class Tasks extends ViewPU {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             // 排序方式选择
             Row.create();
-            Row.debugLine("entry/src/main/ets/pages/Tasks.ets(363:9)", "entry");
+            Row.debugLine("entry/src/main/ets/pages/Tasks.ets(379:9)", "entry");
             // 排序方式选择
             Row.width('100%');
             // 排序方式选择
@@ -678,7 +721,7 @@ export class Tasks extends ViewPU {
         }, Row);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Text.create('排序方式：');
-            Text.debugLine("entry/src/main/ets/pages/Tasks.ets(364:11)", "entry");
+            Text.debugLine("entry/src/main/ets/pages/Tasks.ets(380:11)", "entry");
             Text.fontSize(14);
             Text.fontColor(Constants.COLOR_TEXT_SECONDARY);
             Text.margin({ right: 12 });
@@ -692,7 +735,7 @@ export class Tasks extends ViewPU {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             // 任务列表 - 可滚动区域
             Scroll.create();
-            Scroll.debugLine("entry/src/main/ets/pages/Tasks.ets(378:9)", "entry");
+            Scroll.debugLine("entry/src/main/ets/pages/Tasks.ets(394:9)", "entry");
             // 任务列表 - 可滚动区域
             Scroll.width('100%');
             // 任务列表 - 可滚动区域
@@ -706,7 +749,7 @@ export class Tasks extends ViewPU {
                 this.ifElseBranchUpdateFunction(0, () => {
                     this.observeComponentCreation2((elmtId, isInitialRender) => {
                         Column.create();
-                        Column.debugLine("entry/src/main/ets/pages/Tasks.ets(380:13)", "entry");
+                        Column.debugLine("entry/src/main/ets/pages/Tasks.ets(396:13)", "entry");
                         Column.width('100%');
                         Column.height('100%');
                         Column.justifyContent(FlexAlign.Center);
@@ -714,7 +757,7 @@ export class Tasks extends ViewPU {
                     }, Column);
                     this.observeComponentCreation2((elmtId, isInitialRender) => {
                         Text.create(this.searchKeyword ? '未找到匹配的任务' : '暂无任务');
-                        Text.debugLine("entry/src/main/ets/pages/Tasks.ets(381:15)", "entry");
+                        Text.debugLine("entry/src/main/ets/pages/Tasks.ets(397:15)", "entry");
                         Text.fontSize(16);
                         Text.fontColor(Constants.COLOR_TEXT_SECONDARY);
                     }, Text);
@@ -726,7 +769,7 @@ export class Tasks extends ViewPU {
                 this.ifElseBranchUpdateFunction(1, () => {
                     this.observeComponentCreation2((elmtId, isInitialRender) => {
                         Column.create();
-                        Column.debugLine("entry/src/main/ets/pages/Tasks.ets(390:13)", "entry");
+                        Column.debugLine("entry/src/main/ets/pages/Tasks.ets(406:13)", "entry");
                         Column.width('100%');
                         Column.padding({ left: 16, right: 16, bottom: 80 });
                     }, Column);
@@ -742,7 +785,7 @@ export class Tasks extends ViewPU {
                                             onComplete: (t: Task) => this.onTaskComplete(t),
                                             onDelete: (t: Task) => this.onTaskDelete(t),
                                             onTap: (t: Task) => this.onTaskTap(t)
-                                        }, undefined, elmtId, () => { }, { page: "entry/src/main/ets/pages/Tasks.ets", line: 392, col: 17 });
+                                        }, undefined, elmtId, () => { }, { page: "entry/src/main/ets/pages/Tasks.ets", line: 408, col: 17 });
                                         ViewPU.create(componentCall);
                                         let paramsLambda = () => {
                                             return {
@@ -775,8 +818,9 @@ export class Tasks extends ViewPU {
         Column.pop();
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             // 添加按钮 - 悬浮在最上层
-            Button.createWithLabel('+');
-            Button.debugLine("entry/src/main/ets/pages/Tasks.ets(413:7)", "entry");
+            Button.createWithChild();
+            Button.debugLine("entry/src/main/ets/pages/Tasks.ets(429:7)", "entry");
+            Context.animation(ButtonAnimationUtils.hover());
             // 添加按钮 - 悬浮在最上层
             Button.type(ButtonType.Circle);
             // 添加按钮 - 悬浮在最上层
@@ -784,17 +828,11 @@ export class Tasks extends ViewPU {
             // 添加按钮 - 悬浮在最上层
             Button.height(60);
             // 添加按钮 - 悬浮在最上层
-            Button.fontSize(36);
-            // 添加按钮 - 悬浮在最上层
-            Button.fontWeight(FontWeight.Medium);
-            // 添加按钮 - 悬浮在最上层
-            Button.fontColor('#FFFFFF');
-            // 添加按钮 - 悬浮在最上层
             Button.backgroundColor(Constants.COLOR_PRIMARY);
             // 添加按钮 - 悬浮在最上层
             Button.shadow({
                 radius: 12,
-                color: 'rgba(255, 107, 53, 0.4)',
+                color: Constants.COLOR_SHADOW_PRIMARY,
                 offsetX: 0,
                 offsetY: 4
             });
@@ -803,10 +841,38 @@ export class Tasks extends ViewPU {
             // 添加按钮 - 悬浮在最上层
             Button.translate({ x: -80, y: -80 });
             // 添加按钮 - 悬浮在最上层
-            Button.zIndex(1000);
+            Button.zIndex(Constants.Z_INDEX_MODAL);
             // 添加按钮 - 悬浮在最上层
             Button.onClick(() => this.showAddTaskDialog());
+            Context.animation(null);
         }, Button);
+        {
+            this.observeComponentCreation2((elmtId, isInitialRender) => {
+                if (isInitialRender) {
+                    let componentCall = new IconComponent(this, {
+                        iconType: IconType.ADD,
+                        iconSize: 28,
+                        iconColor: Constants.COLOR_TEXT_ON_PRIMARY
+                    }, undefined, elmtId, () => { }, { page: "entry/src/main/ets/pages/Tasks.ets", line: 430, col: 9 });
+                    ViewPU.create(componentCall);
+                    let paramsLambda = () => {
+                        return {
+                            iconType: IconType.ADD,
+                            iconSize: 28,
+                            iconColor: Constants.COLOR_TEXT_ON_PRIMARY
+                        };
+                    };
+                    componentCall.paramsGenerator_ = paramsLambda;
+                }
+                else {
+                    this.updateStateVarsOfChildByElmtId(elmtId, {
+                        iconType: IconType.ADD,
+                        iconSize: 28,
+                        iconColor: Constants.COLOR_TEXT_ON_PRIMARY
+                    });
+                }
+            }, { name: "IconComponent" });
+        }
         // 添加按钮 - 悬浮在最上层
         Button.pop();
         this.observeComponentCreation2((elmtId, isInitialRender) => {
@@ -858,7 +924,7 @@ export class Tasks extends ViewPU {
     buildTaskDetailDialog(parent = null) {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Column.create();
-            Column.debugLine("entry/src/main/ets/pages/Tasks.ets(453:5)", "entry");
+            Column.debugLine("entry/src/main/ets/pages/Tasks.ets(473:5)", "entry");
             Column.width('100%');
             Column.height('100%');
             Column.backgroundColor('rgba(0, 0, 0, 0.5)');
@@ -870,7 +936,7 @@ export class Tasks extends ViewPU {
         }, Column);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Column.create();
-            Column.debugLine("entry/src/main/ets/pages/Tasks.ets(454:7)", "entry");
+            Column.debugLine("entry/src/main/ets/pages/Tasks.ets(474:7)", "entry");
             Column.width('90%');
             Column.padding(24);
             Column.backgroundColor('#FFFFFF');
@@ -885,7 +951,7 @@ export class Tasks extends ViewPU {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             // 对话框标题
             Row.create();
-            Row.debugLine("entry/src/main/ets/pages/Tasks.ets(456:9)", "entry");
+            Row.debugLine("entry/src/main/ets/pages/Tasks.ets(476:9)", "entry");
             // 对话框标题
             Row.width('100%');
             // 对话框标题
@@ -893,34 +959,58 @@ export class Tasks extends ViewPU {
         }, Row);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Text.create('任务详情');
-            Text.debugLine("entry/src/main/ets/pages/Tasks.ets(457:11)", "entry");
-            Text.fontSize(20);
+            Text.debugLine("entry/src/main/ets/pages/Tasks.ets(477:11)", "entry");
+            Text.fontSize(Constants.FONT_SIZE_XL);
             Text.fontWeight(FontWeight.Bold);
             Text.fontColor(Constants.COLOR_TEXT_PRIMARY);
         }, Text);
         Text.pop();
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Blank.create();
-            Blank.debugLine("entry/src/main/ets/pages/Tasks.ets(462:11)", "entry");
+            Blank.debugLine("entry/src/main/ets/pages/Tasks.ets(482:11)", "entry");
         }, Blank);
         Blank.pop();
         this.observeComponentCreation2((elmtId, isInitialRender) => {
-            Text.create('×');
-            Text.debugLine("entry/src/main/ets/pages/Tasks.ets(464:11)", "entry");
-            Text.fontSize(24);
-            Text.fontColor(Constants.COLOR_TEXT_SECONDARY);
-            Text.onClick(() => {
+            __Common__.create();
+            __Common__.onClick(() => {
                 this.showDetailDialog = false;
                 this.selectedTask = null;
             });
-        }, Text);
-        Text.pop();
+        }, __Common__);
+        {
+            this.observeComponentCreation2((elmtId, isInitialRender) => {
+                if (isInitialRender) {
+                    let componentCall = new IconComponent(this, {
+                        iconType: IconType.CLOSE,
+                        iconSize: 24,
+                        iconColor: Constants.COLOR_TEXT_SECONDARY
+                    }, undefined, elmtId, () => { }, { page: "entry/src/main/ets/pages/Tasks.ets", line: 484, col: 11 });
+                    ViewPU.create(componentCall);
+                    let paramsLambda = () => {
+                        return {
+                            iconType: IconType.CLOSE,
+                            iconSize: 24,
+                            iconColor: Constants.COLOR_TEXT_SECONDARY
+                        };
+                    };
+                    componentCall.paramsGenerator_ = paramsLambda;
+                }
+                else {
+                    this.updateStateVarsOfChildByElmtId(elmtId, {
+                        iconType: IconType.CLOSE,
+                        iconSize: 24,
+                        iconColor: Constants.COLOR_TEXT_SECONDARY
+                    });
+                }
+            }, { name: "IconComponent" });
+        }
+        __Common__.pop();
         // 对话框标题
         Row.pop();
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             // 任务标题
             Text.create(this.selectedTask?.title || '');
-            Text.debugLine("entry/src/main/ets/pages/Tasks.ets(476:9)", "entry");
+            Text.debugLine("entry/src/main/ets/pages/Tasks.ets(498:9)", "entry");
             // 任务标题
             Text.fontSize(18);
             // 任务标题
@@ -941,7 +1031,7 @@ export class Tasks extends ViewPU {
                 this.ifElseBranchUpdateFunction(0, () => {
                     this.observeComponentCreation2((elmtId, isInitialRender) => {
                         Text.create(this.selectedTask.description);
-                        Text.debugLine("entry/src/main/ets/pages/Tasks.ets(485:11)", "entry");
+                        Text.debugLine("entry/src/main/ets/pages/Tasks.ets(507:11)", "entry");
                         Text.fontSize(14);
                         Text.fontColor(Constants.COLOR_TEXT_SECONDARY);
                         Text.width('100%');
@@ -960,7 +1050,7 @@ export class Tasks extends ViewPU {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             // 详情信息
             Column.create();
-            Column.debugLine("entry/src/main/ets/pages/Tasks.ets(493:9)", "entry");
+            Column.debugLine("entry/src/main/ets/pages/Tasks.ets(515:9)", "entry");
             // 详情信息
             Column.width('100%');
             // 详情信息
@@ -975,7 +1065,7 @@ export class Tasks extends ViewPU {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             // 状态
             Row.create();
-            Row.debugLine("entry/src/main/ets/pages/Tasks.ets(495:11)", "entry");
+            Row.debugLine("entry/src/main/ets/pages/Tasks.ets(517:11)", "entry");
             // 状态
             Row.width('100%');
             // 状态
@@ -983,7 +1073,7 @@ export class Tasks extends ViewPU {
         }, Row);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Text.create('状态');
-            Text.debugLine("entry/src/main/ets/pages/Tasks.ets(496:13)", "entry");
+            Text.debugLine("entry/src/main/ets/pages/Tasks.ets(518:13)", "entry");
             Text.fontSize(14);
             Text.fontColor(Constants.COLOR_TEXT_SECONDARY);
             Text.width(80);
@@ -991,7 +1081,7 @@ export class Tasks extends ViewPU {
         Text.pop();
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Text.create(Utils.getStatusText(this.selectedTask?.status || ''));
-            Text.debugLine("entry/src/main/ets/pages/Tasks.ets(500:13)", "entry");
+            Text.debugLine("entry/src/main/ets/pages/Tasks.ets(522:13)", "entry");
             Text.fontSize(14);
             Text.fontColor(Constants.COLOR_TEXT_PRIMARY);
         }, Text);
@@ -1001,7 +1091,7 @@ export class Tasks extends ViewPU {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             // 优先级
             Row.create();
-            Row.debugLine("entry/src/main/ets/pages/Tasks.ets(508:11)", "entry");
+            Row.debugLine("entry/src/main/ets/pages/Tasks.ets(530:11)", "entry");
             // 优先级
             Row.width('100%');
             // 优先级
@@ -1009,7 +1099,7 @@ export class Tasks extends ViewPU {
         }, Row);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Text.create('优先级');
-            Text.debugLine("entry/src/main/ets/pages/Tasks.ets(509:13)", "entry");
+            Text.debugLine("entry/src/main/ets/pages/Tasks.ets(531:13)", "entry");
             Text.fontSize(14);
             Text.fontColor(Constants.COLOR_TEXT_SECONDARY);
             Text.width(80);
@@ -1017,7 +1107,7 @@ export class Tasks extends ViewPU {
         Text.pop();
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Text.create(Utils.getPriorityText(this.selectedTask?.priority || 1));
-            Text.debugLine("entry/src/main/ets/pages/Tasks.ets(513:13)", "entry");
+            Text.debugLine("entry/src/main/ets/pages/Tasks.ets(535:13)", "entry");
             Text.fontSize(14);
             Text.fontColor(Utils.getPriorityColor(this.selectedTask?.priority || 1));
             Text.fontWeight(FontWeight.Medium);
@@ -1032,13 +1122,13 @@ export class Tasks extends ViewPU {
                 this.ifElseBranchUpdateFunction(0, () => {
                     this.observeComponentCreation2((elmtId, isInitialRender) => {
                         Row.create();
-                        Row.debugLine("entry/src/main/ets/pages/Tasks.ets(523:13)", "entry");
+                        Row.debugLine("entry/src/main/ets/pages/Tasks.ets(545:13)", "entry");
                         Row.width('100%');
                         Row.padding({ top: 10, bottom: 10 });
                     }, Row);
                     this.observeComponentCreation2((elmtId, isInitialRender) => {
                         Text.create('截止日期');
-                        Text.debugLine("entry/src/main/ets/pages/Tasks.ets(524:15)", "entry");
+                        Text.debugLine("entry/src/main/ets/pages/Tasks.ets(546:15)", "entry");
                         Text.fontSize(14);
                         Text.fontColor(Constants.COLOR_TEXT_SECONDARY);
                         Text.width(80);
@@ -1046,7 +1136,7 @@ export class Tasks extends ViewPU {
                     Text.pop();
                     this.observeComponentCreation2((elmtId, isInitialRender) => {
                         Text.create(Utils.formatDate(this.selectedTask.dueDate, 'YYYY-MM-DD'));
-                        Text.debugLine("entry/src/main/ets/pages/Tasks.ets(528:15)", "entry");
+                        Text.debugLine("entry/src/main/ets/pages/Tasks.ets(550:15)", "entry");
                         Text.fontSize(14);
                         Text.fontColor(this.selectedTask.isOverdue()
                             ? Constants.COLOR_DANGER
@@ -1066,7 +1156,7 @@ export class Tasks extends ViewPU {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             // 创建时间
             Row.create();
-            Row.debugLine("entry/src/main/ets/pages/Tasks.ets(541:11)", "entry");
+            Row.debugLine("entry/src/main/ets/pages/Tasks.ets(563:11)", "entry");
             // 创建时间
             Row.width('100%');
             // 创建时间
@@ -1074,7 +1164,7 @@ export class Tasks extends ViewPU {
         }, Row);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Text.create('创建时间');
-            Text.debugLine("entry/src/main/ets/pages/Tasks.ets(542:13)", "entry");
+            Text.debugLine("entry/src/main/ets/pages/Tasks.ets(564:13)", "entry");
             Text.fontSize(14);
             Text.fontColor(Constants.COLOR_TEXT_SECONDARY);
             Text.width(80);
@@ -1082,7 +1172,7 @@ export class Tasks extends ViewPU {
         Text.pop();
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Text.create(Utils.formatDate(this.selectedTask?.createTime || new Date(), 'YYYY-MM-DD HH:mm'));
-            Text.debugLine("entry/src/main/ets/pages/Tasks.ets(546:13)", "entry");
+            Text.debugLine("entry/src/main/ets/pages/Tasks.ets(568:13)", "entry");
             Text.fontSize(14);
             Text.fontColor(Constants.COLOR_TEXT_PRIMARY);
         }, Text);
@@ -1094,14 +1184,14 @@ export class Tasks extends ViewPU {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             // 操作按钮
             Row.create();
-            Row.debugLine("entry/src/main/ets/pages/Tasks.ets(560:9)", "entry");
+            Row.debugLine("entry/src/main/ets/pages/Tasks.ets(582:9)", "entry");
             // 操作按钮
             Row.width('100%');
         }, Row);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             // 完成/取消完成按钮
             Button.createWithLabel(this.selectedTask?.status === Constants.TASK_STATUS_COMPLETED ? '取消完成' : '完成');
-            Button.debugLine("entry/src/main/ets/pages/Tasks.ets(562:11)", "entry");
+            Button.debugLine("entry/src/main/ets/pages/Tasks.ets(584:11)", "entry");
             // 完成/取消完成按钮
             Button.type(ButtonType.Normal);
             // 完成/取消完成按钮
@@ -1132,7 +1222,7 @@ export class Tasks extends ViewPU {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             // 删除按钮
             Button.createWithLabel('删除');
-            Button.debugLine("entry/src/main/ets/pages/Tasks.ets(580:11)", "entry");
+            Button.debugLine("entry/src/main/ets/pages/Tasks.ets(602:11)", "entry");
             // 删除按钮
             Button.type(ButtonType.Normal);
             // 删除按钮
@@ -1170,7 +1260,7 @@ export class Tasks extends ViewPU {
     buildAddTaskDialog(parent = null) {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Column.create();
-            Column.debugLine("entry/src/main/ets/pages/Tasks.ets(623:5)", "entry");
+            Column.debugLine("entry/src/main/ets/pages/Tasks.ets(645:5)", "entry");
             Column.width('100%');
             Column.height('100%');
             Column.backgroundColor('rgba(0, 0, 0, 0.5)');
@@ -1183,7 +1273,7 @@ export class Tasks extends ViewPU {
         }, Column);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Column.create();
-            Column.debugLine("entry/src/main/ets/pages/Tasks.ets(624:7)", "entry");
+            Column.debugLine("entry/src/main/ets/pages/Tasks.ets(646:7)", "entry");
             Column.width('90%');
             Column.padding(24);
             Column.backgroundColor('#FFFFFF');
@@ -1198,22 +1288,22 @@ export class Tasks extends ViewPU {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             // 对话框标题
             Text.create('添加任务');
-            Text.debugLine("entry/src/main/ets/pages/Tasks.ets(626:9)", "entry");
+            Text.debugLine("entry/src/main/ets/pages/Tasks.ets(648:9)", "entry");
             // 对话框标题
-            Text.fontSize(22);
+            Text.fontSize(Constants.FONT_SIZE_2XL);
             // 对话框标题
             Text.fontWeight(FontWeight.Bold);
             // 对话框标题
             Text.fontColor(Constants.COLOR_TEXT_PRIMARY);
             // 对话框标题
-            Text.margin({ bottom: 20 });
+            Text.margin({ bottom: Constants.SPACING_LG });
         }, Text);
         // 对话框标题
         Text.pop();
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             // 任务标题输入框
             Text.create('任务标题');
-            Text.debugLine("entry/src/main/ets/pages/Tasks.ets(633:9)", "entry");
+            Text.debugLine("entry/src/main/ets/pages/Tasks.ets(655:9)", "entry");
             // 任务标题输入框
             Text.fontSize(15);
             // 任务标题输入框
@@ -1229,7 +1319,7 @@ export class Tasks extends ViewPU {
         Text.pop();
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             TextInput.create({ placeholder: '请输入任务标题', text: this.newTask.title });
-            TextInput.debugLine("entry/src/main/ets/pages/Tasks.ets(640:9)", "entry");
+            TextInput.debugLine("entry/src/main/ets/pages/Tasks.ets(662:9)", "entry");
             TextInput.width('100%');
             TextInput.height(48);
             TextInput.maxLength(100);
@@ -1245,7 +1335,7 @@ export class Tasks extends ViewPU {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             // 任务描述输入框
             Text.create('任务描述（可选）');
-            Text.debugLine("entry/src/main/ets/pages/Tasks.ets(654:9)", "entry");
+            Text.debugLine("entry/src/main/ets/pages/Tasks.ets(676:9)", "entry");
             // 任务描述输入框
             Text.fontSize(15);
             // 任务描述输入框
@@ -1261,7 +1351,7 @@ export class Tasks extends ViewPU {
         Text.pop();
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             TextArea.create({ placeholder: '请输入任务描述', text: this.newTask.description });
-            TextArea.debugLine("entry/src/main/ets/pages/Tasks.ets(661:9)", "entry");
+            TextArea.debugLine("entry/src/main/ets/pages/Tasks.ets(683:9)", "entry");
             TextArea.width('100%');
             TextArea.height(80);
             TextArea.maxLength(500);
@@ -1277,7 +1367,7 @@ export class Tasks extends ViewPU {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             // 截止日期选择
             Text.create('截止日期（可选）');
-            Text.debugLine("entry/src/main/ets/pages/Tasks.ets(675:9)", "entry");
+            Text.debugLine("entry/src/main/ets/pages/Tasks.ets(697:9)", "entry");
             // 截止日期选择
             Text.fontSize(15);
             // 截止日期选择
@@ -1293,7 +1383,7 @@ export class Tasks extends ViewPU {
         Text.pop();
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Row.create();
-            Row.debugLine("entry/src/main/ets/pages/Tasks.ets(682:9)", "entry");
+            Row.debugLine("entry/src/main/ets/pages/Tasks.ets(704:9)", "entry");
             Row.width('100%');
             Row.height(48);
             Row.padding({ left: 12, right: 12 });
@@ -1307,7 +1397,7 @@ export class Tasks extends ViewPU {
         }, Row);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Text.create(this.newTask.dueDate ? Utils.formatDate(this.newTask.dueDate, 'YYYY-MM-DD') : '点击选择日期');
-            Text.debugLine("entry/src/main/ets/pages/Tasks.ets(683:11)", "entry");
+            Text.debugLine("entry/src/main/ets/pages/Tasks.ets(705:11)", "entry");
             Text.fontSize(15);
             Text.fontColor(this.newTask.dueDate ? Constants.COLOR_TEXT_PRIMARY : Constants.COLOR_TEXT_SECONDARY);
             Text.layoutWeight(1);
@@ -1318,16 +1408,40 @@ export class Tasks extends ViewPU {
             if (this.newTask.dueDate) {
                 this.ifElseBranchUpdateFunction(0, () => {
                     this.observeComponentCreation2((elmtId, isInitialRender) => {
-                        Text.create('×');
-                        Text.debugLine("entry/src/main/ets/pages/Tasks.ets(689:13)", "entry");
-                        Text.fontSize(18);
-                        Text.fontColor(Constants.COLOR_TEXT_SECONDARY);
-                        Text.padding({ left: 8, right: 8 });
-                        Text.onClick(() => {
+                        __Common__.create();
+                        __Common__.padding({ left: Constants.SPACING_SM, right: Constants.SPACING_SM });
+                        __Common__.onClick(() => {
                             this.newTask.dueDate = null;
                         });
-                    }, Text);
-                    Text.pop();
+                    }, __Common__);
+                    {
+                        this.observeComponentCreation2((elmtId, isInitialRender) => {
+                            if (isInitialRender) {
+                                let componentCall = new IconComponent(this, {
+                                    iconType: IconType.CLOSE,
+                                    iconSize: 18,
+                                    iconColor: Constants.COLOR_TEXT_SECONDARY
+                                }, undefined, elmtId, () => { }, { page: "entry/src/main/ets/pages/Tasks.ets", line: 711, col: 13 });
+                                ViewPU.create(componentCall);
+                                let paramsLambda = () => {
+                                    return {
+                                        iconType: IconType.CLOSE,
+                                        iconSize: 18,
+                                        iconColor: Constants.COLOR_TEXT_SECONDARY
+                                    };
+                                };
+                                componentCall.paramsGenerator_ = paramsLambda;
+                            }
+                            else {
+                                this.updateStateVarsOfChildByElmtId(elmtId, {
+                                    iconType: IconType.CLOSE,
+                                    iconSize: 18,
+                                    iconColor: Constants.COLOR_TEXT_SECONDARY
+                                });
+                            }
+                        }, { name: "IconComponent" });
+                    }
+                    __Common__.pop();
                 });
             }
             else {
@@ -1340,7 +1454,7 @@ export class Tasks extends ViewPU {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             // 优先级选择
             Text.create('优先级');
-            Text.debugLine("entry/src/main/ets/pages/Tasks.ets(710:9)", "entry");
+            Text.debugLine("entry/src/main/ets/pages/Tasks.ets(734:9)", "entry");
             // 优先级选择
             Text.fontSize(15);
             // 优先级选择
@@ -1356,13 +1470,13 @@ export class Tasks extends ViewPU {
         Text.pop();
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Row.create();
-            Row.debugLine("entry/src/main/ets/pages/Tasks.ets(717:9)", "entry");
+            Row.debugLine("entry/src/main/ets/pages/Tasks.ets(741:9)", "entry");
             Row.width('100%');
             Row.margin({ bottom: 24 });
         }, Row);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Button.createWithLabel('低');
-            Button.debugLine("entry/src/main/ets/pages/Tasks.ets(718:11)", "entry");
+            Button.debugLine("entry/src/main/ets/pages/Tasks.ets(742:11)", "entry");
             Button.type(ButtonType.Normal);
             Button.layoutWeight(1);
             Button.height(44);
@@ -1382,7 +1496,7 @@ export class Tasks extends ViewPU {
         Button.pop();
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Button.createWithLabel('中');
-            Button.debugLine("entry/src/main/ets/pages/Tasks.ets(739:11)", "entry");
+            Button.debugLine("entry/src/main/ets/pages/Tasks.ets(763:11)", "entry");
             Button.type(ButtonType.Normal);
             Button.layoutWeight(1);
             Button.height(44);
@@ -1403,7 +1517,7 @@ export class Tasks extends ViewPU {
         Button.pop();
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Button.createWithLabel('高');
-            Button.debugLine("entry/src/main/ets/pages/Tasks.ets(761:11)", "entry");
+            Button.debugLine("entry/src/main/ets/pages/Tasks.ets(785:11)", "entry");
             Button.type(ButtonType.Normal);
             Button.layoutWeight(1);
             Button.height(44);
@@ -1426,7 +1540,7 @@ export class Tasks extends ViewPU {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             // 操作按钮行
             Row.create();
-            Row.debugLine("entry/src/main/ets/pages/Tasks.ets(787:9)", "entry");
+            Row.debugLine("entry/src/main/ets/pages/Tasks.ets(811:9)", "entry");
             // 操作按钮行
             Row.width('100%');
             // 操作按钮行
@@ -1434,7 +1548,7 @@ export class Tasks extends ViewPU {
         }, Row);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Button.createWithLabel('取消');
-            Button.debugLine("entry/src/main/ets/pages/Tasks.ets(788:11)", "entry");
+            Button.debugLine("entry/src/main/ets/pages/Tasks.ets(812:11)", "entry");
             Button.type(ButtonType.Normal);
             Button.layoutWeight(1);
             Button.height(48);
@@ -1452,7 +1566,7 @@ export class Tasks extends ViewPU {
         Button.pop();
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Button.createWithLabel('确定');
-            Button.debugLine("entry/src/main/ets/pages/Tasks.ets(803:11)", "entry");
+            Button.debugLine("entry/src/main/ets/pages/Tasks.ets(827:11)", "entry");
             Button.type(ButtonType.Normal);
             Button.layoutWeight(1);
             Button.height(48);
@@ -1484,7 +1598,7 @@ export class Tasks extends ViewPU {
     buildDatePickerDialog(parent = null) {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Column.create();
-            Column.debugLine("entry/src/main/ets/pages/Tasks.ets(853:5)", "entry");
+            Column.debugLine("entry/src/main/ets/pages/Tasks.ets(877:5)", "entry");
             Column.width('100%');
             Column.height('100%');
             Column.backgroundColor('rgba(0, 0, 0, 0.5)');
@@ -1496,7 +1610,7 @@ export class Tasks extends ViewPU {
         }, Column);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Column.create();
-            Column.debugLine("entry/src/main/ets/pages/Tasks.ets(854:7)", "entry");
+            Column.debugLine("entry/src/main/ets/pages/Tasks.ets(878:7)", "entry");
             Column.width('90%');
             Column.padding(24);
             Column.backgroundColor('#FFFFFF');
@@ -1511,7 +1625,7 @@ export class Tasks extends ViewPU {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             // 对话框标题
             Row.create();
-            Row.debugLine("entry/src/main/ets/pages/Tasks.ets(856:9)", "entry");
+            Row.debugLine("entry/src/main/ets/pages/Tasks.ets(880:9)", "entry");
             // 对话框标题
             Row.width('100%');
             // 对话框标题
@@ -1519,27 +1633,51 @@ export class Tasks extends ViewPU {
         }, Row);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Text.create('选择截止日期');
-            Text.debugLine("entry/src/main/ets/pages/Tasks.ets(857:11)", "entry");
-            Text.fontSize(20);
+            Text.debugLine("entry/src/main/ets/pages/Tasks.ets(881:11)", "entry");
+            Text.fontSize(Constants.FONT_SIZE_XL);
             Text.fontWeight(FontWeight.Bold);
             Text.fontColor(Constants.COLOR_TEXT_PRIMARY);
         }, Text);
         Text.pop();
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Blank.create();
-            Blank.debugLine("entry/src/main/ets/pages/Tasks.ets(862:11)", "entry");
+            Blank.debugLine("entry/src/main/ets/pages/Tasks.ets(886:11)", "entry");
         }, Blank);
         Blank.pop();
         this.observeComponentCreation2((elmtId, isInitialRender) => {
-            Text.create('×');
-            Text.debugLine("entry/src/main/ets/pages/Tasks.ets(864:11)", "entry");
-            Text.fontSize(24);
-            Text.fontColor(Constants.COLOR_TEXT_SECONDARY);
-            Text.onClick(() => {
+            __Common__.create();
+            __Common__.onClick(() => {
                 this.showDatePicker = false;
             });
-        }, Text);
-        Text.pop();
+        }, __Common__);
+        {
+            this.observeComponentCreation2((elmtId, isInitialRender) => {
+                if (isInitialRender) {
+                    let componentCall = new IconComponent(this, {
+                        iconType: IconType.CLOSE,
+                        iconSize: 24,
+                        iconColor: Constants.COLOR_TEXT_SECONDARY
+                    }, undefined, elmtId, () => { }, { page: "entry/src/main/ets/pages/Tasks.ets", line: 888, col: 11 });
+                    ViewPU.create(componentCall);
+                    let paramsLambda = () => {
+                        return {
+                            iconType: IconType.CLOSE,
+                            iconSize: 24,
+                            iconColor: Constants.COLOR_TEXT_SECONDARY
+                        };
+                    };
+                    componentCall.paramsGenerator_ = paramsLambda;
+                }
+                else {
+                    this.updateStateVarsOfChildByElmtId(elmtId, {
+                        iconType: IconType.CLOSE,
+                        iconSize: 24,
+                        iconColor: Constants.COLOR_TEXT_SECONDARY
+                    });
+                }
+            }, { name: "IconComponent" });
+        }
+        __Common__.pop();
         // 对话框标题
         Row.pop();
         this.observeComponentCreation2((elmtId, isInitialRender) => {
@@ -1558,7 +1696,7 @@ export class Tasks extends ViewPU {
                         holidays: [],
                         selectedDateChanged: this.__tempSelectedDate,
                         monthChangeTrigger: this.__monthChangeTrigger
-                    }, undefined, elmtId, () => { }, { page: "entry/src/main/ets/pages/Tasks.ets", line: 875, col: 9 });
+                    }, undefined, elmtId, () => { }, { page: "entry/src/main/ets/pages/Tasks.ets", line: 901, col: 9 });
                     ViewPU.create(componentCall);
                     let paramsLambda = () => {
                         return {
@@ -1584,13 +1722,13 @@ export class Tasks extends ViewPU {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             // 操作按钮
             Row.create();
-            Row.debugLine("entry/src/main/ets/pages/Tasks.ets(886:9)", "entry");
+            Row.debugLine("entry/src/main/ets/pages/Tasks.ets(912:9)", "entry");
             // 操作按钮
             Row.width('100%');
         }, Row);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Button.createWithLabel('取消');
-            Button.debugLine("entry/src/main/ets/pages/Tasks.ets(887:11)", "entry");
+            Button.debugLine("entry/src/main/ets/pages/Tasks.ets(913:11)", "entry");
             Button.type(ButtonType.Normal);
             Button.layoutWeight(1);
             Button.height(44);
@@ -1606,7 +1744,7 @@ export class Tasks extends ViewPU {
         Button.pop();
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Button.createWithLabel('确定');
-            Button.debugLine("entry/src/main/ets/pages/Tasks.ets(900:11)", "entry");
+            Button.debugLine("entry/src/main/ets/pages/Tasks.ets(926:11)", "entry");
             Button.type(ButtonType.Normal);
             Button.layoutWeight(1);
             Button.height(44);
@@ -1631,7 +1769,7 @@ export class Tasks extends ViewPU {
     buildFilterButton(status: string, label: string, parent = null) {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Button.createWithLabel(label);
-            Button.debugLine("entry/src/main/ets/pages/Tasks.ets(941:5)", "entry");
+            Button.debugLine("entry/src/main/ets/pages/Tasks.ets(967:5)", "entry");
             Button.type(ButtonType.Normal);
             Button.fontSize(14);
             Button.fontWeight(this.filterStatus === status ? FontWeight.Medium : FontWeight.Normal);
@@ -1668,7 +1806,7 @@ export class Tasks extends ViewPU {
     buildSortButton(sortType: string, label: string, parent = null) {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Button.createWithLabel(label);
-            Button.debugLine("entry/src/main/ets/pages/Tasks.ets(981:5)", "entry");
+            Button.debugLine("entry/src/main/ets/pages/Tasks.ets(1007:5)", "entry");
             Button.type(ButtonType.Normal);
             Button.fontSize(13);
             Button.fontWeight(this.sortType === sortType ? FontWeight.Medium : FontWeight.Normal);

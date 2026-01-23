@@ -5,9 +5,12 @@ import { Constants } from '../common/Constants';
 import { Utils } from '../common/Utils';
 import { promptAction } from '@kit.ArkUI';
 import { CalendarComponent } from '../components/CalendarComponent';
+import { IconComponent, IconType } from '../components/IconComponent';
+import { AnimationUtils, ButtonAnimationUtils } from '../utils/AnimationUtils';
 
 /**
- * 任务页面
+ * 任务页面 - 优化版
+ * 改进点：使用图标组件、添加动画效果、改进交互反馈
  */
 @Component
 export struct Tasks {
@@ -334,19 +337,32 @@ export struct Tasks {
 
         // 搜索框
         Row() {
-          TextInput({ placeholder: '搜索任务...', text: this.searchKeyword })
-            .layoutWeight(1)
-            .height(40)
-            .fontSize(14)
-            .backgroundColor(Constants.COLOR_CARD_BACKGROUND)
-            .borderRadius(20)
-            .padding({ left: 16, right: 16 })
-            .onChange((value: string) => {
-              this.onSearchChange(value);
+          Row() {
+            IconComponent({
+              iconType: IconType.SEARCH,
+              iconSize: 18,
+              iconColor: Constants.COLOR_TEXT_TERTIARY
             })
+            .margin({ right: Constants.SPACING_SM })
+            
+            TextInput({ placeholder: '搜索任务...', text: this.searchKeyword })
+              .layoutWeight(1)
+              .height(40)
+              .fontSize(Constants.FONT_SIZE_SM)
+              .backgroundColor('transparent')
+              .border({ width: 0 })
+              .onChange((value: string) => {
+                this.onSearchChange(value);
+              })
+          }
+          .width('100%')
+          .height(44)
+          .padding({ left: Constants.SPACING_MD, right: Constants.SPACING_MD })
+          .backgroundColor(Constants.COLOR_CARD_BACKGROUND)
+          .borderRadius(Constants.BORDER_RADIUS_XL)
         }
         .width('100%')
-        .padding({ left: 16, right: 16, top: 0, bottom: 12 })
+        .padding({ left: Constants.SPACING_MD, right: Constants.SPACING_MD, bottom: Constants.SPACING_SM })
 
         // 筛选标签栏
         Row() {
@@ -410,24 +426,28 @@ export struct Tasks {
       .backgroundColor(Constants.COLOR_BACKGROUND)
 
       // 添加按钮 - 悬浮在最上层
-      Button('+')
-        .type(ButtonType.Circle)
-        .width(60)
-        .height(60)
-        .fontSize(36)
-        .fontWeight(FontWeight.Medium)
-        .fontColor('#FFFFFF')
-        .backgroundColor(Constants.COLOR_PRIMARY)
-        .shadow({
-          radius: 12,
-          color: 'rgba(255, 107, 53, 0.4)',
-          offsetX: 0,
-          offsetY: 4
+      Button() {
+        IconComponent({
+          iconType: IconType.ADD,
+          iconSize: 28,
+          iconColor: Constants.COLOR_TEXT_ON_PRIMARY
         })
-        .position({ x: '100%', y: '100%' })
-        .translate({ x: -80, y: -80 })
-        .zIndex(1000)
-        .onClick(() => this.showAddTaskDialog())
+      }
+      .type(ButtonType.Circle)
+      .width(60)
+      .height(60)
+      .backgroundColor(Constants.COLOR_PRIMARY)
+      .shadow({
+        radius: 12,
+        color: Constants.COLOR_SHADOW_PRIMARY,
+        offsetX: 0,
+        offsetY: 4
+      })
+      .position({ x: '100%', y: '100%' })
+      .translate({ x: -80, y: -80 })
+      .zIndex(Constants.Z_INDEX_MODAL)
+      .onClick(() => this.showAddTaskDialog())
+      .animation(ButtonAnimationUtils.hover())
 
       // 添加任务对话框
       if (this.showAddDialog) {
@@ -455,19 +475,21 @@ export struct Tasks {
         // 对话框标题
         Row() {
           Text('任务详情')
-            .fontSize(20)
+            .fontSize(Constants.FONT_SIZE_XL)
             .fontWeight(FontWeight.Bold)
             .fontColor(Constants.COLOR_TEXT_PRIMARY)
           
           Blank()
           
-          Text('×')
-            .fontSize(24)
-            .fontColor(Constants.COLOR_TEXT_SECONDARY)
-            .onClick(() => {
-              this.showDetailDialog = false;
-              this.selectedTask = null;
-            })
+          IconComponent({
+            iconType: IconType.CLOSE,
+            iconSize: 24,
+            iconColor: Constants.COLOR_TEXT_SECONDARY
+          })
+          .onClick(() => {
+            this.showDetailDialog = false;
+            this.selectedTask = null;
+          })
         }
         .width('100%')
         .margin({ bottom: 20 })
@@ -624,10 +646,10 @@ export struct Tasks {
       Column() {
         // 对话框标题
         Text('添加任务')
-          .fontSize(22)
+          .fontSize(Constants.FONT_SIZE_2XL)
           .fontWeight(FontWeight.Bold)
           .fontColor(Constants.COLOR_TEXT_PRIMARY)
-          .margin({ bottom: 20 })
+          .margin({ bottom: Constants.SPACING_LG })
 
         // 任务标题输入框
         Text('任务标题')
@@ -686,13 +708,15 @@ export struct Tasks {
             .layoutWeight(1)
 
           if (this.newTask.dueDate) {
-            Text('×')
-              .fontSize(18)
-              .fontColor(Constants.COLOR_TEXT_SECONDARY)
-              .padding({ left: 8, right: 8 })
-              .onClick(() => {
-                this.newTask.dueDate = null;
-              })
+            IconComponent({
+              iconType: IconType.CLOSE,
+              iconSize: 18,
+              iconColor: Constants.COLOR_TEXT_SECONDARY
+            })
+            .padding({ left: Constants.SPACING_SM, right: Constants.SPACING_SM })
+            .onClick(() => {
+              this.newTask.dueDate = null;
+            })
           }
         }
         .width('100%')
@@ -855,18 +879,20 @@ export struct Tasks {
         // 对话框标题
         Row() {
           Text('选择截止日期')
-            .fontSize(20)
+            .fontSize(Constants.FONT_SIZE_XL)
             .fontWeight(FontWeight.Bold)
             .fontColor(Constants.COLOR_TEXT_PRIMARY)
           
           Blank()
           
-          Text('×')
-            .fontSize(24)
-            .fontColor(Constants.COLOR_TEXT_SECONDARY)
-            .onClick(() => {
-              this.showDatePicker = false;
-            })
+          IconComponent({
+            iconType: IconType.CLOSE,
+            iconSize: 24,
+            iconColor: Constants.COLOR_TEXT_SECONDARY
+          })
+          .onClick(() => {
+            this.showDatePicker = false;
+          })
         }
         .width('100%')
         .margin({ bottom: 16 })

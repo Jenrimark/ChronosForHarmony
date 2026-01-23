@@ -18,9 +18,9 @@ import { AuthService } from "@normalized:N&&&entry/src/main/ets/service/AuthServ
 import type { UserInfo } from "@normalized:N&&&entry/src/main/ets/service/AuthService&";
 import { HolidayService } from "@normalized:N&&&entry/src/main/ets/service/HolidayService&";
 import promptAction from "@ohos:promptAction";
-import type { UIContext as UIContext } from "@ohos:arkui.UIContext";
+import type { UIContext } from "@ohos:arkui.UIContext";
 import hilog from "@ohos:hilog";
-import type { BusinessError as BusinessError } from "@ohos:base";
+import type { BusinessError } from "@ohos:base";
 import type common from "@ohos:app.ability.common";
 export class Settings extends ViewPU {
     constructor(parent, params, __localStorage, elmtId = -1, paramsLambda = undefined, extraInfo) {

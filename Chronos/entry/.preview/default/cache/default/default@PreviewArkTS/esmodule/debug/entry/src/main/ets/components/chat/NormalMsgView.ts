@@ -313,7 +313,9 @@ export class NormalMsgView extends ViewPU {
                     If.pop();
                 });
             }
-            else {
+            else /**
+             * 构建格式化的内容（支持Markdown）
+             */ {
                 this.ifElseBranchUpdateFunction(1, () => {
                 });
             }
@@ -593,7 +595,9 @@ export class NormalMsgView extends ViewPU {
                     If.pop();
                 });
             }
-            else {
+            else /**
+             * 解析Markdown文本为Span数组
+             */ {
                 this.ifElseBranchUpdateFunction(1, () => {
                 });
             }

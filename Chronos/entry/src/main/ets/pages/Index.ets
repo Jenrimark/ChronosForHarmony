@@ -1,9 +1,18 @@
 import { router } from '@kit.ArkUI';
 import { AuthService, UserInfo } from '../service/AuthService';
 import { promptAction } from '@kit.ArkUI';
+import { Constants } from '../common/Constants';
+import { IconComponent, IconType } from '../components/IconComponent';
+import { AnimationUtils, ButtonAnimationUtils, LoadingAnimationUtils } from '../utils/AnimationUtils';
 
 /**
- * 登录首页
+ * 登录首页 - 优化版
+ * 改进点：
+ * 1. 使用图标组件替代 emoji
+ * 2. 使用新的色彩系统
+ * 3. 添加流畅的动画效果
+ * 4. 改进交互反馈
+ * 5. 优化视觉层次
  */
 @Entry
 @Component
@@ -11,12 +20,26 @@ struct Index {
   @State isLoading: boolean = false;
   @State userInfo: UserInfo | null = null;
   @State loginStatus: string = '欢迎使用辰序';
+  @State @Watch('onLoadingChange') loadingTrigger: number = 0;
+  @State showContent: boolean = false;
 
   private authService: AuthService = AuthService.getInstance();
 
   aboutToAppear(): void {
+    // 延迟显示内容，创建淡入效果
+    setTimeout(() => {
+      this.showContent = true;
+    }, 100);
+    
     // 尝试获取当前用户
     this.tryGetCurrentUser();
+  }
+
+  /**
+   * 监听加载状态变化
+   */
+  onLoadingChange() {
+    // 触发动画
   }
 
   /**
@@ -24,6 +47,7 @@ struct Index {
    */
   async tryGetCurrentUser(): Promise<void> {
     this.isLoading = true;
+    this.loadingTrigger++;
     try {
       const user: UserInfo | null = await this.authService.getCurrentUserAsync();
       if (user) {
@@ -41,6 +65,7 @@ struct Index {
    */
   async handleHuaweiLogin(): Promise<void> {
     this.isLoading = true;
+    this.loadingTrigger++;
     this.loginStatus = '正在登录...';
     try {
       const user: UserInfo | null = await this.authService.login();
@@ -78,112 +103,170 @@ struct Index {
 
   build() {
     Column() {
-      // Logo 区域
-      Column() {
-        Text('📅')
-          .fontSize(80)
-          .margin({ bottom: 16 })
-
-        Text('辰序')
-          .fontSize(32)
-          .fontWeight(FontWeight.Bold)
-          .fontColor('#333333')
-
-        Text('时间管理 · 任务追踪 · 智能记账')
-          .fontSize(14)
-          .fontColor('#666666')
-          .margin({ top: 8 })
-      }
-      .margin({ top: 100, bottom: 60 })
-
-      // 状态显示
-      Text(this.loginStatus)
-        .fontSize(16)
-        .fontColor('#666666')
-        .margin({ bottom: 40 })
-
-      // 用户信息（已登录时显示）
-      if (this.userInfo) {
+      if (this.showContent) {
+        // Logo 区域 - 使用图标组件
         Column() {
-          if (this.userInfo.avatarUri) {
-            Image(this.userInfo.avatarUri)
-              .width(60)
-              .height(60)
-              .borderRadius(30)
-              .margin({ bottom: 8 })
-          }
-          Text(this.userInfo.displayName)
-            .fontSize(18)
-            .fontWeight(FontWeight.Medium)
-            .fontColor('#333333')
+          // 使用图标组件替代 emoji
+          IconComponent({
+            iconType: IconType.CALENDAR,
+            iconSize: 80,
+            iconColor: Constants.COLOR_PRIMARY
+          })
+          .margin({ bottom: Constants.SPACING_MD })
+
+          Text('辰序')
+            .fontSize(Constants.FONT_SIZE_4XL)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(Constants.COLOR_TEXT_PRIMARY)
+
+          Text('时间管理 · 任务追踪 · 智能记账')
+            .fontSize(Constants.FONT_SIZE_SM)
+            .fontColor(Constants.COLOR_TEXT_SECONDARY)
+            .margin({ top: Constants.SPACING_SM })
         }
-        .margin({ bottom: 30 })
-      }
+        .margin({ top: 100, bottom: 60 })
+        .opacity(this.showContent ? 1 : 0)
+        .animation(AnimationUtils.fadeIn(400))
 
-      // 按钮区域
-      Column() {
-        // 进入主页按钮
-        Button('进入主页')
-          .width('80%')
-          .height(50)
-          .fontSize(18)
-          .fontColor(Color.White)
-          .backgroundColor('#4FC3F7')
-          .borderRadius(25)
-          .margin({ bottom: 16 })
-          .onClick(() => this.goToMain())
+        // 状态显示
+        Text(this.loginStatus)
+          .fontSize(Constants.FONT_SIZE_BASE)
+          .fontColor(Constants.COLOR_TEXT_SECONDARY)
+          .margin({ bottom: Constants.SPACING_XL })
+          .opacity(this.showContent ? 1 : 0)
+          .animation(AnimationUtils.fadeIn(500))
 
-        // 华为账号登录按钮
-        if (!this.userInfo) {
-          Button() {
-            Row() {
-              Text('🔐')
-                .fontSize(20)
-                .margin({ right: 8 })
-              Text('华为账号登录')
-                .fontSize(16)
-                .fontColor('#333333')
+        // 用户信息（已登录时显示）
+        if (this.userInfo) {
+          Column() {
+            if (this.userInfo.avatarUri) {
+              Image(this.userInfo.avatarUri)
+                .width(60)
+                .height(60)
+                .borderRadius(Constants.BORDER_RADIUS_FULL)
+                .margin({ bottom: Constants.SPACING_SM })
+                .border({
+                  width: 2,
+                  color: Constants.COLOR_PRIMARY_LIGHT
+                })
             }
+            Text(this.userInfo.displayName)
+              .fontSize(Constants.FONT_SIZE_LG)
+              .fontWeight(FontWeight.Medium)
+              .fontColor(Constants.COLOR_TEXT_PRIMARY)
           }
-          .width('80%')
-          .height(50)
-          .backgroundColor('#FFFFFF')
-          .borderRadius(25)
-          .border({ width: 1, color: '#DDDDDD' })
-          .enabled(!this.isLoading)
-          .onClick(() => this.handleHuaweiLogin())
-        } else {
-          // 退出登录按钮
-          Button('退出登录')
+          .margin({ bottom: Constants.SPACING_LG })
+          .opacity(this.showContent ? 1 : 0)
+          .animation(AnimationUtils.fadeIn(600))
+        }
+
+        // 按钮区域
+        Column() {
+          // 进入主页按钮 - 主要操作
+          Button('进入主页')
             .width('80%')
             .height(50)
-            .fontSize(16)
-            .fontColor('#666666')
-            .backgroundColor('#F5F5F5')
-            .borderRadius(25)
-            .onClick(() => this.handleLogout())
+            .fontSize(Constants.FONT_SIZE_LG)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(Constants.COLOR_TEXT_ON_PRIMARY)
+            .backgroundColor(Constants.COLOR_PRIMARY)
+            .borderRadius(Constants.BORDER_RADIUS_XL)
+            .margin({ bottom: Constants.SPACING_MD })
+            .shadow({
+              radius: 12,
+              color: Constants.COLOR_SHADOW_PRIMARY,
+              offsetX: 0,
+              offsetY: 4
+            })
+            .stateEffect(true)
+            .hoverEffect(HoverEffect.Scale)
+            .onClick(() => this.goToMain())
+            .animation(ButtonAnimationUtils.hover())
+
+          // 华为账号登录按钮
+          if (!this.userInfo) {
+            Button() {
+              Row() {
+                // 使用图标组件替代 emoji
+                IconComponent({
+                  iconType: IconType.LOCK,
+                  iconSize: 20,
+                  iconColor: Constants.COLOR_TEXT_PRIMARY
+                })
+                .margin({ right: Constants.SPACING_SM })
+                
+                Text('华为账号登录')
+                  .fontSize(Constants.FONT_SIZE_BASE)
+                  .fontColor(Constants.COLOR_TEXT_PRIMARY)
+              }
+            }
+            .width('80%')
+            .height(50)
+            .backgroundColor(Constants.COLOR_CARD_BACKGROUND)
+            .borderRadius(Constants.BORDER_RADIUS_XL)
+            .border({ 
+              width: 1, 
+              color: Constants.COLOR_BORDER 
+            })
+            .enabled(!this.isLoading)
+            .stateEffect(true)
+            .hoverEffect(HoverEffect.Scale)
+            .onClick(() => this.handleHuaweiLogin())
+            .animation(ButtonAnimationUtils.hover())
+          } else {
+            // 退出登录按钮
+            Button('退出登录')
+              .width('80%')
+              .height(50)
+              .fontSize(Constants.FONT_SIZE_BASE)
+              .fontColor(Constants.COLOR_TEXT_SECONDARY)
+              .backgroundColor(Constants.COLOR_BACKGROUND)
+              .borderRadius(Constants.BORDER_RADIUS_XL)
+              .stateEffect(true)
+              .hoverEffect(HoverEffect.Scale)
+              .onClick(() => this.handleLogout())
+              .animation(ButtonAnimationUtils.hover())
+          }
         }
+        .width('100%')
+        .opacity(this.showContent ? 1 : 0)
+        .animation(AnimationUtils.fadeIn(700))
+
+        // 加载指示器 - 优化动画
+        if (this.isLoading) {
+          Column() {
+            LoadingProgress()
+              .width(40)
+              .height(40)
+              .color(Constants.COLOR_PRIMARY)
+          }
+          .margin({ top: Constants.SPACING_LG })
+          .opacity(1)
+          .animation(AnimationUtils.fadeIn(200))
+        }
+
+        // 底部提示
+        Blank()
+
+        Row() {
+          IconComponent({
+            iconType: IconType.INFO,
+            iconSize: 14,
+            iconColor: Constants.COLOR_TEXT_TERTIARY
+          })
+          .margin({ right: Constants.SPACING_XS })
+          
+          Text('登录后可同步数据到云端')
+            .fontSize(Constants.FONT_SIZE_XS)
+            .fontColor(Constants.COLOR_TEXT_TERTIARY)
+        }
+        .margin({ bottom: Constants.SPACING_XL })
+        .opacity(this.showContent ? 1 : 0)
+        .animation(AnimationUtils.fadeIn(800))
       }
-      .width('100%')
-
-      // 加载指示器
-      if (this.isLoading) {
-        LoadingProgress()
-          .width(40)
-          .height(40)
-          .margin({ top: 20 })
-      }
-
-      // 底部提示
-      Blank()
-
-      Text('登录后可同步数据到云端')
-        .fontSize(12)
-        .fontColor('#999999')
-        .margin({ bottom: 40 })
     }
     .width('100%')
     .height('100%')
-    .backgroundColor('#FAFAFA')
+    .backgroundColor(Constants.COLOR_BACKGROUND)
   }
 }

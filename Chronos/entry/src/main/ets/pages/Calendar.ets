@@ -5,6 +5,8 @@ import { Task } from '../model/Task';
 import { Holiday, MxnzpHolidayData } from '../model/Holiday';
 import { Utils } from '../common/Utils';
 import { Constants } from '../common/Constants';
+import { IconComponent, IconType } from '../components/IconComponent';
+import { AnimationUtils, ButtonAnimationUtils } from '../utils/AnimationUtils';
 
 /**
  * 日历日期项
@@ -403,10 +405,14 @@ export struct CalendarPage {
     .width('100%')
     .height('100%')
     .justifyContent(FlexAlign.Center)
-    .backgroundColor(day.isSelected ? Constants.COLOR_PRIMARY_LIGHT : (day.isToday ? '#FFF0E8' : 'transparent'))
-    .borderRadius(8)
+    .backgroundColor(day.isSelected ? Constants.COLOR_PRIMARY_LIGHT : (day.isToday ? Constants.COLOR_PRIMARY_LIGHTER : 'transparent'))
+    .borderRadius(Constants.BORDER_RADIUS_SM)
     .onClick(() => {
       this.onDateSelect(day);
+    })
+    .animation({
+      duration: Constants.ANIMATION_DURATION_FAST,
+      curve: Curve.EaseInOut
     })
   }
 
@@ -489,18 +495,38 @@ export struct CalendarPage {
           if (this.selectedCalendarInfo) {
             Row() {
               if (this.isRealSolarTerm(this.selectedCalendarInfo.solarTerms)) {
-                Text(`🌿 ${this.selectedCalendarInfo.solarTerms}`)
-                  .fontSize(12)
-                  .fontColor(Constants.COLOR_SUCCESS)
+                Row() {
+                  IconComponent({
+                    iconType: IconType.LEAF,
+                    iconSize: 12,
+                    iconColor: Constants.COLOR_SUCCESS
+                  })
+                  .margin({ right: 4 })
+                  
+                  Text(this.selectedCalendarInfo.solarTerms)
+                    .fontSize(Constants.FONT_SIZE_XS)
+                    .fontColor(Constants.COLOR_SUCCESS)
+                }
               }
-              Text(`⭐ ${this.selectedCalendarInfo.constellation}`)
-                .fontSize(12)
+              
+              Row() {
+                IconComponent({
+                  iconType: IconType.STAR,
+                  iconSize: 12,
+                  iconColor: Constants.COLOR_TEXT_SECONDARY
+                })
+                .margin({ right: 4 })
+                
+                Text(this.selectedCalendarInfo.constellation)
+                  .fontSize(Constants.FONT_SIZE_XS)
+                  .fontColor(Constants.COLOR_TEXT_SECONDARY)
+              }
+              .margin({ left: Constants.SPACING_SM })
+              
+              Text(`${this.selectedCalendarInfo.chineseZodiac}`)
+                .fontSize(Constants.FONT_SIZE_XS)
                 .fontColor(Constants.COLOR_TEXT_SECONDARY)
-                .margin({ left: 8 })
-              Text(`🐾 ${this.selectedCalendarInfo.chineseZodiac}`)
-                .fontSize(12)
-                .fontColor(Constants.COLOR_TEXT_SECONDARY)
-                .margin({ left: 8 })
+                .margin({ left: Constants.SPACING_SM })
             }
             .margin({ top: 6 })
           }
@@ -584,13 +610,17 @@ export struct CalendarPage {
       // 任务列表
       if (this.selectedDateTasks.length === 0) {
         Column() {
-          Text('📝')
-            .fontSize(40)
-            .opacity(0.3)
+          IconComponent({
+            iconType: IconType.TASK,
+            iconSize: 40,
+            iconColor: Constants.COLOR_TEXT_TERTIARY
+          })
+          .opacity(0.3)
+          
           Text('这一天没有任务')
-            .fontSize(14)
+            .fontSize(Constants.FONT_SIZE_SM)
             .fontColor(Constants.COLOR_TEXT_SECONDARY)
-            .margin({ top: 12 })
+            .margin({ top: Constants.SPACING_SM })
         }
         .width('100%')
         .height(120)
@@ -649,19 +679,29 @@ export struct CalendarPage {
           .onClick(() => {
             this.prevMonth();
           })
+          .animation(ButtonAnimationUtils.hover())
 
         Blank()
 
         Column() {
           Text(`${this.currentMonth.getFullYear()}年${this.currentMonth.getMonth() + 1}月`)
-            .fontSize(20)
+            .fontSize(Constants.FONT_SIZE_XL)
             .fontWeight(FontWeight.Bold)
             .fontColor(Constants.COLOR_TEXT_PRIMARY)
           
           if (this.isLoading) {
-            Text('加载中...')
-              .fontSize(11)
-              .fontColor(Constants.COLOR_TEXT_TERTIARY)
+            Row() {
+              LoadingProgress()
+                .width(12)
+                .height(12)
+                .color(Constants.COLOR_PRIMARY)
+                .margin({ right: 4 })
+              
+              Text('加载中...')
+                .fontSize(Constants.FONT_SIZE_XS)
+                .fontColor(Constants.COLOR_TEXT_TERTIARY)
+            }
+            .margin({ top: 2 })
           }
         }
 
@@ -677,10 +717,11 @@ export struct CalendarPage {
           .onClick(() => {
             this.nextMonth();
           })
+          .animation(ButtonAnimationUtils.hover())
       }
       .width('100%')
       .height(56)
-      .padding({ left: 8, right: 8 })
+      .padding({ left: Constants.SPACING_SM, right: Constants.SPACING_SM })
 
       // 日历网格
       Column() {

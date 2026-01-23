@@ -1,7 +1,7 @@
 import util from "@ohos:util";
 import preferences from "@ohos:data.preferences";
 import http from "@ohos:net.http";
-import type { Context as Context } from "@ohos:abilityAccessCtrl";
+import type { Context } from "@ohos:abilityAccessCtrl";
 import { Holiday, HolidayType } from "@normalized:N&&&entry/src/main/ets/model/Holiday&";
 import type { MxnzpHolidayData } from "@normalized:N&&&entry/src/main/ets/model/Holiday&";
 import { Constants } from "@normalized:N&&&entry/src/main/ets/common/Constants&";

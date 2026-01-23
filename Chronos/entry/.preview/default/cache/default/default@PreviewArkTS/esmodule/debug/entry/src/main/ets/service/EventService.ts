@@ -1,4 +1,4 @@
-import type { Context as Context } from "@ohos:abilityAccessCtrl";
+import type { Context } from "@ohos:abilityAccessCtrl";
 import { RepeatRule } from "@normalized:N&&&entry/src/main/ets/model/CalendarEvent&";
 import type { CalendarEvent } from "@normalized:N&&&entry/src/main/ets/model/CalendarEvent&";
 import { EventRepository } from "@normalized:N&&&entry/src/main/ets/repository/EventRepository&";

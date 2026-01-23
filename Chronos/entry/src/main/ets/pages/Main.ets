@@ -4,18 +4,26 @@ import { Chat } from './Chat';
 import { Settings } from './Settings';
 import { Accounting } from './Accounting';
 import { Constants } from '../common/Constants';
+import { IconComponent, IconType } from '../components/IconComponent';
+import { AnimationUtils } from '../utils/AnimationUtils';
 
 /**
  * 主页面 - 包含底部导航栏
+ * 优化版：使用图标组件、添加动画效果、改进交互反馈
  */
 @Entry
 @Component
 struct Main {
   @State currentIndex: number = 0;
   @State tabs: TabContent[] = [];
+  @State showContent: boolean = false;
 
   aboutToAppear() {
     this.initTabs();
+    // 延迟显示内容，创建淡入效果
+    setTimeout(() => {
+      this.showContent = true;
+    }, 50);
   }
 
   /**
@@ -25,27 +33,27 @@ struct Main {
     this.tabs = [
       {
         title: '日历',
-        icon: '📅',
+        iconType: IconType.CALENDAR,
         component: CalendarNewPage
       },
       {
         title: '任务',
-        icon: '📋',
+        iconType: IconType.TASK,
         component: Tasks
       },
       {
         title: '记账',
-        icon: '💰',
+        iconType: IconType.BILL,
         component: Accounting
       },
       {
         title: '对话',
-        icon: '💬',
+        iconType: IconType.CHAT,
         component: Chat
       },
       {
         title: '设置',
-        icon: '⚙️',
+        iconType: IconType.SETTINGS,
         component: Settings
       }
     ];
@@ -76,39 +84,83 @@ struct Main {
       }
       .layoutWeight(1)
       .width('100%')
+      .opacity(this.showContent ? 1 : 0)
+      .animation(AnimationUtils.fadeIn(Constants.ANIMATION_DURATION_NORMAL))
 
-      // 底部导航栏
+      // 底部导航栏 - 优化版
       Row() {
         ForEach(this.tabs, (tab: TabContent, index: number) => {
           Column() {
-            Text(tab.icon)
-              .fontSize(24)
-              .margin({ bottom: 4 })
+            // 使用图标组件替代 emoji
+            IconComponent({
+              iconType: tab.iconType,
+              iconSize: 24,
+              iconColor: this.currentIndex === index
+                ? Constants.COLOR_PRIMARY
+                : Constants.COLOR_TEXT_TERTIARY
+            })
+            .margin({ bottom: Constants.SPACING_XS })
+            .animation({
+              duration: Constants.ANIMATION_DURATION_FAST,
+              curve: Curve.EaseInOut
+            })
+
             Text(tab.title)
-              .fontSize(12)
+              .fontSize(Constants.FONT_SIZE_XS)
+              .fontWeight(this.currentIndex === index ? FontWeight.Medium : FontWeight.Normal)
               .fontColor(
                 this.currentIndex === index
                   ? Constants.COLOR_PRIMARY
-                  : Constants.COLOR_TEXT_SECONDARY
+                  : Constants.COLOR_TEXT_TERTIARY
               )
+              .animation({
+                duration: Constants.ANIMATION_DURATION_FAST,
+                curve: Curve.EaseInOut
+              })
           }
           .layoutWeight(1)
           .justifyContent(FlexAlign.Center)
-          .padding({ top: 8, bottom: 8 })
+          .padding({
+            top: Constants.SPACING_SM,
+            bottom: Constants.SPACING_SM
+          })
+          .backgroundColor(
+            this.currentIndex === index
+              ? Constants.COLOR_PRIMARY_LIGHTER
+              : 'transparent'
+          )
+          .borderRadius(Constants.BORDER_RADIUS_SM)
           .onClick(() => {
             this.onTabChange(index);
+          })
+          .animation({
+            duration: Constants.ANIMATION_DURATION_FAST,
+            curve: Curve.EaseInOut
           })
         })
       }
       .width('100%')
-      .height(60)
+      .height(64)
       .backgroundColor(Constants.COLOR_CARD_BACKGROUND)
-      .border({ width: { top: 1 }, color: Constants.COLOR_DIVIDER })
-      .padding({ bottom: 0 })
+      .border({
+        width: { top: 1 },
+        color: Constants.COLOR_BORDER
+      })
+      .padding({
+        left: Constants.SPACING_XS,
+        right: Constants.SPACING_XS,
+        bottom: Constants.SPACING_XS
+      })
+      .shadow({
+        radius: 8,
+        color: Constants.COLOR_SHADOW_LIGHT,
+        offsetX: 0,
+        offsetY: -2
+      })
     }
     .width('100%')
     .height('100%')
-    .padding({ top: 0 })
+    .backgroundColor(Constants.COLOR_BACKGROUND)
   }
 }
 
@@ -117,7 +169,7 @@ struct Main {
  */
 interface TabContent {
   title: string;
-  icon: string;
+  iconType: IconType;
   component: ESObject;
 }
 

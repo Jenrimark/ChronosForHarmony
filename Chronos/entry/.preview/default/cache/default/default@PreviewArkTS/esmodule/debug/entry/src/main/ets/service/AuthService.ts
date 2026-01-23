@@ -1,12 +1,12 @@
 import auth from "@normalized:N&&&@hw-agconnect/auth/Index&1.0.5";
 import hilog from "@ohos:hilog";
-import type { BusinessError as BusinessError } from "@ohos:base";
+import type { BusinessError } from "@ohos:base";
 import type common from "@ohos:app.ability.common";
 import buffer from "@ohos:buffer";
 import preferences from "@ohos:data.preferences";
 import authentication from "@hms:core.authentication";
 import util from "@ohos:util";
-import type { UIContext as UIContext } from "@ohos:arkui.UIContext";
+import type { UIContext } from "@ohos:arkui.UIContext";
 const TAG = 'AuthService';
 const PREFERENCES_NAME = 'user_preferences';
 const KEY_USER_INFO = 'user_info';

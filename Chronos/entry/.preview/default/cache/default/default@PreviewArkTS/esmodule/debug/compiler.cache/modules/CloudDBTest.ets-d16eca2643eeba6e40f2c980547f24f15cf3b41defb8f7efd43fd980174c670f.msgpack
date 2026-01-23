@@ -1,0 +1,779 @@
+Ôr@Ÿªassertions¤code´customTransformCache¬dependencies¢id¤meta±moduleSideEffects¬originalCode±originalSourcemap«resolvedIds®sourcemapChainµsyntheticNamedExportsµtransformDependencies®transformFiles¨cacheAstÔrAÚ?Ûif (!("finalizeConstruction" in ViewPU.prototype)) {
+    Reflect.set(ViewPU.prototype, "finalizeConstruction", () => { });
+}
+/**
+ * CloudDB æµ‹è¯•é¡µé¢
+ * ç”¨äºéªŒè¯æ•°æ®åº“æŸ¥è¯¢åŠŸèƒ½æ˜¯å¦æ­£å¸¸å·¥ä½œ
+ */
+import cloudDatabase from "@hms.core.deviceCloudGateway.cloudDatabase";
+import hilog from "@ohos.hilog";
+const TAG = 'CloudDBTest';
+const DOMAIN = 0x0000;
+const ZONE_NAME = 'ChronosZone';
+// ç›´æ¥åœ¨æµ‹è¯•é¡µé¢å®šä¹‰æ¨¡å‹ç±»ï¼Œé¿å…æ··æ·†é—®é¢˜
+class TestTaskCloudDB extends cloudDatabase.DatabaseObject {
+    naturalbase_ClassName() {
+        return 'TaskCloudDB';
+    }
+    constructor() {
+        super();
+        this.id = '';
+        this.title = '';
+        this.description = '';
+        this.status = '';
+        this.priority = '';
+        this.dueDate = '';
+        this.createTime = '';
+        this.updateTime = '';
+        this.completedTime = '';
+        this.tags = '';
+        this.userld = '';
+    }
+}
+class TestBillCloudDB extends cloudDatabase.DatabaseObject {
+    naturalbase_ClassName() {
+        return 'BillCloudDB';
+    }
+    constructor() {
+        super();
+        this.id = '';
+        this.type = '';
+        this.category = '';
+        this.amount = '';
+        this.description = '';
+        this.date = '';
+        this.createTime = '';
+        this.updateTime = '';
+        this.tags = '';
+        this.userId = '';
+    }
+}
+class CloudDBTestPage extends ViewPU {
+    constructor(parent, params, __localStorage, elmtId = -1, paramsLambda = undefined, extraInfo) {
+        super(parent, __localStorage, elmtId, extraInfo);
+        if (typeof paramsLambda === "function") {
+            this.paramsGenerator_ = paramsLambda;
+        }
+        this.__testResults = new ObservedPropertyObjectPU([], this, "testResults");
+        this.__isLoading = new ObservedPropertySimplePU(false, this, "isLoading");
+        this.__taskCount = new ObservedPropertySimplePU(0, this, "taskCount");
+        this.__billCount = new ObservedPropertySimplePU(0, this, "billCount");
+        this.setInitiallyProvidedValue(params);
+        this.finalizeConstruction();
+    }
+    setInitiallyProvidedValue(params) {
+        if (params.testResults !== undefined) {
+            this.testResults = params.testResults;
+        }
+        if (params.isLoading !== undefined) {
+            this.isLoading = params.isLoading;
+        }
+        if (params.taskCount !== undefined) {
+            this.taskCount = params.taskCount;
+        }
+        if (params.billCount !== undefined) {
+            this.billCount = params.billCount;
+        }
+    }
+    updateStateVars(params) {
+    }
+    purgeVariableDependenciesOnElmtId(rmElmtId) {
+        this.__testResults.purgeDependencyOnElmtId(rmElmtId);
+        this.__isLoading.purgeDependencyOnElmtId(rmElmtId);
+        this.__taskCount.purgeDependencyOnElmtId(rmElmtId);
+        this.__billCount.purgeDependencyOnElmtId(rmElmtId);
+    }
+    aboutToBeDeleted() {
+        this.__testResults.aboutToBeDeleted();
+        this.__isLoading.aboutToBeDeleted();
+        this.__taskCount.aboutToBeDeleted();
+        this.__billCount.aboutToBeDeleted();
+        SubscriberManager.Get().delete(this.id__());
+        this.aboutToBeDeletedInternal();
+    }
+    get testResults() {
+        return this.__testResults.get();
+    }
+    set testResults(newValue) {
+        this.__testResults.set(newValue);
+    }
+    get isLoading() {
+        return this.__isLoading.get();
+    }
+    set isLoading(newValue) {
+        this.__isLoading.set(newValue);
+    }
+    get taskCount() {
+        return this.__taskCount.get();
+    }
+    set taskCount(newValue) {
+        this.__taskCount.set(newValue);
+    }
+    get billCount() {
+        return this.__billCount.get();
+    }
+    set billCount(newValue) {
+        this.__billCount.set(newValue);
+    }
+    aboutToAppear() {
+        this.addLog('æµ‹è¯•é¡µé¢å·²åŠ è½½');
+    }
+    addLog(msg) {
+        const time = new Date().toLocaleTimeString();
+        this.testResults.push(`[${time}] ${msg}`);
+        hilog.info(DOMAIN, TAG, msg);
+    }
+    // æµ‹è¯•1: è·å–DatabaseZone
+    async testGetZone() {
+        try {
+            this.addLog('æµ‹è¯•1: è·å–DatabaseZone...');
+            const zone = cloudDatabase.zone(ZONE_NAME);
+            this.addLog('âœ“ DatabaseZoneè·å–æˆåŠŸ');
+            return true;
+        }
+        catch (err) {
+            const error = err;
+            this.addLog(`âœ— DatabaseZoneè·å–å¤±è´¥: ${error.message}`);
+            return false;
+        }
+    }
+    // æµ‹è¯•2: åˆ›å»ºDatabaseQuery
+    async testCreateQuery() {
+        try {
+            this.addLog('æµ‹è¯•2: åˆ›å»ºDatabaseQuery...');
+            const condition = new cloudDatabase.DatabaseQuery(TestTaskCloudDB);
+            this.addLog('âœ“ DatabaseQueryåˆ›å»ºæˆåŠŸ');
+            return true;
+        }
+        catch (err) {
+            const error = err;
+            this.addLog(`âœ— DatabaseQueryåˆ›å»ºå¤±è´¥: ${error.message}`);
+            return false;
+        }
+    }
+    // æµ‹è¯•3: æŸ¥è¯¢ä»»åŠ¡
+    async testQueryTasks() {
+        try {
+            this.addLog('æµ‹è¯•3: æŸ¥è¯¢ä»»åŠ¡æ•°æ®...');
+            const zone = cloudDatabase.zone(ZONE_NAME);
+            const condition = new cloudDatabase.DatabaseQuery(TestTaskCloudDB);
+            const results = await zone.query(condition);
+            this.taskCount = results.length;
+            this.addLog(`âœ“ æŸ¥è¯¢ä»»åŠ¡æˆåŠŸï¼Œæ•°é‡: ${results.length}`);
+            // æ‰“å°å‰3æ¡æ•°æ®
+            for (let i = 0; i < Math.min(3, results.length); i++) {
+                const task = results[i];
+                this.addLog(`  - ä»»åŠ¡${i + 1}: ${task.title || '(æ— æ ‡é¢˜)'}`);
+            }
+            return true;
+        }
+        catch (err) {
+            const error = err;
+            this.addLog(`âœ— æŸ¥è¯¢ä»»åŠ¡å¤±è´¥: ${error.message}`);
+            return false;
+        }
+    }
+    // æµ‹è¯•4: æŸ¥è¯¢è´¦å•
+    async testQueryBills() {
+        try {
+            this.addLog('æµ‹è¯•4: æŸ¥è¯¢è´¦å•æ•°æ®...');
+            const zone = cloudDatabase.zone(ZONE_NAME);
+            const condition = new cloudDatabase.DatabaseQuery(TestBillCloudDB);
+            const results = await zone.query(condition);
+            this.billCount = results.length;
+            this.addLog(`âœ“ æŸ¥è¯¢è´¦å•æˆåŠŸï¼Œæ•°é‡: ${results.length}`);
+            // æ‰“å°å‰3æ¡æ•°æ®
+            for (let i = 0; i < Math.min(3, results.length); i++) {
+                const bill = results[i];
+                this.addLog(`  - è´¦å•${i + 1}: ${bill.description || '(æ— æè¿°)'} Â¥${bill.amount}`);
+            }
+            return true;
+        }
+        catch (err) {
+            const error = err;
+            this.addLog(`âœ— æŸ¥è¯¢è´¦å•å¤±è´¥: ${error.message}`);
+            return false;
+        }
+    }
+    // æµ‹è¯•5: å†™å…¥æµ‹è¯•ä»»åŠ¡
+    async testUpsertTask() {
+        try {
+            this.addLog('æµ‹è¯•5: å†™å…¥æµ‹è¯•ä»»åŠ¡...');
+            const zone = cloudDatabase.zone(ZONE_NAME);
+            const testTask = new TestTaskCloudDB();
+            testTask.id = `test_${Date.now()}`;
+            testTask.title = 'æµ‹è¯•ä»»åŠ¡';
+            testTask.description = 'è¿™æ˜¯ä¸€ä¸ªæµ‹è¯•ä»»åŠ¡';
+            testTask.status = 'pending';
+            testTask.priority = '1';
+            testTask.createTime = new Date().toISOString();
+            testTask.updateTime = new Date().toISOString();
+            testTask.tags = '[]';
+            testTask.userld = 'test_user';
+            const result = await zone.upsert(testTask);
+            this.addLog(`âœ“ å†™å…¥ä»»åŠ¡æˆåŠŸï¼Œå½±å“è¡Œæ•°: ${result}`);
+            return true;
+        }
+        catch (err) {
+            const error = err;
+            this.addLog(`âœ— å†™å…¥ä»»åŠ¡å¤±è´¥: ${error.message}`);
+            return false;
+        }
+    }
+    // è¿è¡Œæ‰€æœ‰æµ‹è¯•
+    async runAllTests() {
+        this.isLoading = true;
+        this.testResults = [];
+        this.addLog('========== å¼€å§‹CloudDBæµ‹è¯• ==========');
+        let passed = 0;
+        let failed = 0;
+        // æµ‹è¯•1
+        if (await this.testGetZone())
+            passed++;
+        else
+            failed++;
+        // æµ‹è¯•2
+        if (await this.testCreateQuery())
+            passed++;
+        else
+            failed++;
+        // æµ‹è¯•3
+        if (await this.testQueryTasks())
+            passed++;
+        else
+            failed++;
+        // æµ‹è¯•4
+        if (await this.testQueryBills())
+            passed++;
+        else
+            failed++;
+        this.addLog('========== æµ‹è¯•å®Œæˆ ==========');
+        this.addLog(`é€šè¿‡: ${passed}, å¤±è´¥: ${failed}`);
+        this.isLoading = false;
+    }
+    // æµ‹è¯•å†™å…¥
+    async runWriteTest() {
+        this.isLoading = true;
+        this.addLog('========== å¼€å§‹å†™å…¥æµ‹è¯• ==========');
+        await this.testUpsertTask();
+        // å†™å…¥åé‡æ–°æŸ¥è¯¢éªŒè¯
+        await this.testQueryTasks();
+        this.addLog('========== å†™å…¥æµ‹è¯•å®Œæˆ ==========');
+        this.isLoading = false;
+    }
+    initialRender() {
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Column.create();
+            Column.debugLine("entry/src/main/ets/pages/CloudDBTest.ets(217:5)", "entry");
+            Column.width('100%');
+            Column.height('100%');
+            Column.padding(20);
+        }, Column);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            // æ ‡é¢˜
+            Text.create('CloudDB åŠŸèƒ½æµ‹è¯•');
+            Text.debugLine("entry/src/main/ets/pages/CloudDBTest.ets(219:7)", "entry");
+            // æ ‡é¢˜
+            Text.fontSize(24);
+            // æ ‡é¢˜
+            Text.fontWeight(FontWeight.Bold);
+            // æ ‡é¢˜
+            Text.margin({ top: 20, bottom: 20 });
+        }, Text);
+        // æ ‡é¢˜
+        Text.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            // ç»Ÿè®¡ä¿¡æ¯
+            Row.create();
+            Row.debugLine("entry/src/main/ets/pages/CloudDBTest.ets(225:7)", "entry");
+            // ç»Ÿè®¡ä¿¡æ¯
+            Row.margin({ bottom: 20 });
+        }, Row);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Text.create(`ä»»åŠ¡: ${this.taskCount}`);
+            Text.debugLine("entry/src/main/ets/pages/CloudDBTest.ets(226:9)", "entry");
+            Text.fontSize(16);
+            Text.margin({ right: 20 });
+        }, Text);
+        Text.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Text.create(`è´¦å•: ${this.billCount}`);
+            Text.debugLine("entry/src/main/ets/pages/CloudDBTest.ets(229:9)", "entry");
+            Text.fontSize(16);
+        }, Text);
+        Text.pop();
+        // ç»Ÿè®¡ä¿¡æ¯
+        Row.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            // æŒ‰é’®åŒºåŸŸ
+            Row.create();
+            Row.debugLine("entry/src/main/ets/pages/CloudDBTest.ets(235:7)", "entry");
+            // æŒ‰é’®åŒºåŸŸ
+            Row.margin({ bottom: 20 });
+        }, Row);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Button.createWithLabel('è¿è¡ŒæŸ¥è¯¢æµ‹è¯•');
+            Button.debugLine("entry/src/main/ets/pages/CloudDBTest.ets(236:9)", "entry");
+            Button.onClick(() => this.runAllTests());
+            Button.enabled(!this.isLoading);
+            Button.margin({ right: 10 });
+        }, Button);
+        Button.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Button.createWithLabel('æµ‹è¯•å†™å…¥');
+            Button.debugLine("entry/src/main/ets/pages/CloudDBTest.ets(241:9)", "entry");
+            Button.onClick(() => this.runWriteTest());
+            Button.enabled(!this.isLoading);
+            Button.margin({ right: 10 });
+        }, Button);
+        Button.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Button.createWithLabel('æ¸…ç©ºæ—¥å¿—');
+            Button.debugLine("entry/src/main/ets/pages/CloudDBTest.ets(246:9)", "entry");
+            Button.onClick(() => {
+                this.testResults = [];
+                this.taskCount = 0;
+                this.billCount = 0;
+            });
+            Button.enabled(!this.isLoading);
+        }, Button);
+        Button.pop();
+        // æŒ‰é’®åŒºåŸŸ
+        Row.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            If.create();
+            // åŠ è½½æŒ‡ç¤ºå™¨
+            if (this.isLoading) {
+                this.ifElseBranchUpdateFunction(0, () => {
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        LoadingProgress.create();
+                        LoadingProgress.debugLine("entry/src/main/ets/pages/CloudDBTest.ets(258:9)", "entry");
+                        LoadingProgress.width(50);
+                        LoadingProgress.height(50);
+                        LoadingProgress.margin({ bottom: 10 });
+                    }, LoadingProgress);
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Text.create('æµ‹è¯•ä¸­...');
+                        Text.debugLine("entry/src/main/ets/pages/CloudDBTest.ets(262:9)", "entry");
+                        Text.fontSize(14);
+                        Text.fontColor('#666');
+                    }, Text);
+                    Text.pop();
+                });
+            }
+            // æµ‹è¯•ç»“æœæ—¥å¿—
+            else {
+                this.ifElseBranchUpdateFunction(1, () => {
+                });
+            }
+        }, If);
+        If.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            // æµ‹è¯•ç»“æœæ—¥å¿—
+            Scroll.create();
+            Scroll.debugLine("entry/src/main/ets/pages/CloudDBTest.ets(268:7)", "entry");
+            // æµ‹è¯•ç»“æœæ—¥å¿—
+            Scroll.width('100%');
+            // æµ‹è¯•ç»“æœæ—¥å¿—
+            Scroll.layoutWeight(1);
+            // æµ‹è¯•ç»“æœæ—¥å¿—
+            Scroll.backgroundColor('#fafafa');
+            // æµ‹è¯•ç»“æœæ—¥å¿—
+            Scroll.borderRadius(8);
+            // æµ‹è¯•ç»“æœæ—¥å¿—
+            Scroll.padding(10);
+        }, Scroll);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Column.create();
+            Column.debugLine("entry/src/main/ets/pages/CloudDBTest.ets(269:9)", "entry");
+            Column.width('100%');
+        }, Column);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            ForEach.create();
+            const forEachItemGenFunction = (_item, index) => {
+                const log = _item;
+                this.observeComponentCreation2((elmtId, isInitialRender) => {
+                    Text.create(log);
+                    Text.debugLine("entry/src/main/ets/pages/CloudDBTest.ets(271:13)", "entry");
+                    Text.fontSize(12);
+                    Text.fontColor(log.includes('âœ—') ? '#ff0000' : (log.includes('âœ“') ? '#00aa00' : '#333333'));
+                    Text.width('100%');
+                    Text.padding(5);
+                    Text.backgroundColor(index % 2 === 0 ? '#f5f5f5' : '#ffffff');
+                }, Text);
+                Text.pop();
+            };
+            this.forEachUpdateFunction(elmtId, this.testResults, forEachItemGenFunction, undefined, true, false);
+        }, ForEach);
+        ForEach.pop();
+        Column.pop();
+        // æµ‹è¯•ç»“æœæ—¥å¿—
+        Scroll.pop();
+        Column.pop();
+    }
+    rerender() {
+        this.updateDirtyElements();
+    }
+    static getEntryName() {
+        return "CloudDBTestPage";
+    }
+}
+registerNamedRoute(() => new CloudDBTestPage(undefined, {}), "", { bundleName: "com.jenrimark.chronos", moduleName: "entry", pagePath: "pages/CloudDBTest", pageFullPath: "entry/src/main/ets/pages/CloudDBTest", integratedHsp: "false", moduleType: "followWithHap" });
+//# sourceMappingURL=CloudDBTest.js.mapÂ’Ù hvigor_ignore__Applications_DevEco-Studio.app_Contents_sdk_default_hms_ets_api_@hms.core.deviceCloudGateway.cloudDatabase.d.tsÙh hvigor_ignore__Applications_DevEco-Studio.app_Contents_sdk_default_openharmony_ets_api_@ohos.hilog.d.tsÙ`/Users/Jenrimark/Desktop/CODE/ChronosForHarmony/Chronos/entry/src/main/ets/pages/CloudDBTest.etsÔrB›ªmoduleName±isLocalDependency¯isNodeEntryFile§pkgPath±belongProjectPath§pkgNameªpkgVersion±dependencyPkgInfo°belongModulePath§checker¬shouldEmitJs¥entryÃÂÙ=/Users/Jenrimark/Desktop/CODE/ChronosForHarmony/Chronos/entryÙ7/Users/Jenrimark/Desktop/CODE/ChronosForHarmony/Chronos¥entry¥1.0.0Ô  Ù=/Users/Jenrimark/Desktop/CODE/ChronosForHarmony/Chronos/entryÔrCÜ ®¬getNodeCount²getIdentifierCount®getSymbolCount¬getTypeCountµgetInstantiationCountµgetRelationCacheSizes±isUndefinedSymbol±isArgumentsSymbol¯isUnknownSymbol¯getMergedSymbol®getDiagnostics´getGlobalDiagnostics´getRecursionIdentity¶getUnmatchedProperties¹getTypeOfSymbolAtLocation¯getTypeOfSymbolÙ(getSymbolsOfParameterPropertyDeclaration·getDeclaredTypeOfSymbol³getPropertiesOfType±getPropertyOfTypeÙ"getPrivateIdentifierPropertyOfType·getTypeOfPropertyOfType²getIndexInfoOfType³getIndexInfosOfTypeºgetIndexInfosOfIndexSymbol³getSignaturesOfType²getIndexTypeOfType¬getIndexType¬getBaseTypes¸getBaseTypeOfLiteralType®getWidenedType³getTypeFromTypeNode°getParameterTypeÙ$getParameterIdentifierNameAtPosition¸getPromisedTypeOfPromise®getAwaitedType¸getReturnTypeOfSignature®isNullableType¯getNullableType²getNonNullableType²getNonOptionalType°getTypeArguments®typeToTypeNodeÙ$indexInfoToIndexSignatureDeclaration¿signatureToSignatureDeclaration²symbolToEntityName²symbolToExpression¬symbolToNodeÙ!symbolToTypeParameterDeclarations¼symbolToParameterDeclarationºtypeParameterToDeclaration±getSymbolsInScope³getSymbolAtLocation·getIndexInfosAtLocationÙ!getShorthandAssignmentValueSymbolÙ#getExportSpecifierLocalTargetSymbol·getExportSymbolOfSymbol±getTypeAtLocationºgetTypeAtLocationForLinterÙ tryGetTypeAtLocationWithoutCheckºgetTypeOfAssignmentPatternÙ*getPropertySymbolOfDestructuringAssignment±signatureToString¬typeToString®symbolToStringµtypePredicateToString®writeSignature©writeType«writeSymbol²writeTypePredicate¼getAugmentedPropertiesOfType®getRootSymbols²getSymbolOfExpando±getContextualTypeÙ(getContextualTypeForObjectLiteralElementÙ#getContextualTypeForArgumentAtIndexÙ getContextualTypeForJsxAttribute²isContextSensitiveÙ!getTypeOfPropertyOfContextualTypeµgetFullyQualifiedNameÙ#tryGetResolvedSignatureWithoutCheck´getResolvedSignatureÙ/getResolvedSignatureForStringLiteralCompletionsÙ$getResolvedSignatureForSignatureHelpµgetExpandedParameters¹hasEffectiveRestParameterºcontainsArgumentsReference°getConstantValueµisValidPropertyAccessÙ#isValidPropertyAccessForCompletions»getSignatureFromDeclarationºisImplementationOfOverload¹getImmediateAliasedSymbol°getAliasedSymbol¯getEmitResolver²getExportsOfModule¿getExportsAndPropertiesOfModuleÙ forEachExportAndPropertyOfModule¯getSymbolWalker±getAmbientModules¹getJsxIntrinsicTagNamesAt³isOptionalParameter»tryGetMemberInModuleExportsÙ(tryGetMemberInModuleExportsAndProperties´tryFindAmbientModuleÙ(tryFindAmbientModuleWithoutAugmentations¯getApparentType¬getUnionType²isTypeAssignableTo³createAnonymousType¯createSignature¬createSymbol¯createIndexInfoªgetAnyType­getStringType­getNumberType±createPromiseType¯createArrayType¹getElementTypeOfArrayType®getBooleanType¬getFalseType«getTrueType«getVoidType°getUndefinedType«getNullType¯getESSymbolType¬getNeverType¯getOptionalType®getPromiseType²getPromiseLikeType´getAsyncIterableType²isSymbolAccessible«isArrayType«isTupleType¯isArrayLikeTypeÙ#isTypeInvalidDueToUnionDiscriminantºgetExactOptionalProperties¿getAllPossiblePropertiesOfTypesÙ(getSuggestedSymbolForNonexistentPropertyÙ#getSuggestionForNonexistentPropertyÙ,getSuggestedSymbolForNonexistentJSXAttributeÙ&getSuggestedSymbolForNonexistentSymbolÙ!getSuggestionForNonexistentSymbolÙ&getSuggestedSymbolForNonexistentModuleÙ!getSuggestionForNonexistentExportÙ+getSuggestedSymbolForNonexistentClassMember·getBaseConstraintOfType»getDefaultFromTypeParameter«resolveName¯getJsxNamespaceµgetJsxFragmentFactory¸getAccessibleSymbolChain»getTypePredicateOfSignature¹resolveExternalModuleName»resolveExternalModuleSymbol°tryGetThisTypeAt¹getTypeArgumentConstraint¸getSuggestionDiagnostics¸runWithCancellationTokenÙ3getLocalTypeParametersOfClassOrInterfaceOrTypeAlias´isDeclarationVisible´isPropertyAccessible»getTypeOnlyAliasDeclaration¿getMemberOverrideModifierStatusÙ!isTypeParameterPossiblyReferenced²getConstEnumRelate´clearConstEnumRelateµdeleteConstEnumRelateÙ$getTypeArgumentsForResolvedSignatureµgetCheckedSourceFilesÙ"collectHaveTsNoCheckFilesForLinter·clearQualifiedNameCache®isStaticRecord²isStaticSourceFileÔ  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  ÃÃÚÒ/**
+ * CloudDB æµ‹è¯•é¡µé¢
+ * ç”¨äºéªŒè¯æ•°æ®åº“æŸ¥è¯¢åŠŸèƒ½æ˜¯å¦æ­£å¸¸å·¥ä½œ
+ */
+import { cloudDatabase } from '@kit.CloudFoundationKit';
+import { hilog } from '@kit.PerformanceAnalysisKit';
+
+const TAG: string = 'CloudDBTest';
+const DOMAIN: number = 0x0000;
+const ZONE_NAME: string = 'ChronosZone';
+
+// ç›´æ¥åœ¨æµ‹è¯•é¡µé¢å®šä¹‰æ¨¡å‹ç±»ï¼Œé¿å…æ··æ·†é—®é¢˜
+class TestTaskCloudDB extends cloudDatabase.DatabaseObject {
+  public id: string = '';
+  public title: string = '';
+  public description: string = '';
+  public status: string = '';
+  public priority: string = '';
+  public dueDate: string = '';
+  public createTime: string = '';
+  public updateTime: string = '';
+  public completedTime: string = '';
+  public tags: string = '';
+  public userld: string = '';
+
+  public naturalbase_ClassName(): string {
+    return 'TaskCloudDB';
+  }
+
+  constructor() {
+    super();
+  }
+}
+
+class TestBillCloudDB extends cloudDatabase.DatabaseObject {
+  public id: string = '';
+  public type: string = '';
+  public category: string = '';
+  public amount: string = '';
+  public description: string = '';
+  public date: string = '';
+  public createTime: string = '';
+  public updateTime: string = '';
+  public tags: string = '';
+  public userId: string = '';
+
+  public naturalbase_ClassName(): string {
+    return 'BillCloudDB';
+  }
+
+  constructor() {
+    super();
+  }
+}
+
+@Entry
+@Component
+struct CloudDBTestPage {
+  @State testResults: string[] = [];
+  @State isLoading: boolean = false;
+  @State taskCount: number = 0;
+  @State billCount: number = 0;
+
+  aboutToAppear() {
+    this.addLog('æµ‹è¯•é¡µé¢å·²åŠ è½½');
+  }
+
+  addLog(msg: string) {
+    const time = new Date().toLocaleTimeString();
+    this.testResults.push(`[${time}] ${msg}`);
+    hilog.info(DOMAIN, TAG, msg);
+  }
+
+  // æµ‹è¯•1: è·å–DatabaseZone
+  async testGetZone(): Promise<boolean> {
+    try {
+      this.addLog('æµ‹è¯•1: è·å–DatabaseZone...');
+      const zone = cloudDatabase.zone(ZONE_NAME);
+      this.addLog('âœ“ DatabaseZoneè·å–æˆåŠŸ');
+      return true;
+    } catch (err) {
+      const error = err as Error;
+      this.addLog(`âœ— DatabaseZoneè·å–å¤±è´¥: ${error.message}`);
+      return false;
+    }
+  }
+
+  // æµ‹è¯•2: åˆ›å»ºDatabaseQuery
+  async testCreateQuery(): Promise<boolean> {
+    try {
+      this.addLog('æµ‹è¯•2: åˆ›å»ºDatabaseQuery...');
+      const condition = new cloudDatabase.DatabaseQuery(TestTaskCloudDB);
+      this.addLog('âœ“ DatabaseQueryåˆ›å»ºæˆåŠŸ');
+      return true;
+    } catch (err) {
+      const error = err as Error;
+      this.addLog(`âœ— DatabaseQueryåˆ›å»ºå¤±è´¥: ${error.message}`);
+      return false;
+    }
+  }
+
+  // æµ‹è¯•3: æŸ¥è¯¢ä»»åŠ¡
+  async testQueryTasks(): Promise<boolean> {
+    try {
+      this.addLog('æµ‹è¯•3: æŸ¥è¯¢ä»»åŠ¡æ•°æ®...');
+      const zone = cloudDatabase.zone(ZONE_NAME);
+      const condition = new cloudDatabase.DatabaseQuery(TestTaskCloudDB);
+      const results = await zone.query(condition);
+      this.taskCount = results.length;
+      this.addLog(`âœ“ æŸ¥è¯¢ä»»åŠ¡æˆåŠŸï¼Œæ•°é‡: ${results.length}`);
+      
+      // æ‰“å°å‰3æ¡æ•°æ®
+      for (let i = 0; i < Math.min(3, results.length); i++) {
+        const task = results[i] as TestTaskCloudDB;
+        this.addLog(`  - ä»»åŠ¡${i+1}: ${task.title || '(æ— æ ‡é¢˜)'}`);
+      }
+      return true;
+    } catch (err) {
+      const error = err as Error;
+      this.addLog(`âœ— æŸ¥è¯¢ä»»åŠ¡å¤±è´¥: ${error.message}`);
+      return false;
+    }
+  }
+
+  // æµ‹è¯•4: æŸ¥è¯¢è´¦å•
+  async testQueryBills(): Promise<boolean> {
+    try {
+      this.addLog('æµ‹è¯•4: æŸ¥è¯¢è´¦å•æ•°æ®...');
+      const zone = cloudDatabase.zone(ZONE_NAME);
+      const condition = new cloudDatabase.DatabaseQuery(TestBillCloudDB);
+      const results = await zone.query(condition);
+      this.billCount = results.length;
+      this.addLog(`âœ“ æŸ¥è¯¢è´¦å•æˆåŠŸï¼Œæ•°é‡: ${results.length}`);
+      
+      // æ‰“å°å‰3æ¡æ•°æ®
+      for (let i = 0; i < Math.min(3, results.length); i++) {
+        const bill = results[i] as TestBillCloudDB;
+        this.addLog(`  - è´¦å•${i+1}: ${bill.description || '(æ— æè¿°)'} Â¥${bill.amount}`);
+      }
+      return true;
+    } catch (err) {
+      const error = err as Error;
+      this.addLog(`âœ— æŸ¥è¯¢è´¦å•å¤±è´¥: ${error.message}`);
+      return false;
+    }
+  }
+
+  // æµ‹è¯•5: å†™å…¥æµ‹è¯•ä»»åŠ¡
+  async testUpsertTask(): Promise<boolean> {
+    try {
+      this.addLog('æµ‹è¯•5: å†™å…¥æµ‹è¯•ä»»åŠ¡...');
+      const zone = cloudDatabase.zone(ZONE_NAME);
+      
+      const testTask = new TestTaskCloudDB();
+      testTask.id = `test_${Date.now()}`;
+      testTask.title = 'æµ‹è¯•ä»»åŠ¡';
+      testTask.description = 'è¿™æ˜¯ä¸€ä¸ªæµ‹è¯•ä»»åŠ¡';
+      testTask.status = 'pending';
+      testTask.priority = '1';
+      testTask.createTime = new Date().toISOString();
+      testTask.updateTime = new Date().toISOString();
+      testTask.tags = '[]';
+      testTask.userld = 'test_user';
+      
+      const result = await zone.upsert(testTask);
+      this.addLog(`âœ“ å†™å…¥ä»»åŠ¡æˆåŠŸï¼Œå½±å“è¡Œæ•°: ${result}`);
+      return true;
+    } catch (err) {
+      const error = err as Error;
+      this.addLog(`âœ— å†™å…¥ä»»åŠ¡å¤±è´¥: ${error.message}`);
+      return false;
+    }
+  }
+
+  // è¿è¡Œæ‰€æœ‰æµ‹è¯•
+  async runAllTests() {
+    this.isLoading = true;
+    this.testResults = [];
+    this.addLog('========== å¼€å§‹CloudDBæµ‹è¯• ==========');
+    
+    let passed = 0;
+    let failed = 0;
+    
+    // æµ‹è¯•1
+    if (await this.testGetZone()) passed++; else failed++;
+    
+    // æµ‹è¯•2
+    if (await this.testCreateQuery()) passed++; else failed++;
+    
+    // æµ‹è¯•3
+    if (await this.testQueryTasks()) passed++; else failed++;
+    
+    // æµ‹è¯•4
+    if (await this.testQueryBills()) passed++; else failed++;
+    
+    this.addLog('========== æµ‹è¯•å®Œæˆ ==========');
+    this.addLog(`é€šè¿‡: ${passed}, å¤±è´¥: ${failed}`);
+    
+    this.isLoading = false;
+  }
+
+  // æµ‹è¯•å†™å…¥
+  async runWriteTest() {
+    this.isLoading = true;
+    this.addLog('========== å¼€å§‹å†™å…¥æµ‹è¯• ==========');
+    
+    await this.testUpsertTask();
+    
+    // å†™å…¥åé‡æ–°æŸ¥è¯¢éªŒè¯
+    await this.testQueryTasks();
+    
+    this.addLog('========== å†™å…¥æµ‹è¯•å®Œæˆ ==========');
+    this.isLoading = false;
+  }
+
+  build() {
+    Column() {
+      // æ ‡é¢˜
+      Text('CloudDB åŠŸèƒ½æµ‹è¯•')
+        .fontSize(24)
+        .fontWeight(FontWeight.Bold)
+        .margin({ top: 20, bottom: 20 })
+
+      // ç»Ÿè®¡ä¿¡æ¯
+      Row() {
+        Text(`ä»»åŠ¡: ${this.taskCount}`)
+          .fontSize(16)
+          .margin({ right: 20 })
+        Text(`è´¦å•: ${this.billCount}`)
+          .fontSize(16)
+      }
+      .margin({ bottom: 20 })
+
+      // æŒ‰é’®åŒºåŸŸ
+      Row() {
+        Button('è¿è¡ŒæŸ¥è¯¢æµ‹è¯•')
+          .onClick(() => this.runAllTests())
+          .enabled(!this.isLoading)
+          .margin({ right: 10 })
+
+        Button('æµ‹è¯•å†™å…¥')
+          .onClick(() => this.runWriteTest())
+          .enabled(!this.isLoading)
+          .margin({ right: 10 })
+
+        Button('æ¸…ç©ºæ—¥å¿—')
+          .onClick(() => {
+            this.testResults = [];
+            this.taskCount = 0;
+            this.billCount = 0;
+          })
+          .enabled(!this.isLoading)
+      }
+      .margin({ bottom: 20 })
+
+      // åŠ è½½æŒ‡ç¤ºå™¨
+      if (this.isLoading) {
+        LoadingProgress()
+          .width(50)
+          .height(50)
+          .margin({ bottom: 10 })
+        Text('æµ‹è¯•ä¸­...')
+          .fontSize(14)
+          .fontColor('#666')
+      }
+
+      // æµ‹è¯•ç»“æœæ—¥å¿—
+      Scroll() {
+        Column() {
+          ForEach(this.testResults, (log: string, index: number) => {
+            Text(log)
+              .fontSize(12)
+              .fontColor(log.includes('âœ—') ? '#ff0000' : (log.includes('âœ“') ? '#00aa00' : '#333333'))
+              .width('100%')
+              .padding(5)
+              .backgroundColor(index % 2 === 0 ? '#f5f5f5' : '#ffffff')
+          })
+        }
+        .width('100%')
+      }
+      .width('100%')
+      .layoutWeight(1)
+      .backgroundColor('#fafafa')
+      .borderRadius(8)
+      .padding(10)
+    }
+    .width('100%')
+    .height('100%')
+    .padding(20)
+  }
+}
+ÀÔrD’Ù*@hms.core.deviceCloudGateway.cloudDatabase«@ohos.hilogÔrE—ªassertions¨external¢id¤meta±moduleSideEffectsªresolvedByµsyntheticNamedExportsAÃÙ hvigor_ignore__Applications_DevEco-Studio.app_Contents_sdk_default_hms_ets_api_@hms.core.deviceCloudGateway.cloudDatabase.d.tsÔrF‘¯hostModulesInfo˜ÔrG’²hostDependencyName®hostModuleNameÙ*@hms.core.deviceCloudGateway.cloudDatabase¥entryGÙ*@hms.core.deviceCloudGateway.cloudDatabase¥entryGÙ*@hms.core.deviceCloudGateway.cloudDatabase¥entryGÙ*@hms.core.deviceCloudGateway.cloudDatabase¥entryGÙ*@hms.core.deviceCloudGateway.cloudDatabase¥entryGÙ*@hms.core.deviceCloudGateway.cloudDatabase¥entryGÙ*@hms.core.deviceCloudGateway.cloudDatabase¥entryGÙ*@hms.core.deviceCloudGateway.cloudDatabase¥entryÃªoh-resolveÂEAÃÙh hvigor_ignore__Applications_DevEco-Studio.app_Contents_sdk_default_openharmony_ets_api_@ohos.hilog.d.tsFÜ G«@ohos.hilog¥entryG«@ohos.hilog¥entryG«@ohos.hilog¥entryG«@ohos.hilog¥entryG«@ohos.hilog¥entryG«@ohos.hilog¥entryG«@ohos.hilog¥entryG«@ohos.hilog¥entryG«@ohos.hilog¥entryG«@ohos.hilog¥entryG«@ohos.hilog¥entryG«@ohos.hilog¥entryG«@ohos.hilog¥entryG«@ohos.hilog¥entryG«@ohos.hilog¥entryG«@ohos.hilog¥entryG«@ohos.hilog¥entryG«@ohos.hilog¥entryG«@ohos.hilog¥entryG«@ohos.hilog¥entryÃªoh-resolveÂ“ÔrH–§version¤fileªsourceRoot§sources¥names¨mappings®CloudDBTest.js ‘¯CloudDBTest.etsÜ‘”    ‘” –”   ” 	” ” ”ÌF 7”ÌG 8–”   ” 	” ” ” 3”  4–”   ” ”	 	” ” !” "–”   ” ” ” ” ” –”  	 ” 	” 	” 	” 	'”  	(’”   ” —”   ” ” ” ”+ +”, ,”: :’” 	” ”” ” ” ” ’” ” ‘” ”” ” 	” ” •” 	” ” ” ” •” 	” ” ” ” •” 	” ” ” !” "•” 	” ” ” ” •” 	” ” ” ” •” 	” ” ” ” •” 	” ” ”  ” !•” 	” ” ”  ” !•” 	” ” !” #”  $•” 	” ” ” ” •” 	” ” ” ” ’” ” ‘”  —”  " ” "” "” "”+ "+”, ",”: ":’” .	” .”” /” /” /” /’” 0” 0‘” 2”” 3” 3	” 3” 3•” #	” #” #” #” #•” $	” $” $” $” $•” %	” %” %” %” %•” &	” &” &” &” &•” '	” '” '” '!” '"•” (	” (” (” (” (•” )	” )” )” ) ” )!•” *	” *” *” * ” *!•” +	” +” +” +” +•” ,	” ,” ,” ,” ,’” 4” 4‘” 5’” 9” 9‘” 7 ’”: :!”< :#’”8 ;”= ;#’”8 <”9 <’”8 =”9 =‘” 5’” :	” :’” :	” :’” ;	” ;’” ;	” ;’” <	” <’” <	” <’” =	” =’” =	” =’” ?” ?˜” Ì@” Ì@” Ì@	” Ì@” Ì@” Ì@” Ì@” Ì@’” ÌA” ÌA”” ÌC”
+ ÌC” ÌC	” ÌC›” ÌD” ÌD
+” ÌD” ÌD” ÌD” ÌD” ÌD”  ÌD”2 ÌD.”4 ÌD0”5 ÌD1” ÌE” ÌE” ÌE	” ÌE” ÌE” ÌE” ÌE”" ÌE”& ÌE"”+ ÌE'”. ÌE*”0 ÌE,”1 ÌE-”2 ÌE.œ” ÌF” ÌF	” ÌF
+” ÌF” ÌF” ÌF” ÌF” ÌF”  ÌF”# ÌF”$ ÌF ”% ÌF!’” ÌG” ÌG’” ÌI” ÌI”” ÌJ”	 ÌJ”
+ ÌJ” ÌJ’” ÌK” ÌK˜” ÌL” ÌL
+” ÌL” ÌL” ÌL”0 ÌL*”1 ÌL+”2 ÌL,›” ÌM” ÌM” ÌM” ÌM”& ÌM ”' ÌM!”+ ÌM%”, ÌM&”5 ÌM/”6 ÌM0”7 ÌM1˜” ÌN” ÌN
+” ÌN” ÌN” ÌN”, ÌN&”- ÌN'”. ÌN(”” ÌO” ÌO” ÌO” ÌO‘”	 ÌP”” ÌP” ÌP” ÌP” ÌP–” ÌQ” ÌQ” ÌQ” ÌQ” ÌQ ” ÌQ!œ” ÌR” ÌR
+” ÌR” ÌR” ÌR”/ ÌR)”4 ÌR.”5 ÌR/”< ÌR6”> ÌR8”? ÌR9”Ì@ ÌR:”” ÌS” ÌS” ÌS” ÌS‘”	 ÌT’” ÌU” ÌU’” ÌW” ÌW”” ÌX”	 ÌX”
+ ÌX” ÌX’” ÌY” ÌY˜” ÌZ” ÌZ
+” ÌZ” ÌZ” ÌZ”1 ÌZ+”2 ÌZ,”3 ÌZ-œ” Ì[” Ì[” Ì[” Ì[”" Ì[”/ Ì[)”0 Ì[*”= Ì[7”> Ì[8”ÌM Ì[ÌG”ÌN Ì[ÌH”ÌO Ì[ÌI˜” Ì\” Ì\
+” Ì\” Ì\” Ì\”- Ì\'”. Ì\(”/ Ì\)”” Ì]” Ì]” Ì]” Ì]‘”	 Ì^”” Ì^” Ì^” Ì^” Ì^–” Ì_” Ì_” Ì_” Ì_” Ì_ ” Ì_!œ” Ì`” Ì`
+” Ì`” Ì`” Ì`”0 Ì`*”5 Ì`/”6 Ì`0”= Ì`7”? Ì`9”Ì@ Ì`:”ÌA Ì`;”” Ìa” Ìa” Ìa” Ìa‘”	 Ìb’” Ìc” Ìc’” Ìe” Ìe”” Ìf”	 Ìf”
+ Ìf” Ìf’” Ìg” Ìg˜” Ìh” Ìh
+” Ìh” Ìh” Ìh”( Ìh"”) Ìh#”* Ìh$›” Ìi” Ìi” Ìi” Ìi”& Ìi ”' Ìi!”+ Ìi%”, Ìi&”5 Ìi/”6 Ìi0”7 Ìi1œ” Ìj” Ìj” Ìj” Ìj”" Ìj”/ Ìj)”0 Ìj*”= Ìj7”> Ìj8”ÌM ÌjÌG”ÌN ÌjÌH”ÌO ÌjÌIœ” Ìk” Ìk” Ìk” Ìk”" Ìk”& Ìk ”' Ìk!”, Ìk&”- Ìk'”6 Ìk0”7 Ìk1”8 Ìk2™” Ìl” Ìl
+” Ìl” Ìl” Ìl”$ Ìl”% Ìl”+ Ìl%”, Ìl&œ” Ìm” Ìm
+” Ìm” Ìm” Ìm”( Ìm"”/ Ìm)”0 Ìm*”6 Ìm0”8 Ìm2”9 Ìm3”: Ìm4’” Ìo” ÌoÜ ” Ìp” Ìp” Ìp” Ìp” Ìp” Ìp” Ìp” Ìp”  Ìp”$ Ìp”% Ìp”( Ìp"”) Ìp#”* Ìp$”, Ìp&”3 Ìp-”4 Ìp.”: Ìp4”; Ìp5”= Ìp7”> Ìp8”Ì@ Ìp:”ÌB Ìp<™” Ìq” Ìq” Ìq” Ìq”$ Ìq”% Ìq”& Ìq”' Ìq2”( Ìq3Ü ” Ìr” Ìr” Ìr” Ìr” Ìr”% Ìr”& Ìr”) Ìr”* Ìr ”/ Ìr%”3 Ìr)”4 Ìr*”9 Ìr/”= Ìr3”ÌD Ìr:”ÌF Ìr<”ÌG Ìr=”ÌH Ìr>‘” Ìs”” Ìt” Ìt” Ìt” Ìt‘”	 Ìu”” Ìu” Ìu” Ìu” Ìu–” Ìv” Ìv” Ìv” Ìv” Ìv ” Ìv!œ” Ìw” Ìw
+” Ìw” Ìw” Ìw”% Ìw”* Ìw$”+ Ìw%”2 Ìw,”4 Ìw.”5 Ìw/”6 Ìw0”” Ìx” Ìx” Ìx” Ìx‘”	 Ìy’” Ìz” Ìz’” Ì|” Ì|”” Ì}”	 Ì}”
+ Ì}” Ì}’” Ì~” Ì~˜” Ì” Ì
+” Ì” Ì” Ì”( Ì"”) Ì#”* Ì$›” Ì€” Ì€” Ì€” Ì€”& Ì€ ”' Ì€!”+ Ì€%”, Ì€&”5 Ì€/”6 Ì€0”7 Ì€1œ” Ì” Ì” Ì” Ì”" Ì”/ Ì)”0 Ì*”= Ì7”> Ì8”ÌM ÌÌG”ÌN ÌÌH”ÌO ÌÌIœ” Ì‚” Ì‚” Ì‚” Ì‚”" Ì‚”& Ì‚ ”' Ì‚!”, Ì‚&”- Ì‚'”6 Ì‚0”7 Ì‚1”8 Ì‚2™” Ìƒ” Ìƒ
+” Ìƒ” Ìƒ” Ìƒ”$ Ìƒ”% Ìƒ”+ Ìƒ%”, Ìƒ&œ” Ì„” Ì„
+” Ì„” Ì„” Ì„”( Ì„"”/ Ì„)”0 Ì„*”6 Ì„0”8 Ì„2”9 Ì„3”: Ì„4’” Ì†” Ì†Ü ” Ì‡” Ì‡” Ì‡” Ì‡” Ì‡” Ì‡” Ì‡” Ì‡”  Ì‡”$ Ì‡”% Ì‡”( Ì‡"”) Ì‡#”* Ì‡$”, Ì‡&”3 Ì‡-”4 Ì‡.”: Ì‡4”; Ì‡5”= Ì‡7”> Ì‡8”Ì@ Ì‡:”ÌB Ì‡<™” Ìˆ” Ìˆ” Ìˆ” Ìˆ”$ Ìˆ”% Ìˆ”& Ìˆ”' Ìˆ2”( Ìˆ3Ü ” Ì‰” Ì‰” Ì‰” Ì‰” Ì‰”% Ì‰”& Ì‰”) Ì‰”* Ì‰ ”/ Ì‰%”3 Ì‰)”4 Ì‰*”? Ì‰5”ÌC Ì‰9”ÌJ Ì‰Ì@”ÌO Ì‰ÌE”ÌS Ì‰ÌI”ÌT Ì‰ÌJ”ÌZ Ì‰ÌP”Ì\ Ì‰ÌR”Ì] Ì‰ÌS”Ì^ Ì‰ÌT‘” ÌŠ”” Ì‹” Ì‹” Ì‹” Ì‹‘”	 ÌŒ”” ÌŒ” ÌŒ” ÌŒ” ÌŒ–” Ì” Ì” Ì” Ì” Ì ” Ì!œ” Ì” Ì
+” Ì” Ì” Ì”% Ì”* Ì$”+ Ì%”2 Ì,”4 Ì.”5 Ì/”6 Ì0”” Ì” Ì” Ì” Ì‘”	 Ì’” Ì‘” Ì‘’” Ì“” Ì“”” Ì””	 Ì””
+ Ì”” Ì”’” Ì•” Ì•˜” Ì–” Ì–
+” Ì–” Ì–” Ì–”( Ì–"”) Ì–#”* Ì–$›” Ì—” Ì—” Ì—” Ì—”& Ì— ”' Ì—!”+ Ì—%”, Ì—&”5 Ì—/”6 Ì—0”7 Ì—1˜” Ì™” Ì™” Ì™” Ì™”! Ì™”0 Ì™*”2 Ì™,”3 Ì™-œ” Ìš” Ìš” Ìš” Ìš” Ìš”" Ìš”& Ìš ”' Ìš!”* Ìš$”, Ìš&”. Ìš(”/ Ìš)—” Ì›” Ì›” Ì›” Ì›” Ì›”# Ì›”$ Ì›—” Ìœ” Ìœ” Ìœ”  Ìœ”# Ìœ”- Ìœ'”. Ìœ(—” Ì” Ì” Ì” Ì” Ì”' Ì!”( Ì"—” Ì” Ì” Ì” Ì”  Ì”# Ì”$ Ìœ” ÌŸ” ÌŸ” ÌŸ” ÌŸ”" ÌŸ”& ÌŸ ”* ÌŸ$”, ÌŸ&”- ÌŸ'”8 ÌŸ2”: ÌŸ4”; ÌŸ5œ” Ì ” Ì ” Ì ” Ì ”" Ì ”& Ì  ”* Ì $”, Ì &”- Ì '”8 Ì 2”: Ì 4”; Ì 5—” Ì¡” Ì¡” Ì¡” Ì¡” Ì¡”  Ì¡”! Ì¡—” Ì¢” Ì¢” Ì¢” Ì¢” Ì¢”) Ì¢#”* Ì¢$œ” Ì¤” Ì¤” Ì¤” Ì¤”! Ì¤”% Ì¤”& Ì¤ ”, Ì¤&”- Ì¤'”5 Ì¤/”6 Ì¤0”7 Ì¤1š” Ì¥” Ì¥
+” Ì¥” Ì¥” Ì¥”* Ì¥$”0 Ì¥*”2 Ì¥,”3 Ì¥-”4 Ì¥.”” Ì¦” Ì¦” Ì¦” Ì¦‘”	 Ì§”” Ì§” Ì§” Ì§” Ì§–” Ì¨” Ì¨” Ì¨” Ì¨” Ì¨ ” Ì¨!œ” Ì©” Ì©
+” Ì©” Ì©” Ì©”% Ì©”* Ì©$”+ Ì©%”2 Ì©,”4 Ì©.”5 Ì©/”6 Ì©0”” Ìª” Ìª” Ìª” Ìª‘”	 Ì«’” Ì¬” Ì¬’” Ì®” Ì®”” Ì¯”	 Ì¯”
+ Ì¯” Ì¯—” Ì°” Ì°” Ì°	” Ì°” Ì°” Ì°” Ì°—” Ì±” Ì±” Ì±	” Ì±” Ì±” Ì±” Ì±˜” Ì²” Ì²” Ì²	” Ì²” Ì²”7 Ì²3”8 Ì²4”9 Ì²5–” Ì´” Ì´” Ì´” Ì´” Ì´” Ì´–” Ìµ” Ìµ” Ìµ” Ìµ” Ìµ” Ìµ’” Ì·” Ì·
+—” Ì¸” Ì¸” Ì¸” Ì¸” Ì¸”" Ì¸”$ Ì¸ ”” Ì¸"” Ì¸(” Ì¸*” Ì¸+”” Ì¸1” Ì¸7” Ì¸9” Ì¸:’” Ìº” Ìº
+—” Ì»” Ì»” Ì»” Ì»” Ì»”& Ì»"”( Ì»$”” Ì»&” Ì»,” Ì».” Ì»/”” Ì»5” Ì»;” Ì»=” Ì»>’” Ì½” Ì½
+—” Ì¾” Ì¾” Ì¾” Ì¾” Ì¾”% Ì¾!”' Ì¾#”” Ì¾%” Ì¾+” Ì¾-” Ì¾.”” Ì¾4” Ì¾:” Ì¾<” Ì¾=’” ÌÀ” ÌÀ
+—” ÌÁ” ÌÁ” ÌÁ” ÌÁ” ÌÁ”% ÌÁ!”' ÌÁ#”” ÌÁ%” ÌÁ+” ÌÁ-” ÌÁ.”” ÌÁ4” ÌÁ:” ÌÁ<” ÌÁ=˜” ÌÃ” ÌÃ” ÌÃ	” ÌÃ” ÌÃ”0 ÌÃ,”1 ÌÃ-”2 ÌÃ.œ” ÌÄ” ÌÄ” ÌÄ	” ÌÄ” ÌÄ” ÌÄ”! ÌÄ”* ÌÄ&”0 ÌÄ,”2 ÌÄ.”3 ÌÄ/”4 ÌÄ0—” ÌÆ” ÌÆ” ÌÆ	” ÌÆ” ÌÆ” ÌÆ” ÌÆ’” ÌÇ” ÌÇ’” ÌÉ” ÌÉ	”” ÌÊ”	 ÌÊ”
+ ÌÊ” ÌÊ—” ÌË” ÌË” ÌË	” ÌË” ÌË” ÌË” ÌË˜” ÌÌ” ÌÌ” ÌÌ	” ÌÌ” ÌÌ”2 ÌÌ.”3 ÌÌ/”4 ÌÌ0—” ÌÎ” ÌÎ
+” ÌÎ” ÌÎ”! ÌÎ”# ÌÎ”$ ÌÎ ’” ÌĞ” ÌĞ—” ÌÑ” ÌÑ
+” ÌÑ” ÌÑ”! ÌÑ”# ÌÑ”$ ÌÑ ˜” ÌÓ” ÌÓ” ÌÓ	” ÌÓ” ÌÓ”2 ÌÓ.”3 ÌÓ/”4 ÌÓ0—” ÌÔ” ÌÔ” ÌÔ	” ÌÔ” ÌÔ” ÌÔ” ÌÔ’” ÌÕ” ÌÕ‘” Ì×’” ÌØ” ÌØ
+–” ÌØ” ÌØ
+” Í” Í
+” Í” Í–” ÌØ” ÌØ
+” Í” Í” Í”  Í–” ÌØ” ÌØ
+” Í ” Í ” Í ” Í ’” ÌÙ” ÌÙ”” ÌÚ” ÌÚ
+” ÌÚ”& ÌÚ’” ÌÙ” ÌÙ–” ÌÚ” ÌÚ
+” ÌÛ	” ÌÛ” ÌÛ” ÌÛ’” ÌÙ” ÌÙ˜” ÌÚ” ÌÚ
+” ÌÜ	” ÌÜ” ÌÜ”& ÌÜ”' ÌÜ”+ ÌÜ#’” ÌÙ” ÌÙ” ÌÚ” ÌÚ
+” Ìİ	” Ìİ” Ìİ” Ìİ” Ìİ” Ìİ”! Ìİ”# Ìİ”) Ìİ!”+ Ìİ#”- Ìİ%”/ Ìİ'’” ÌÙ” ÌÙ’” ÌÚ” ÌÚ
+’” Ìß” Ìß’” Ìà” Ìà	’” Ìß” Ìßš” Ìà” Ìà	” Ìç” Ìç” Ìç” Ìç” Ìç”! Ìç”# Ìç”% Ìç˜” Ìá” Ìá” Ìá” Ìá”# Ìá”$ Ìá”- Ìá"”/ Ìá$–” Ìá” Ìá” Ìâ” Ìâ” Ìâ” Ìâš” Ìá” Ìá” Ìã” Ìã” Ìã” Ìã” Ìã”! Ìã”# Ìã”% Ìã’” Ìá” Ìá˜” Ìä” Ìä” Ìä” Ìä”# Ìä”$ Ìä”- Ìä"”/ Ìä$–” Ìä” Ìä” Ìå” Ìå” Ìå” Ìå’” Ìä” Ìä’” Ìß” Ìß’” Ìà” Ìà	’” Ìé” Ìé’” Ìê” Ìê	’” Ìé” Ìéš” Ìê” Ìê	” Ìı” Ìı” Ìı” Ìı” Ìı”! Ìı”# Ìı”% Ìı”” Ìë” Ìë”# Ìë”+ Ìëœ” Ìë” Ìë” Ìì” Ìì” Ìì” Ìì”  Ìì”! Ìì”% Ìì”& Ìì”1 Ìì)”3 Ìì+™” Ìë” Ìë” Ìí” Ìí” Ìí” Ìí”  Ìí”! Ìí”* Ìí"š” Ìë” Ìë” Ìî” Ìî” Ìî” Ìî”! Ìî”# Ìî”% Ìî”' Ìî’” Ìë” Ìë”” Ìğ” Ìğ”# Ìğ”) Ìğœ” Ìğ” Ìğ” Ìñ” Ìñ” Ìñ” Ìñ”  Ìñ”! Ìñ”% Ìñ”& Ìñ”2 Ìñ*”4 Ìñ,™” Ìğ” Ìğ” Ìò” Ìò” Ìò” Ìò”  Ìò”! Ìò”* Ìò"š” Ìğ” Ìğ” Ìó” Ìó” Ìó” Ìó”! Ìó”# Ìó”% Ìó”' Ìó’” Ìğ” Ìğ”” Ìõ” Ìõ”# Ìõ”) Ìõ—” Ìõ” Ìõ” Ìö” Ìö” Ìö” Ìö”  Ìö—” Ì÷” Ì÷” Ì÷”  Ì÷”# Ì÷”% Ì÷!”& Ì÷"—” Ìø” Ìø” Ìø” Ìø”! Ìø”" Ìø”# Ìø—” Ìù” Ìù” Ìù” Ìù”! Ìù”" Ìù”# Ìù’” Ìú
+” Ìú™” Ìõ” Ìõ” Ìû” Ìû” Ìû” Ìû”  Ìû”! Ìû”* Ìû"’” Ìõ” Ìõ’” Ìé” Ìé’” Ìê” Ìê	’” Ìÿ” Ìÿ–” Í ” Í 
+” Í ” Í ” Í ”  Í ’” Í”' Í–” Í”' Í”( Í”- Í”. Í”0 Í–” Í”' Í”( Í”. Í”/ Í”1 Íš” Í”' Í”( Í”. Í”/ Í”1 Í”7 Í”9 Í”; Í”= Í ”” Í” Í”$ Í”, Í–” Í” Í” Í”% Í”& Í”( Í–” Í” Í” Í”& Í”' Í”- Í’” Í” Í‘” Í’” Í
+” Í
+‘” Í’” Í
+” Í
+’” Í” Í’” Í
+” Í
+–” Í” Í” Í” Í” Í” Í’” Í
+” Í
+–” Í” Í” Í” Í”  Í”! Í’” Í
+” Í
+–” Í” Í” Í”" Í”# Í”, Í ’” Í
+” Í
+–” Í” Í” Í” Í”  Í”! Í’” Í
+” Í
+–” Í” Í” Í” Í” Í” Í’” Í” Í–” Í” Í” Í	” Í” Í” Í’” Í
+” Í’”3 Í2”8 Í?”” Í” Í”  Í”# Í–” Í” Í” Í”! Í”" Í”$ ÍÜ "” Í” Í” Í”" Í”# Í”& Í”' Í”/ Í%”0 Í&”3 Í)”4 Í*”5 Í+”6 Í,”7 Í-”Ì@ Í6”ÌA Í7”ÌB Í8”ÌC Í9”ÌD Í:”ÌG Í=”ÌH Í>”ÌP ÍÌF”ÌQ ÍÌG”ÌT ÍÌJ”ÌU ÍÌK”ÌV ÍÌL”ÌW ÍÌM”ÌX ÍÌN”Ìa ÍÌW”Ìb ÍÌX”Ìc ÍÌY”Ìd ÍÌZ”Ìm ÍÌc”Ìn ÍÌd–” Í” Í” Í” Í” Í”% Í–” Í” Í” Í”  Í”! Í”" ÍÜ ” Í” Í” Í”( Í”) Í”. Í$”1 Í'”2 Í(”7 Í-”8 Í.”9 Í/”: Í0”; Í1”ÌD Í:”ÌE Í;”ÌF Í<”ÌG Í=”ÌP ÍÌF’” Í” Í””/ Í”3 Í”4 Í”? Í"’” Í
+” Í’” Í” Í’” Í
+” Í
+’” Í” Í’” ÌØ” ÌØ
+‘” Í!ÔrI–§version¤file§sources®sourcesContent¥names¨mappingsÀ‘À‘ÀÜ¦‘”    ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”  	 ‘”  
+ ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”    ‘”  ! ‘”  " ‘”  # ‘”  $ ‘”  % ‘”  & ‘”  ' ‘”  ( ‘”  ) ‘”  * ‘”  + ‘”  , ‘”  - ‘”  . ‘”  / ‘”  0 ‘”  1 ‘”  2 ‘”  3 ‘”  4 ‘”  5 ‘”  6 ‘”  7 ‘”  8 ‘”  9 ‘”  : ‘”  ; ‘”  < ‘”  = ‘”  > ‘”  ? ‘”  Ì@ ‘”  ÌA ‘”  ÌB ‘”  ÌC ‘”  ÌD ‘”  ÌE ‘”  ÌF ‘”  ÌG ‘”  ÌH ‘”  ÌI ‘”  ÌJ ‘”  ÌK ‘”  ÌL ‘”  ÌM ‘”  ÌN ‘”  ÌO ‘”  ÌP ‘”  ÌQ ‘”  ÌR ‘”  ÌS ‘”  ÌT ‘”  ÌU ‘”  ÌV ‘”  ÌW ‘”  ÌX ‘”  ÌY ‘”  ÌZ ‘”  Ì[ ‘”  Ì\ ‘”  Ì] ‘”  Ì^ ‘”  Ì_ ‘”  Ì` ‘”  Ìa ‘”  Ìb ‘”  Ìc ‘”  Ìd ‘”  Ìe ‘”  Ìf ‘”  Ìg ‘”  Ìh ‘”  Ìi ‘”  Ìj ‘”  Ìk ‘”  Ìl ‘”  Ìm ‘”  Ìn ‘”  Ìo ‘”  Ìp ‘”  Ìq ‘”  Ìr ‘”  Ìs ‘”  Ìt ‘”  Ìu ‘”  Ìv ‘”  Ìw ‘”  Ìx ‘”  Ìy ‘”  Ìz ‘”  Ì{ ‘”  Ì| ‘”  Ì} ‘”  Ì~ ‘”  Ì ‘”  Ì€ ‘”  Ì ‘”  Ì‚ ‘”  Ìƒ ‘”  Ì„ ‘”  Ì… ‘”  Ì† ‘”  Ì‡ ‘”  Ìˆ ‘”  Ì‰ ‘”  ÌŠ ‘”  Ì‹ ‘”  ÌŒ ‘”  Ì ‘”  Ì ‘”  Ì ‘”  Ì ‘”  Ì‘ ‘”  Ì’ ‘”  Ì“ ‘”  Ì” ‘”  Ì• ‘”  Ì– ‘”  Ì— ‘”  Ì˜ ‘”  Ì™ ‘”  Ìš ‘”  Ì› ‘”  Ìœ ‘”  Ì ‘”  Ì ‘”  ÌŸ ‘”  Ì  ‘”  Ì¡ ‘”  Ì¢ ‘”  Ì£ ‘”  Ì¤ ‘”  Ì¥ ‘”  Ì¦ ‘”  Ì§ ‘”  Ì¨ ‘”  Ì© ‘”  Ìª ‘”  Ì« ‘”  Ì¬ ‘”  Ì­ ‘”  Ì® ‘”  Ì¯ ‘”  Ì° ‘”  Ì± ‘”  Ì² ‘”  Ì³ ‘”  Ì´ ‘”  Ìµ ‘”  Ì¶ ‘”  Ì· ‘”  Ì¸ ‘”  Ì¹ ‘”  Ìº ‘”  Ì» ‘”  Ì¼ ‘”  Ì½ ‘”  Ì¾ ‘”  Ì¿ ‘”  ÌÀ ‘”  ÌÁ ‘”  ÌÂ ‘”  ÌÃ ‘”  ÌÄ ‘”  ÌÅ ‘”  ÌÆ ‘”  ÌÇ ‘”  ÌÈ ‘”  ÌÉ ‘”  ÌÊ ‘”  ÌË ‘”  ÌÌ ‘”  ÌÍ ‘”  ÌÎ ‘”  ÌÏ ‘”  ÌĞ ‘”  ÌÑ ‘”  ÌÒ ‘”  ÌÓ ‘”  ÌÔ ‘”  ÌÕ ‘”  ÌÖ ‘”  Ì× ‘”  ÌØ ‘”  ÌÙ ‘”  ÌÚ ‘”  ÌÛ ‘”  ÌÜ ‘”  Ìİ ‘”  ÌŞ ‘”  Ìß ‘”  Ìà ‘”  Ìá ‘”  Ìâ ‘”  Ìã ‘”  Ìä ‘”  Ìå ‘”  Ìæ ‘”  Ìç ‘”  Ìè ‘”  Ìé ‘”  Ìê ‘”  Ìë ‘”  Ìì ‘”  Ìí ‘”  Ìî ‘”  Ìï ‘”  Ìğ ‘”  Ìñ ‘”  Ìò ‘”  Ìó ‘”  Ìô ‘”  Ìõ ‘”  Ìö ‘”  Ì÷ ‘”  Ìø ‘”  Ìù ‘”  Ìú ‘”  Ìû ‘”  Ìü ‘”  Ìı ‘”  Ìş ‘”  Ìÿ ‘”  Í  ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í	 ‘”  Í
+ ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í  ‘”  Í! ‘”  Í" ‘”  Í# ‘”  Í$ ‘”  Í% ‘”  Í& ‘”  Í' ‘”  Í( ‘”  Í) ‘”  Í* ‘”  Í+ ‘”  Í, ‘”  Í- ‘”  Í. ‘”  Í/ ‘”  Í0 ‘”  Í1 ‘”  Í2 ‘”  Í3 ‘”  Í4 ‘”  Í5 ‘”  Í6 ‘”  Í7 ‘”  Í8 ‘”  Í9 ‘”  Í: ‘”  Í; ‘”  Í< ‘”  Í= ‘”  Í> ‘”  Í? ‘”  Í@ ‘”  ÍA ‘”  ÍB ‘”  ÍC ‘”  ÍD ‘”  ÍE ‘”  ÍF ‘”  ÍG ‘”  ÍH ‘”  ÍI ‘”  ÍJ ‘”  ÍK ‘”  ÍL ‘”  ÍM ‘”  ÍN ‘”  ÍO ‘”  ÍP ‘”  ÍQ ‘”  ÍR ‘”  ÍS ‘”  ÍT ‘”  ÍU ‘”  ÍV ‘”  ÍW ‘”  ÍX ‘”  ÍY ‘”  ÍZ ‘”  Í[ ‘”  Í\ ‘”  Í] ‘”  Í^ ‘”  Í_ ‘”  Í` ‘”  Ía ‘”  Íb ‘”  Íc ‘”  Íd ‘”  Íe ‘”  Íf ‘”  Íg ‘”  Íh ‘”  Íi ‘”  Íj ‘”  Ík ‘”  Íl ‘”  Ím ‘”  Ín ‘”  Ío ‘”  Íp ‘”  Íq ‘”  Ír ‘”  Ís ‘”  Ít ‘”  Íu ‘”  Ív ‘”  Íw ‘”  Íx ‘”  Íy ‘”  Íz ‘”  Í{ ‘”  Í| ‘”  Í} ‘”  Í~ ‘”  Í ‘”  Í€ ‘”  Í ‘”  Í‚ ‘”  Íƒ ‘”  Í„ ‘”  Í… ‘”  Í† ‘”  Í‡ ‘”  Íˆ ‘”  Í‰ ‘”  ÍŠ ‘”  Í‹ ‘”  ÍŒ ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í‘ ‘”  Í’ ‘”  Í“ ‘”  Í” ‘”  Í• ‘”  Í– ‘”  Í— ‘”  Í˜ ‘”  Í™ ‘”  Íš ‘”  Í› ‘”  Íœ ‘”  Í ‘”  Í ‘”  ÍŸ ‘”  Í  ‘”  Í¡ ‘”  Í¢ ‘”  Í£ ‘”  Í¤ ‘”  Í¥ ÔrJ’§missing¦pluginÃ¦genAbcÂÔ  ÔrK”²dynamicImportCache¹exportAllDeclarationCache»exportNamedDeclarationCache«importCache’ÔrL•¤type¥start£endªspecifiers¦source±ImportDeclarationÌ±Ìø‘ÔrM”¤type¥start£end¥local¶ImportDefaultSpecifierÌ¸ÌÅÔrN”¤type¥start£end¤nameªIdentifierÌ¸ÌÅ­cloudDatabaseÔrO•¤type¥start£end¥value£raw§LiteralÌËÌ÷Ù*@hms.core.deviceCloudGateway.cloudDatabaseÙ,"@hms.core.deviceCloudGateway.cloudDatabase"L±ImportDeclarationÌúÍ‘M¶ImportDefaultSpecifierÍÍNªIdentifierÍÍ¥hilogO§LiteralÍÍ«@ohos.hilog­"@ohos.hilog"

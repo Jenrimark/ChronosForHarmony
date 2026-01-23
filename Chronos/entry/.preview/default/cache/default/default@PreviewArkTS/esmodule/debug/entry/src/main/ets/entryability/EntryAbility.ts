@@ -7,7 +7,7 @@ import type window from "@ohos:window";
 import { initialize } from "@normalized:N&&&@hw-agconnect/hmcore/index&1.0.5";
 import cloudCommon from "@hms:core.deviceCloudGateway.cloudCommon";
 import util from "@ohos:util";
-import type { BusinessError as BusinessError } from "@ohos:base";
+import type { BusinessError } from "@ohos:base";
 import { HolidayService } from "@normalized:N&&&entry/src/main/ets/service/HolidayService&";
 import { EventService } from "@normalized:N&&&entry/src/main/ets/service/EventService&";
 import { AuthService } from "@normalized:N&&&entry/src/main/ets/service/AuthService&";

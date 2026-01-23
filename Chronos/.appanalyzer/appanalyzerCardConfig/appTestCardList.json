@@ -7,6 +7,8 @@
 		"cardName":"自动上架体验规范体检",
 		"default":true,
 		"projectType":"app",
+		"replayTask":false,
+		"replayTime":60,
 		"ruleCodeList":[
 			"0132",
 			"0133",

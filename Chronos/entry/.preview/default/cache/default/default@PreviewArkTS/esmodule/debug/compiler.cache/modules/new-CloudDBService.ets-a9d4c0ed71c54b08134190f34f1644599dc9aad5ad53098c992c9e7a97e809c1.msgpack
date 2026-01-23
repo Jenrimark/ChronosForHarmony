@@ -1,678 +1,0 @@
-Ôr@Ÿªassertions¤code´customTransformCache¬dependencies¢id¤meta±moduleSideEffects¬originalCode±originalSourcemap«resolvedIds®sourcemapChainµsyntheticNamedExportsµtransformDependencies®transformFiles¨cacheAstÔrAÚ)/**
- * Cloud DBæœåŠ¡ç±»
- * ä¸¥æ ¼æŒ‰ç…§åä¸ºå®˜æ–¹æ–‡æ¡£å®ç°
- */
-import cloudDatabase from "@hms.core.deviceCloudGateway.cloudDatabase";
-import hilog from "@ohos.hilog";
-const ZONE_NAME = 'ChronosZone';
-const TAG = 'CloudDBService';
-const DOMAIN = 0x0000;
-/**
- * ä»»åŠ¡Cloud DBå¯¹è±¡ç±»å‹ - ç›´æ¥åœ¨æœåŠ¡ä¸­å®šä¹‰é¿å…å¯¼å…¥é—®é¢˜
- */
-class TaskCloudDBInternal extends cloudDatabase.DatabaseObject {
-    constructor() {
-        super();
-        this.id = '';
-        this.title = '';
-        this.description = '';
-        this.status = '';
-        this.priority = '';
-        this.dueDate = '';
-        this.createTime = '';
-        this.updateTime = '';
-        this.completedTime = '';
-        this.tags = '';
-        this.userld = '';
-    }
-    naturalbase_ClassName() {
-        return 'TaskCloudDB';
-    }
-}
-/**
- * è´¦å•Cloud DBå¯¹è±¡ç±»å‹ - ç›´æ¥åœ¨æœåŠ¡ä¸­å®šä¹‰é¿å…å¯¼å…¥é—®é¢˜
- */
-class BillCloudDBInternal extends cloudDatabase.DatabaseObject {
-    constructor() {
-        super();
-        this.id = '';
-        this.type = '';
-        this.category = '';
-        this.amount = '';
-        this.description = '';
-        this.date = '';
-        this.createTime = '';
-        this.updateTime = '';
-        this.tags = '';
-        this.userId = '';
-    }
-    naturalbase_ClassName() {
-        return 'BillCloudDB';
-    }
-}
-// é‡æ–°å¯¼å‡ºä¾›å¤–éƒ¨ä½¿ç”¨
-export { TaskCloudDBInternal as TaskCloudDB, BillCloudDBInternal as BillCloudDB };
-export class CloudDBService {
-    constructor() {
-        this.isInitialized = false;
-    }
-    static getInstance() {
-        if (!CloudDBService.instance) {
-            CloudDBService.instance = new CloudDBService();
-        }
-        return CloudDBService.instance;
-    }
-    async init() {
-        if (this.isInitialized) {
-            hilog.info(DOMAIN, TAG, 'Cloud DBå·²ç»åˆå§‹åŒ–');
-            return;
-        }
-        try {
-            hilog.info(DOMAIN, TAG, 'å¼€å§‹åˆå§‹åŒ– Cloud DB...');
-            const zone = cloudDatabase.zone(ZONE_NAME);
-            if (!zone) {
-                hilog.error(DOMAIN, TAG, 'Cloud DB zone è·å–å¤±è´¥: %{public}s', ZONE_NAME);
-                return;
-            }
-            hilog.info(DOMAIN, TAG, 'Cloud DB zoneè·å–æˆåŠŸ: %{public}s', ZONE_NAME);
-            this.isInitialized = true;
-        }
-        catch (err) {
-            const error = err;
-            hilog.error(DOMAIN, TAG, 'Cloud DBåˆå§‹åŒ–å¤±è´¥: %{public}s', error.message);
-        }
-    }
-    /**
-     * å…³é—­ Cloud DB æœåŠ¡ï¼ˆæ¸…ç†èµ„æºï¼‰
-     */
-    async close() {
-        try {
-            hilog.info(DOMAIN, TAG, 'å…³é—­ Cloud DB æœåŠ¡');
-            this.isInitialized = false;
-        }
-        catch (err) {
-            const error = err;
-            hilog.error(DOMAIN, TAG, 'å…³é—­ Cloud DB æœåŠ¡å¤±è´¥: %{public}s', error.message);
-        }
-    }
-    // ==================== ä»»åŠ¡æ“ä½œ ====================
-    async upsertTask(task) {
-        try {
-            const databaseZone = cloudDatabase.zone(ZONE_NAME);
-            const record = await databaseZone.upsert(task);
-            hilog.info(DOMAIN, TAG, 'ä»»åŠ¡ä¿å­˜æˆåŠŸ');
-            return record;
-        }
-        catch (err) {
-            const error = err;
-            hilog.error(DOMAIN, TAG, 'ä¿å­˜ä»»åŠ¡å¤±è´¥: %{public}s', error.message);
-            throw error;
-        }
-    }
-    async deleteTask(taskId) {
-        try {
-            const databaseZone = cloudDatabase.zone(ZONE_NAME);
-            const taskToDelete = new TaskCloudDBInternal();
-            taskToDelete.id = taskId;
-            const deleteNum = await databaseZone.delete(taskToDelete);
-            return deleteNum;
-        }
-        catch (err) {
-            const error = err;
-            hilog.error(DOMAIN, TAG, 'åˆ é™¤ä»»åŠ¡å¤±è´¥: %{public}s', error.message);
-            throw error;
-        }
-    }
-    async queryAllTasks() {
-        try {
-            hilog.info(DOMAIN, TAG, 'å¼€å§‹æŸ¥è¯¢æ‰€æœ‰ä»»åŠ¡');
-            const databaseZone = cloudDatabase.zone(ZONE_NAME);
-            if (!databaseZone) {
-                hilog.error(DOMAIN, TAG, 'CloudDB zone è·å–å¤±è´¥ï¼Œå¯èƒ½æœªåˆå§‹åŒ–æˆ–æ— æƒé™');
-                return [];
-            }
-            const condition = new cloudDatabase.DatabaseQuery(TaskCloudDBInternal);
-            const resultArray = await databaseZone.query(condition);
-            hilog.info(DOMAIN, TAG, 'æŸ¥è¯¢ä»»åŠ¡æˆåŠŸï¼Œæ•°é‡: %{public}d', resultArray.length);
-            return resultArray;
-        }
-        catch (err) {
-            const error = err;
-            hilog.error(DOMAIN, TAG, 'æŸ¥è¯¢ä»»åŠ¡å¤±è´¥: %{public}s', error.message);
-            return [];
-        }
-    }
-    async queryTasksByStatus(status) {
-        try {
-            const databaseZone = cloudDatabase.zone(ZONE_NAME);
-            const condition = new cloudDatabase.DatabaseQuery(TaskCloudDBInternal);
-            condition.equalTo('status', status);
-            const resultArray = await databaseZone.query(condition);
-            return resultArray;
-        }
-        catch (err) {
-            const error = err;
-            hilog.error(DOMAIN, TAG, 'æŸ¥è¯¢ä»»åŠ¡å¤±è´¥: %{public}s', error.message);
-            return [];
-        }
-    }
-    async queryTaskById(taskId) {
-        try {
-            const databaseZone = cloudDatabase.zone(ZONE_NAME);
-            const condition = new cloudDatabase.DatabaseQuery(TaskCloudDBInternal);
-            condition.equalTo('id', taskId);
-            const resultArray = await databaseZone.query(condition);
-            return resultArray.length > 0 ? resultArray[0] : null;
-        }
-        catch (err) {
-            const error = err;
-            hilog.error(DOMAIN, TAG, 'æŸ¥è¯¢ä»»åŠ¡å¤±è´¥: %{public}s', error.message);
-            return null;
-        }
-    }
-    async queryTasksByDateRange(startDate, endDate) {
-        try {
-            const databaseZone = cloudDatabase.zone(ZONE_NAME);
-            const condition = new cloudDatabase.DatabaseQuery(TaskCloudDBInternal);
-            condition.greaterThanOrEqualTo('dueDate', startDate).lessThanOrEqualTo('dueDate', endDate);
-            const resultArray = await databaseZone.query(condition);
-            return resultArray;
-        }
-        catch (err) {
-            const error = err;
-            hilog.error(DOMAIN, TAG, 'æŸ¥è¯¢ä»»åŠ¡å¤±è´¥: %{public}s', error.message);
-            return [];
-        }
-    }
-    // ==================== è´¦å•æ“ä½œ ====================
-    async upsertBill(bill) {
-        try {
-            const databaseZone = cloudDatabase.zone(ZONE_NAME);
-            const record = await databaseZone.upsert(bill);
-            return record;
-        }
-        catch (err) {
-            const error = err;
-            hilog.error(DOMAIN, TAG, 'ä¿å­˜è´¦å•å¤±è´¥: %{public}s', error.message);
-            throw error;
-        }
-    }
-    async deleteBill(billId) {
-        try {
-            const databaseZone = cloudDatabase.zone(ZONE_NAME);
-            const billToDelete = new BillCloudDBInternal();
-            billToDelete.id = billId;
-            const deleteNum = await databaseZone.delete(billToDelete);
-            return deleteNum;
-        }
-        catch (err) {
-            const error = err;
-            hilog.error(DOMAIN, TAG, 'åˆ é™¤è´¦å•å¤±è´¥: %{public}s', error.message);
-            throw error;
-        }
-    }
-    async queryAllBills() {
-        try {
-            hilog.info(DOMAIN, TAG, 'å¼€å§‹æŸ¥è¯¢æ‰€æœ‰è´¦å•');
-            const databaseZone = cloudDatabase.zone(ZONE_NAME);
-            if (!databaseZone) {
-                hilog.error(DOMAIN, TAG, 'CloudDB zone è·å–å¤±è´¥ï¼Œå¯èƒ½æœªåˆå§‹åŒ–æˆ–æ— æƒé™');
-                return [];
-            }
-            const condition = new cloudDatabase.DatabaseQuery(BillCloudDBInternal);
-            const resultArray = await databaseZone.query(condition);
-            hilog.info(DOMAIN, TAG, 'æŸ¥è¯¢è´¦å•æˆåŠŸï¼Œæ•°é‡: %{public}d', resultArray.length);
-            return resultArray;
-        }
-        catch (err) {
-            const error = err;
-            hilog.error(DOMAIN, TAG, 'æŸ¥è¯¢è´¦å•å¤±è´¥: %{public}s', error.message);
-            return [];
-        }
-    }
-    async queryBillsByType(type) {
-        try {
-            const databaseZone = cloudDatabase.zone(ZONE_NAME);
-            const condition = new cloudDatabase.DatabaseQuery(BillCloudDBInternal);
-            condition.equalTo('type', type);
-            const resultArray = await databaseZone.query(condition);
-            return resultArray;
-        }
-        catch (err) {
-            const error = err;
-            hilog.error(DOMAIN, TAG, 'æŸ¥è¯¢è´¦å•å¤±è´¥: %{public}s', error.message);
-            return [];
-        }
-    }
-    async queryBillsByDateRange(startDate, endDate) {
-        try {
-            const databaseZone = cloudDatabase.zone(ZONE_NAME);
-            const condition = new cloudDatabase.DatabaseQuery(BillCloudDBInternal);
-            condition.greaterThanOrEqualTo('date', startDate).lessThanOrEqualTo('date', endDate);
-            const resultArray = await databaseZone.query(condition);
-            return resultArray;
-        }
-        catch (err) {
-            const error = err;
-            hilog.error(DOMAIN, TAG, 'æŸ¥è¯¢è´¦å•å¤±è´¥: %{public}s', error.message);
-            return [];
-        }
-    }
-    async queryBillById(billId) {
-        try {
-            const databaseZone = cloudDatabase.zone(ZONE_NAME);
-            const condition = new cloudDatabase.DatabaseQuery(BillCloudDBInternal);
-            condition.equalTo('id', billId);
-            const resultArray = await databaseZone.query(condition);
-            return resultArray.length > 0 ? resultArray[0] : null;
-        }
-        catch (err) {
-            const error = err;
-            hilog.error(DOMAIN, TAG, 'æŸ¥è¯¢è´¦å•å¤±è´¥: %{public}s', error.message);
-            return null;
-        }
-    }
-    // ==================== å·¥å‚æ–¹æ³• ====================
-    /**
-     * åˆ›å»ºæ–°çš„ TaskCloudDB å®ä¾‹
-     */
-    createTask() {
-        return new TaskCloudDBInternal();
-    }
-    /**
-     * åˆ›å»ºæ–°çš„ BillCloudDB å®ä¾‹
-     */
-    createBill() {
-        return new BillCloudDBInternal();
-    }
-}
-//# sourceMappingURL=CloudDBService.js.mapÂ’Ùy hvigor_ignore_D:_My_Study_A_deveco_DevEco Studio_sdk_default_hms_ets_api_@hms.core.deviceCloudGateway.cloudDatabase.d.tsÙb hvigor_ignore_D:_My_Study_A_deveco_DevEco Studio_sdk_default_openharmony_ets_api_@ohos.hilog.d.tsÙEE:\CODE\Chronos\Chronos\entry\src\main\ets\service\CloudDBService.etsÔrBœªmoduleName±isLocalDependency¯isNodeEntryFile§pkgPath±belongProjectPath§pkgNameªpkgVersion±dependencyPkgInfo¯hostModulesInfo°belongModulePath§checker¬shouldEmitJs¥entryÃÂ½E:\CODE\Chronos\Chronos\entry·E:\CODE\Chronos\Chronos¥entry¥1.0.0Ô  ‘ÔrC’²hostDependencyName®hostModuleName°./CloudDBService¥entry½E:\CODE\Chronos\Chronos\entryÔrDÜ ®¬getNodeCount²getIdentifierCount®getSymbolCount¬getTypeCountµgetInstantiationCountµgetRelationCacheSizes±isUndefinedSymbol±isArgumentsSymbol¯isUnknownSymbol¯getMergedSymbol®getDiagnostics´getGlobalDiagnostics´getRecursionIdentity¶getUnmatchedProperties¹getTypeOfSymbolAtLocation¯getTypeOfSymbolÙ(getSymbolsOfParameterPropertyDeclaration·getDeclaredTypeOfSymbol³getPropertiesOfType±getPropertyOfTypeÙ"getPrivateIdentifierPropertyOfType·getTypeOfPropertyOfType²getIndexInfoOfType³getIndexInfosOfTypeºgetIndexInfosOfIndexSymbol³getSignaturesOfType²getIndexTypeOfType¬getIndexType¬getBaseTypes¸getBaseTypeOfLiteralType®getWidenedType³getTypeFromTypeNode°getParameterTypeÙ$getParameterIdentifierNameAtPosition¸getPromisedTypeOfPromise®getAwaitedType¸getReturnTypeOfSignature®isNullableType¯getNullableType²getNonNullableType²getNonOptionalType°getTypeArguments®typeToTypeNodeÙ$indexInfoToIndexSignatureDeclaration¿signatureToSignatureDeclaration²symbolToEntityName²symbolToExpression¬symbolToNodeÙ!symbolToTypeParameterDeclarations¼symbolToParameterDeclarationºtypeParameterToDeclaration±getSymbolsInScope³getSymbolAtLocation·getIndexInfosAtLocationÙ!getShorthandAssignmentValueSymbolÙ#getExportSpecifierLocalTargetSymbol·getExportSymbolOfSymbol±getTypeAtLocationÙ tryGetTypeAtLocationWithoutCheckºgetTypeOfAssignmentPatternÙ*getPropertySymbolOfDestructuringAssignment±signatureToString¬typeToString®symbolToStringµtypePredicateToString®writeSignature©writeType«writeSymbol²writeTypePredicate¼getAugmentedPropertiesOfType®getRootSymbols²getSymbolOfExpando±getContextualTypeÙ(getContextualTypeForObjectLiteralElementÙ#getContextualTypeForArgumentAtIndexÙ getContextualTypeForJsxAttribute²isContextSensitiveÙ!getTypeOfPropertyOfContextualTypeµgetFullyQualifiedNameÙ#tryGetResolvedSignatureWithoutCheck´getResolvedSignatureÙ/getResolvedSignatureForStringLiteralCompletionsÙ$getResolvedSignatureForSignatureHelpµgetExpandedParameters¹hasEffectiveRestParameterºcontainsArgumentsReference°getConstantValueµisValidPropertyAccessÙ#isValidPropertyAccessForCompletions»getSignatureFromDeclarationºisImplementationOfOverload¹getImmediateAliasedSymbol°getAliasedSymbol¯getEmitResolver²getExportsOfModule¿getExportsAndPropertiesOfModuleÙ forEachExportAndPropertyOfModule¯getSymbolWalker±getAmbientModules¹getJsxIntrinsicTagNamesAt³isOptionalParameter»tryGetMemberInModuleExportsÙ(tryGetMemberInModuleExportsAndProperties´tryFindAmbientModuleÙ(tryFindAmbientModuleWithoutAugmentations¯getApparentType¬getUnionType²isTypeAssignableTo³createAnonymousType¯createSignature¬createSymbol¯createIndexInfoªgetAnyType­getStringType­getNumberType±createPromiseType¯createArrayType¹getElementTypeOfArrayType®getBooleanType¬getFalseType«getTrueType«getVoidType°getUndefinedType«getNullType¯getESSymbolType¬getNeverType¯getOptionalType®getPromiseType²getPromiseLikeType´getAsyncIterableType²isSymbolAccessible«isArrayType«isTupleType¯isArrayLikeTypeÙ#isTypeInvalidDueToUnionDiscriminantºgetExactOptionalProperties¿getAllPossiblePropertiesOfTypesÙ(getSuggestedSymbolForNonexistentPropertyÙ#getSuggestionForNonexistentPropertyÙ,getSuggestedSymbolForNonexistentJSXAttributeÙ&getSuggestedSymbolForNonexistentSymbolÙ!getSuggestionForNonexistentSymbolÙ&getSuggestedSymbolForNonexistentModuleÙ!getSuggestionForNonexistentExportÙ+getSuggestedSymbolForNonexistentClassMember·getBaseConstraintOfType»getDefaultFromTypeParameter«resolveName¯getJsxNamespaceµgetJsxFragmentFactory¸getAccessibleSymbolChain»getTypePredicateOfSignature¹resolveExternalModuleName»resolveExternalModuleSymbol°tryGetThisTypeAt¹getTypeArgumentConstraint¸getSuggestionDiagnostics¸runWithCancellationTokenÙ3getLocalTypeParametersOfClassOrInterfaceOrTypeAlias´isDeclarationVisible´isPropertyAccessible»getTypeOnlyAliasDeclaration¿getMemberOverrideModifierStatusÙ!isTypeParameterPossiblyReferenced²getConstEnumRelate´clearConstEnumRelateµdeleteConstEnumRelateÙ$getTypeArgumentsForResolvedSignatureµgetCheckedSourceFilesÙ"collectHaveTsNoCheckFilesForLinter·clearQualifiedNameCache®isStaticRecord²isStaticSourceFile³createIntrinsicTypeÔ  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  Ô  ÃÃÚ'¬/**
- * Cloud DBæœåŠ¡ç±»
- * ä¸¥æ ¼æŒ‰ç…§åä¸ºå®˜æ–¹æ–‡æ¡£å®ç°
- */
-import { cloudDatabase } from '@kit.CloudFoundationKit';
-import { hilog } from '@kit.PerformanceAnalysisKit';
-
-const ZONE_NAME: string = 'ChronosZone';
-const TAG: string = 'CloudDBService';
-const DOMAIN: number = 0x0000;
-
-/**
- * ä»»åŠ¡Cloud DBå¯¹è±¡ç±»å‹ - ç›´æ¥åœ¨æœåŠ¡ä¸­å®šä¹‰é¿å…å¯¼å…¥é—®é¢˜
- */
-class TaskCloudDBInternal extends cloudDatabase.DatabaseObject {
-  public id: string = '';
-  public title: string = '';
-  public description: string = '';
-  public status: string = '';
-  public priority: string = '';
-  public dueDate: string = '';
-  public createTime: string = '';
-  public updateTime: string = '';
-  public completedTime: string = '';
-  public tags: string = '';
-  public userld: string = '';
-
-  constructor() {
-    super();
-  }
-
-  public naturalbase_ClassName(): string {
-    return 'TaskCloudDB';
-  }
-}
-
-/**
- * è´¦å•Cloud DBå¯¹è±¡ç±»å‹ - ç›´æ¥åœ¨æœåŠ¡ä¸­å®šä¹‰é¿å…å¯¼å…¥é—®é¢˜
- */
-class BillCloudDBInternal extends cloudDatabase.DatabaseObject {
-  public id: string = '';
-  public type: string = '';
-  public category: string = '';
-  public amount: string = '';
-  public description: string = '';
-  public date: string = '';
-  public createTime: string = '';
-  public updateTime: string = '';
-  public tags: string = '';
-  public userId: string = '';
-
-  constructor() {
-    super();
-  }
-
-  public naturalbase_ClassName(): string {
-    return 'BillCloudDB';
-  }
-}
-
-// é‡æ–°å¯¼å‡ºä¾›å¤–éƒ¨ä½¿ç”¨
-export { TaskCloudDBInternal as TaskCloudDB, BillCloudDBInternal as BillCloudDB };
-
-export class CloudDBService {
-  private static instance: CloudDBService;
-  private isInitialized: boolean = false;
-
-  private constructor() {}
-
-  static getInstance(): CloudDBService {
-    if (!CloudDBService.instance) {
-      CloudDBService.instance = new CloudDBService();
-    }
-    return CloudDBService.instance;
-  }
-
-  async init(): Promise<void> {
-    if (this.isInitialized) {
-      hilog.info(DOMAIN, TAG, 'Cloud DBå·²ç»åˆå§‹åŒ–');
-      return;
-    }
-    try {
-      hilog.info(DOMAIN, TAG, 'å¼€å§‹åˆå§‹åŒ– Cloud DB...');
-      
-      const zone = cloudDatabase.zone(ZONE_NAME);
-      
-      if (!zone) {
-        hilog.error(DOMAIN, TAG, 'Cloud DB zone è·å–å¤±è´¥: %{public}s', ZONE_NAME);
-        return;
-      }
-      
-      hilog.info(DOMAIN, TAG, 'Cloud DB zoneè·å–æˆåŠŸ: %{public}s', ZONE_NAME);
-      this.isInitialized = true;
-    } catch (err) {
-      const error = err as Error;
-      hilog.error(DOMAIN, TAG, 'Cloud DBåˆå§‹åŒ–å¤±è´¥: %{public}s', error.message);
-    }
-  }
-
-  /**
-   * å…³é—­ Cloud DB æœåŠ¡ï¼ˆæ¸…ç†èµ„æºï¼‰
-   */
-  async close(): Promise<void> {
-    try {
-      hilog.info(DOMAIN, TAG, 'å…³é—­ Cloud DB æœåŠ¡');
-      this.isInitialized = false;
-    } catch (err) {
-      const error = err as Error;
-      hilog.error(DOMAIN, TAG, 'å…³é—­ Cloud DB æœåŠ¡å¤±è´¥: %{public}s', error.message);
-    }
-  }
-
-  // ==================== ä»»åŠ¡æ“ä½œ ====================
-
-  async upsertTask(task: TaskCloudDBInternal): Promise<number> {
-    try {
-      const databaseZone = cloudDatabase.zone(ZONE_NAME);
-      const record = await databaseZone.upsert(task);
-      hilog.info(DOMAIN, TAG, 'ä»»åŠ¡ä¿å­˜æˆåŠŸ');
-      return record;
-    } catch (err) {
-      const error = err as Error;
-      hilog.error(DOMAIN, TAG, 'ä¿å­˜ä»»åŠ¡å¤±è´¥: %{public}s', error.message);
-      throw error;
-    }
-  }
-
-  async deleteTask(taskId: string): Promise<number> {
-    try {
-      const databaseZone = cloudDatabase.zone(ZONE_NAME);
-      const taskToDelete = new TaskCloudDBInternal();
-      taskToDelete.id = taskId;
-      const deleteNum = await databaseZone.delete(taskToDelete);
-      return deleteNum;
-    } catch (err) {
-      const error = err as Error;
-      hilog.error(DOMAIN, TAG, 'åˆ é™¤ä»»åŠ¡å¤±è´¥: %{public}s', error.message);
-      throw error;
-    }
-  }
-
-  async queryAllTasks(): Promise<TaskCloudDBInternal[]> {
-    try {
-      hilog.info(DOMAIN, TAG, 'å¼€å§‹æŸ¥è¯¢æ‰€æœ‰ä»»åŠ¡');
-      const databaseZone = cloudDatabase.zone(ZONE_NAME);
-      
-      if (!databaseZone) {
-        hilog.error(DOMAIN, TAG, 'CloudDB zone è·å–å¤±è´¥ï¼Œå¯èƒ½æœªåˆå§‹åŒ–æˆ–æ— æƒé™');
-        return [];
-      }
-      
-      const condition = new cloudDatabase.DatabaseQuery(TaskCloudDBInternal);
-      const resultArray = await databaseZone.query(condition);
-      hilog.info(DOMAIN, TAG, 'æŸ¥è¯¢ä»»åŠ¡æˆåŠŸï¼Œæ•°é‡: %{public}d', resultArray.length);
-      return resultArray as TaskCloudDBInternal[];
-    } catch (err) {
-      const error = err as Error;
-      hilog.error(DOMAIN, TAG, 'æŸ¥è¯¢ä»»åŠ¡å¤±è´¥: %{public}s', error.message);
-      return [];
-    }
-  }
-
-  async queryTasksByStatus(status: string): Promise<TaskCloudDBInternal[]> {
-    try {
-      const databaseZone = cloudDatabase.zone(ZONE_NAME);
-      const condition = new cloudDatabase.DatabaseQuery(TaskCloudDBInternal);
-      condition.equalTo('status', status);
-      const resultArray = await databaseZone.query(condition);
-      return resultArray as TaskCloudDBInternal[];
-    } catch (err) {
-      const error = err as Error;
-      hilog.error(DOMAIN, TAG, 'æŸ¥è¯¢ä»»åŠ¡å¤±è´¥: %{public}s', error.message);
-      return [];
-    }
-  }
-
-  async queryTaskById(taskId: string): Promise<TaskCloudDBInternal | null> {
-    try {
-      const databaseZone = cloudDatabase.zone(ZONE_NAME);
-      const condition = new cloudDatabase.DatabaseQuery(TaskCloudDBInternal);
-      condition.equalTo('id', taskId);
-      const resultArray = await databaseZone.query(condition);
-      return resultArray.length > 0 ? resultArray[0] as TaskCloudDBInternal : null;
-    } catch (err) {
-      const error = err as Error;
-      hilog.error(DOMAIN, TAG, 'æŸ¥è¯¢ä»»åŠ¡å¤±è´¥: %{public}s', error.message);
-      return null;
-    }
-  }
-
-  async queryTasksByDateRange(startDate: string, endDate: string): Promise<TaskCloudDBInternal[]> {
-    try {
-      const databaseZone = cloudDatabase.zone(ZONE_NAME);
-      const condition = new cloudDatabase.DatabaseQuery(TaskCloudDBInternal);
-      condition.greaterThanOrEqualTo('dueDate', startDate).lessThanOrEqualTo('dueDate', endDate);
-      const resultArray = await databaseZone.query(condition);
-      return resultArray as TaskCloudDBInternal[];
-    } catch (err) {
-      const error = err as Error;
-      hilog.error(DOMAIN, TAG, 'æŸ¥è¯¢ä»»åŠ¡å¤±è´¥: %{public}s', error.message);
-      return [];
-    }
-  }
-
-  // ==================== è´¦å•æ“ä½œ ====================
-
-  async upsertBill(bill: BillCloudDBInternal): Promise<number> {
-    try {
-      const databaseZone = cloudDatabase.zone(ZONE_NAME);
-      const record = await databaseZone.upsert(bill);
-      return record;
-    } catch (err) {
-      const error = err as Error;
-      hilog.error(DOMAIN, TAG, 'ä¿å­˜è´¦å•å¤±è´¥: %{public}s', error.message);
-      throw error;
-    }
-  }
-
-  async deleteBill(billId: string): Promise<number> {
-    try {
-      const databaseZone = cloudDatabase.zone(ZONE_NAME);
-      const billToDelete = new BillCloudDBInternal();
-      billToDelete.id = billId;
-      const deleteNum = await databaseZone.delete(billToDelete);
-      return deleteNum;
-    } catch (err) {
-      const error = err as Error;
-      hilog.error(DOMAIN, TAG, 'åˆ é™¤è´¦å•å¤±è´¥: %{public}s', error.message);
-      throw error;
-    }
-  }
-
-  async queryAllBills(): Promise<BillCloudDBInternal[]> {
-    try {
-      hilog.info(DOMAIN, TAG, 'å¼€å§‹æŸ¥è¯¢æ‰€æœ‰è´¦å•');
-      const databaseZone = cloudDatabase.zone(ZONE_NAME);
-      
-      if (!databaseZone) {
-        hilog.error(DOMAIN, TAG, 'CloudDB zone è·å–å¤±è´¥ï¼Œå¯èƒ½æœªåˆå§‹åŒ–æˆ–æ— æƒé™');
-        return [];
-      }
-      
-      const condition = new cloudDatabase.DatabaseQuery(BillCloudDBInternal);
-      const resultArray = await databaseZone.query(condition);
-      hilog.info(DOMAIN, TAG, 'æŸ¥è¯¢è´¦å•æˆåŠŸï¼Œæ•°é‡: %{public}d', resultArray.length);
-      return resultArray as BillCloudDBInternal[];
-    } catch (err) {
-      const error = err as Error;
-      hilog.error(DOMAIN, TAG, 'æŸ¥è¯¢è´¦å•å¤±è´¥: %{public}s', error.message);
-      return [];
-    }
-  }
-
-  async queryBillsByType(type: string): Promise<BillCloudDBInternal[]> {
-    try {
-      const databaseZone = cloudDatabase.zone(ZONE_NAME);
-      const condition = new cloudDatabase.DatabaseQuery(BillCloudDBInternal);
-      condition.equalTo('type', type);
-      const resultArray = await databaseZone.query(condition);
-      return resultArray as BillCloudDBInternal[];
-    } catch (err) {
-      const error = err as Error;
-      hilog.error(DOMAIN, TAG, 'æŸ¥è¯¢è´¦å•å¤±è´¥: %{public}s', error.message);
-      return [];
-    }
-  }
-
-  async queryBillsByDateRange(startDate: string, endDate: string): Promise<BillCloudDBInternal[]> {
-    try {
-      const databaseZone = cloudDatabase.zone(ZONE_NAME);
-      const condition = new cloudDatabase.DatabaseQuery(BillCloudDBInternal);
-      condition.greaterThanOrEqualTo('date', startDate).lessThanOrEqualTo('date', endDate);
-      const resultArray = await databaseZone.query(condition);
-      return resultArray as BillCloudDBInternal[];
-    } catch (err) {
-      const error = err as Error;
-      hilog.error(DOMAIN, TAG, 'æŸ¥è¯¢è´¦å•å¤±è´¥: %{public}s', error.message);
-      return [];
-    }
-  }
-
-  async queryBillById(billId: string): Promise<BillCloudDBInternal | null> {
-    try {
-      const databaseZone = cloudDatabase.zone(ZONE_NAME);
-      const condition = new cloudDatabase.DatabaseQuery(BillCloudDBInternal);
-      condition.equalTo('id', billId);
-      const resultArray = await databaseZone.query(condition);
-      return resultArray.length > 0 ? resultArray[0] as BillCloudDBInternal : null;
-    } catch (err) {
-      const error = err as Error;
-      hilog.error(DOMAIN, TAG, 'æŸ¥è¯¢è´¦å•å¤±è´¥: %{public}s', error.message);
-      return null;
-    }
-  }
-
-  // ==================== å·¥å‚æ–¹æ³• ====================
-  
-  /**
-   * åˆ›å»ºæ–°çš„ TaskCloudDB å®ä¾‹
-   */
-  createTask(): TaskCloudDBInternal {
-    return new TaskCloudDBInternal();
-  }
-
-  /**
-   * åˆ›å»ºæ–°çš„ BillCloudDB å®ä¾‹
-   */
-  createBill(): BillCloudDBInternal {
-    return new BillCloudDBInternal();
-  }
-}
-ÀÔrE’Ù*@hms.core.deviceCloudGateway.cloudDatabase«@ohos.hilogÔrF—ªassertions¨external¢id¤meta±moduleSideEffectsªresolvedByµsyntheticNamedExportsAÃÙy hvigor_ignore_D:_My_Study_A_deveco_DevEco Studio_sdk_default_hms_ets_api_@hms.core.deviceCloudGateway.cloudDatabase.d.tsAÃªoh-resolveÂFAÃÙb hvigor_ignore_D:_My_Study_A_deveco_DevEco Studio_sdk_default_openharmony_ets_api_@ohos.hilog.d.tsAÃªoh-resolveÂ“ÔrG–§version¤fileªsourceRoot§sources¥names¨mappings±CloudDBService.js ‘²CloudDBService.etsÜ ‘”    ‘” –”   ” 	” ” ”ÌF 7”ÌG 8–”   ” 	” ” ” 3”  4–”   ” ” ” ” '”  (–”   ” ”	 	” ” $” %–”  	 ” 	” 	” 	” 	” 	‘”   ‘” —”   ” ” ”" "”/ /”0 0”> >‘” ”” ” 	” ” •” 	” ” ” ” •” 	” ” ” ” •” 	” ” ” !” "•” 	” ” ” ” •” 	” ” ” ” •” 	” ” ” ” •” 	” ” ”  ” !•” 	” ” ”  ” !•” 	” ” !” #”  $•” 	” ” ” ” •” 	” ” ” ” ’” ” ’” 	” ””  ”  ”  ”  ’” !” !‘” "‘”  $ ‘” &—”  ' ” '” '”" '"”/ '/”0 '0”> '>‘” 3”” 4” 4	” 4” 4•” (	” (” (” (” (•” )	” )” )” )” )•” *	” *” *” *” *•” +	” +” +” +” +•” ,	” ,” ,” ,!” ,"•” -	” -” -” -” -•” .	” .” .” . ” .!•” /	” /” /” / ” /!•” 0	” 0” 0” 0” 0•” 1	” 1” 1” 1” 1’” 5” 5’” 7	” 7”” 8” 8” 8” 8’” 9” 9‘” :’”  < ” <œ”  = ” =”	 =	” =”  = ”+ =+”- =-”Ì@ =Ì@”ÌD =ÌD”ÌO =ÌO”ÌQ =ÌQ”ÌR =ÌR””  ? ” ?” ?” ?‘” ÌC•” ÌA
-” ÌA” ÌA#”" ÌA(”# ÌA)’” ÌC” ÌC”” ÌE”
- ÌE” ÌE	” ÌE—” ÌF” ÌF” ÌF	” ÌF” ÌF”$ ÌF ”& ÌF"™” ÌG” ÌG” ÌG”# ÌG”& ÌG ”* ÌG$”8 ÌG2”: ÌG4”; ÌG5‘”	 ÌH–” ÌI” ÌI” ÌI” ÌI”& ÌI"”' ÌI#’” ÌJ” ÌJ”” ÌL”	 ÌL”
- ÌL” ÌL–” ÌM” ÌM” ÌM” ÌM” ÌM”  ÌMœ” ÌN” ÌN” ÌN” ÌN” ÌN” ÌN” ÌN”" ÌN”$ ÌN”3 ÌN-”4 ÌN.”5 ÌN/’” ÌO” ÌO‘”	 ÌP’” ÌQ” ÌQœ” ÌR” ÌR” ÌR” ÌR” ÌR” ÌR” ÌR”" ÌR”$ ÌR”7 ÌR1”8 ÌR2”9 ÌR3›” ÌT” ÌT” ÌT” ÌT”& ÌT ”' ÌT!”+ ÌT%”, ÌT&”5 ÌT/”6 ÌT0”7 ÌT1•” ÌV” ÌV
-” ÌV” ÌV” ÌV” ÌW” ÌW” ÌW” ÌW” ÌW”" ÌW”$ ÌW”' ÌW”) ÌW!”ÌI ÌWÌA”ÌK ÌWÌC”ÌT ÌWÌL”ÌU ÌWÌM”ÌV ÌWÌN’” ÌX” ÌX‘” ÌY” Ì[” Ì[” Ì[” Ì[” Ì[” Ì[” Ì[”" Ì[”$ Ì[”ÌC Ì[=”ÌE Ì[?”ÌN Ì[ÌH”ÌO Ì[ÌI”ÌP Ì[ÌJ—” Ì\” Ì\
-” Ì\” Ì\”! Ì\”% Ì\”& Ì\ ‘”	 Ì]”” Ì]” Ì]” Ì]” Ì]–” Ì^” Ì^” Ì^” Ì^” Ì^ ” Ì^!Ü ” Ì_” Ì_” Ì_” Ì_” Ì_” Ì_”  Ì_”# Ì_”% Ì_”Ì@ Ì_:”ÌB Ì_<”ÌG Ì_ÌA”ÌH Ì_ÌB”ÌO Ì_ÌI”ÌP Ì_ÌJ”ÌQ Ì_ÌK‘”	 Ì`’” Ìa” Ìa‘” Ìc‘” Ìe”” Ìf”	 Ìf”
- Ìf” Ìf’” Ìg” Ìgœ” Ìh” Ìh” Ìh” Ìh” Ìh” Ìh” Ìh”" Ìh”$ Ìh”4 Ìh.”5 Ìh/”6 Ìh0—” Ìi” Ìi
-” Ìi” Ìi”! Ìi”& Ìi ”' Ìi!‘”	 Ìj”” Ìj” Ìj” Ìj” Ìj–” Ìk” Ìk” Ìk” Ìk” Ìk ” Ìk!Ü ” Ìl” Ìl” Ìl” Ìl” Ìl” Ìl”  Ìl”# Ìl”% Ìl”ÌC Ìl=”ÌE Ìl?”ÌJ ÌlÌD”ÌK ÌlÌE”ÌR ÌlÌL”ÌS ÌlÌM”ÌT ÌlÌN‘”	 Ìm’” Ìn” Ìn’” Ìp”5 Ìp3–” Ìr”	 Ìr”
- Ìr” Ìr” Ìr” Ìr,’” Ìs” Ìs›” Ìt” Ìt” Ìt”! Ìt”. Ìt(”/ Ìt)”3 Ìt-”4 Ìt.”= Ìt7”> Ìt8”? Ìt9œ” Ìu” Ìu” Ìu” Ìu”! Ìu”- Ìu'”. Ìu(”4 Ìu.”5 Ìu/”9 Ìu3”: Ìu4”; Ìu5œ” Ìv” Ìv” Ìv” Ìv” Ìv” Ìv” Ìv”" Ìv”$ Ìv”, Ìv&”- Ìv'”. Ìv(”” Ìw” Ìw” Ìw” Ìw‘”	 Ìx”” Ìx” Ìx” Ìx” Ìx–” Ìy” Ìy” Ìy” Ìy” Ìy ” Ìy!Ü ” Ìz” Ìz” Ìz” Ìz” Ìz” Ìz”  Ìz”# Ìz”% Ìz”9 Ìz3”; Ìz5”Ì@ Ìz:”ÌA Ìz;”ÌH ÌzÌB”ÌI ÌzÌC”ÌJ ÌzÌD”” Ì{” Ì{” Ì{” Ì{‘”	 Ì|’” Ì}” Ì}–” Ì”	 Ì”
- Ì” Ì” Ì” Ì!’” Ì€” Ì€›” Ì” Ì” Ì”! Ì”. Ì(”/ Ì)”3 Ì-”4 Ì.”= Ì7”> Ì8”? Ì9˜” Ì‚” Ì‚” Ì‚”! Ì‚”% Ì‚”8 Ì‚2”: Ì‚4”; Ì‚5—” Ìƒ” Ìƒ” Ìƒ” Ìƒ” Ìƒ”$ Ìƒ”% Ìƒœ” Ì„” Ì„” Ì„” Ì„”$ Ì„”0 Ì„*”1 Ì„+”7 Ì„1”8 Ì„2”ÌD Ì„>”ÌE Ì„?”ÌF Ì„Ì@”” Ì…” Ì…” Ì…” Ì…‘”	 Ì†”” Ì†” Ì†” Ì†” Ì†–” Ì‡” Ì‡” Ì‡” Ì‡” Ì‡ ” Ì‡!Ü ” Ìˆ” Ìˆ” Ìˆ” Ìˆ” Ìˆ” Ìˆ”  Ìˆ”# Ìˆ”% Ìˆ”9 Ìˆ3”; Ìˆ5”Ì@ Ìˆ:”ÌA Ìˆ;”ÌH ÌˆÌB”ÌI ÌˆÌC”ÌJ ÌˆÌD”” Ì‰” Ì‰” Ì‰” Ì‰‘”	 ÌŠ’” Ì‹” Ì‹”” Ì”	 Ì”
- Ì” Ì’” Ì” Ìœ” Ì” Ì” Ì” Ì” Ì” Ì” Ì”" Ì”$ Ì”. Ì(”/ Ì)”0 Ì*›” Ì” Ì” Ì”! Ì”. Ì(”/ Ì)”3 Ì-”4 Ì.”= Ì7”> Ì8”? Ì9•” Ì’” Ì’
-” Ì’” Ì’” Ì’œ” Ì“” Ì“” Ì“” Ì“” Ì“”" Ì“”$ Ì“”' Ì“”) Ì“!”ÌG Ì“?”ÌH Ì“Ì@”ÌI Ì“ÌA”” Ì”” Ì”” Ì”” Ì”‘” Ì•œ” Ì—” Ì—” Ì—” Ì—”" Ì—”/ Ì—)”0 Ì—*”= Ì—7”> Ì—8”ÌQ Ì—ÌK”ÌR Ì—ÌL”ÌS Ì—ÌMœ” Ì˜” Ì˜” Ì˜”  Ì˜”& Ì˜ ”2 Ì˜,”3 Ì˜-”8 Ì˜2”9 Ì˜3”ÌB Ì˜<”ÌC Ì˜=”ÌD Ì˜>Ü ” Ì™” Ì™” Ì™” Ì™” Ì™” Ì™” Ì™”" Ì™”$ Ì™”; Ì™5”= Ì™7”ÌH Ì™ÌB”ÌI Ì™ÌC”ÌO Ì™ÌI”ÌP Ì™ÌJ”ÌQ Ì™ÌK”” Ìš” Ìš” Ìš1” Ìš2‘”	 Ì›”” Ì›” Ì›” Ì›” Ì›–” Ìœ” Ìœ” Ìœ” Ìœ” Ìœ ” Ìœ!Ü ” Ì” Ì” Ì” Ì” Ì” Ì”  Ì”# Ì”% Ì”9 Ì3”; Ì5”Ì@ Ì:”ÌA Ì;”ÌH ÌÌB”ÌI ÌÌC”ÌJ ÌÌD”” Ì” Ì” Ì” Ì‘”	 ÌŸ’” Ì ” Ì –” Ì¢”	 Ì¢”
- Ì¢” Ì¢” Ì¢”# Ì¢)’” Ì£” Ì£›” Ì¤” Ì¤” Ì¤”! Ì¤”. Ì¤(”/ Ì¤)”3 Ì¤-”4 Ì¤.”= Ì¤7”> Ì¤8”? Ì¤9œ” Ì¥” Ì¥” Ì¥” Ì¥”" Ì¥”/ Ì¥)”0 Ì¥*”= Ì¥7”> Ì¥8”ÌQ Ì¥ÌK”ÌR Ì¥ÌL”ÌS Ì¥ÌMš” Ì¦” Ì¦” Ì¦” Ì¦” Ì¦”& Ì¦ ”( Ì¦"”. Ì¦(”/ Ì¦)”0 Ì¦*œ” Ì§” Ì§” Ì§”  Ì§”& Ì§ ”2 Ì§,”3 Ì§-”8 Ì§2”9 Ì§3”ÌB Ì§<”ÌC Ì§=”ÌD Ì§>”” Ì¨” Ì¨” Ì¨1” Ì¨2‘”	 Ì©”” Ì©” Ì©” Ì©” Ì©–” Ìª” Ìª” Ìª” Ìª” Ìª ” Ìª!Ü ” Ì«” Ì«” Ì«” Ì«” Ì«” Ì«”  Ì«”# Ì«”% Ì«”9 Ì«3”; Ì«5”Ì@ Ì«:”ÌA Ì«;”ÌH Ì«ÌB”ÌI Ì«ÌC”ÌJ Ì«ÌD”” Ì¬” Ì¬” Ì¬” Ì¬‘”	 Ì­’” Ì®” Ì®–” Ì°”	 Ì°”
- Ì°” Ì°” Ì°” Ì°$’” Ì±” Ì±›” Ì²” Ì²” Ì²”! Ì²”. Ì²(”/ Ì²)”3 Ì²-”4 Ì².”= Ì²7”> Ì²8”? Ì²9œ” Ì³” Ì³” Ì³” Ì³”" Ì³”/ Ì³)”0 Ì³*”= Ì³7”> Ì³8”ÌQ Ì³ÌK”ÌR Ì³ÌL”ÌS Ì³ÌMš” Ì´” Ì´” Ì´” Ì´” Ì´”" Ì´”$ Ì´”* Ì´$”+ Ì´%”, Ì´&œ” Ìµ” Ìµ” Ìµ”  Ìµ”& Ìµ ”2 Ìµ,”3 Ìµ-”8 Ìµ2”9 Ìµ3”ÌB Ìµ<”ÌC Ìµ=”ÌD Ìµ>Ü ” Ì¶” Ì¶” Ì¶” Ì¶”% Ì¶”( Ì¶"”) Ì¶#”* Ì¶$”+ Ì¶%”, Ì¶&”7 Ì¶1”8 Ì¶2”9 Ì¶3”: Ì¶ÌK”; Ì¶ÌL”< Ì¶ÌM”= Ì¶ÌN”ÌA Ì¶ÌR”ÌB Ì¶ÌS‘”	 Ì·”” Ì·” Ì·” Ì·” Ì·–” Ì¸” Ì¸” Ì¸” Ì¸” Ì¸ ” Ì¸!Ü ” Ì¹” Ì¹” Ì¹” Ì¹” Ì¹” Ì¹”  Ì¹”# Ì¹”% Ì¹”9 Ì¹3”; Ì¹5”Ì@ Ì¹:”ÌA Ì¹;”ÌH Ì¹ÌB”ÌI Ì¹ÌC”ÌJ Ì¹ÌD”” Ìº” Ìº” Ìº” Ìº‘”	 Ì»’” Ì¼” Ì¼˜” Ì¾”	 Ì¾”
- Ì¾” Ì¾”  Ì¾”) Ì¾/”+ Ì¾1”2 Ì¾Ì@’” Ì¿” Ì¿›” ÌÀ” ÌÀ” ÌÀ”! ÌÀ”. ÌÀ(”/ ÌÀ)”3 ÌÀ-”4 ÌÀ.”= ÌÀ7”> ÌÀ8”? ÌÀ9œ” ÌÁ” ÌÁ” ÌÁ” ÌÁ”" ÌÁ”/ ÌÁ)”0 ÌÁ*”= ÌÁ7”> ÌÁ8”ÌQ ÌÁÌK”ÌR ÌÁÌL”ÌS ÌÁÌMÜ ” ÌÂ” ÌÂ” ÌÂ”* ÌÂ$”+ ÌÂ%”4 ÌÂ.”6 ÌÂ0”? ÌÂ9”Ì@ ÌÂ:”ÌA ÌÂ;”ÌR ÌÂÌL”ÌS ÌÂÌM”Ì\ ÌÂÌV”Ì^ ÌÂÌX”Ìe ÌÂÌ_”Ìf ÌÂÌ`”Ìg ÌÂÌaœ” ÌÃ” ÌÃ” ÌÃ”  ÌÃ”& ÌÃ ”2 ÌÃ,”3 ÌÃ-”8 ÌÃ2”9 ÌÃ3”ÌB ÌÃ<”ÌC ÌÃ=”ÌD ÌÃ>”” ÌÄ” ÌÄ” ÌÄ1” ÌÄ2‘”	 ÌÅ”” ÌÅ” ÌÅ” ÌÅ” ÌÅ–” ÌÆ” ÌÆ” ÌÆ” ÌÆ” ÌÆ ” ÌÆ!Ü ” ÌÇ” ÌÇ” ÌÇ” ÌÇ” ÌÇ” ÌÇ”  ÌÇ”# ÌÇ”% ÌÇ”9 ÌÇ3”; ÌÇ5”Ì@ ÌÇ:”ÌA ÌÇ;”ÌH ÌÇÌB”ÌI ÌÇÌC”ÌJ ÌÇÌD”” ÌÈ” ÌÈ” ÌÈ” ÌÈ‘”	 ÌÉ’” ÌÊ” ÌÊ’” ÌÌ”5 ÌÌ3–” ÌÎ”	 ÌÎ”
- ÌÎ” ÌÎ” ÌÎ” ÌÎ,’” ÌÏ” ÌÏ›” ÌĞ” ÌĞ” ÌĞ”! ÌĞ”. ÌĞ(”/ ÌĞ)”3 ÌĞ-”4 ÌĞ.”= ÌĞ7”> ÌĞ8”? ÌĞ9œ” ÌÑ” ÌÑ” ÌÑ” ÌÑ”! ÌÑ”- ÌÑ'”. ÌÑ(”4 ÌÑ.”5 ÌÑ/”9 ÌÑ3”: ÌÑ4”; ÌÑ5”” ÌÒ” ÌÒ” ÌÒ” ÌÒ‘”	 ÌÓ”” ÌÓ” ÌÓ” ÌÓ” ÌÓ–” ÌÔ” ÌÔ” ÌÔ” ÌÔ” ÌÔ ” ÌÔ!Ü ” ÌÕ” ÌÕ” ÌÕ” ÌÕ” ÌÕ” ÌÕ”  ÌÕ”# ÌÕ”% ÌÕ”9 ÌÕ3”; ÌÕ5”Ì@ ÌÕ:”ÌA ÌÕ;”ÌH ÌÕÌB”ÌI ÌÕÌC”ÌJ ÌÕÌD”” ÌÖ” ÌÖ” ÌÖ” ÌÖ‘”	 Ì×’” ÌØ” ÌØ–” ÌÚ”	 ÌÚ”
- ÌÚ” ÌÚ” ÌÚ” ÌÚ!’” ÌÛ” ÌÛ›” ÌÜ” ÌÜ” ÌÜ”! ÌÜ”. ÌÜ(”/ ÌÜ)”3 ÌÜ-”4 ÌÜ.”= ÌÜ7”> ÌÜ8”? ÌÜ9˜” Ìİ” Ìİ” Ìİ”! Ìİ”% Ìİ”8 Ìİ2”: Ìİ4”; Ìİ5—” ÌŞ” ÌŞ” ÌŞ” ÌŞ” ÌŞ”$ ÌŞ”% ÌŞœ” Ìß” Ìß” Ìß” Ìß”$ Ìß”0 Ìß*”1 Ìß+”7 Ìß1”8 Ìß2”ÌD Ìß>”ÌE Ìß?”ÌF ÌßÌ@”” Ìà” Ìà” Ìà” Ìà‘”	 Ìá”” Ìá” Ìá” Ìá” Ìá–” Ìâ” Ìâ” Ìâ” Ìâ” Ìâ ” Ìâ!Ü ” Ìã” Ìã” Ìã” Ìã” Ìã” Ìã”  Ìã”# Ìã”% Ìã”9 Ìã3”; Ìã5”Ì@ Ìã:”ÌA Ìã;”ÌH ÌãÌB”ÌI ÌãÌC”ÌJ ÌãÌD”” Ìä” Ìä” Ìä” Ìä‘”	 Ìå’” Ìæ” Ìæ”” Ìè”	 Ìè”
- Ìè” Ìè’” Ìé” Ìéœ” Ìê” Ìê” Ìê” Ìê” Ìê” Ìê” Ìê”" Ìê”$ Ìê”. Ìê(”/ Ìê)”0 Ìê*›” Ìë” Ìë” Ìë”! Ìë”. Ìë(”/ Ìë)”3 Ìë-”4 Ìë.”= Ìë7”> Ìë8”? Ìë9•” Ìí” Ìí
-” Ìí” Ìí” Ìíœ” Ìî” Ìî” Ìî” Ìî” Ìî”" Ìî”$ Ìî”' Ìî”) Ìî!”ÌG Ìî?”ÌH ÌîÌ@”ÌI ÌîÌA”” Ìï” Ìï” Ìï” Ìï‘” Ìğœ” Ìò” Ìò” Ìò” Ìò”" Ìò”/ Ìò)”0 Ìò*”= Ìò7”> Ìò8”ÌQ ÌòÌK”ÌR ÌòÌL”ÌS ÌòÌMœ” Ìó” Ìó” Ìó”  Ìó”& Ìó ”2 Ìó,”3 Ìó-”8 Ìó2”9 Ìó3”ÌB Ìó<”ÌC Ìó=”ÌD Ìó>Ü ” Ìô” Ìô” Ìô” Ìô” Ìô” Ìô” Ìô”" Ìô”$ Ìô”; Ìô5”= Ìô7”ÌH ÌôÌB”ÌI ÌôÌC”ÌO ÌôÌI”ÌP ÌôÌJ”ÌQ ÌôÌK”” Ìõ” Ìõ” Ìõ1” Ìõ2‘”	 Ìö”” Ìö” Ìö” Ìö” Ìö–” Ì÷” Ì÷” Ì÷” Ì÷” Ì÷ ” Ì÷!Ü ” Ìø” Ìø” Ìø” Ìø” Ìø” Ìø”  Ìø”# Ìø”% Ìø”9 Ìø3”; Ìø5”Ì@ Ìø:”ÌA Ìø;”ÌH ÌøÌB”ÌI ÌøÌC”ÌJ ÌøÌD”” Ìù” Ìù” Ìù” Ìù‘”	 Ìú’” Ìû” Ìû–” Ìı”	 Ìı”
- Ìı” Ìı” Ìı” Ìı%’” Ìş” Ìş›” Ìÿ” Ìÿ” Ìÿ”! Ìÿ”. Ìÿ(”/ Ìÿ)”3 Ìÿ-”4 Ìÿ.”= Ìÿ7”> Ìÿ8”? Ìÿ9œ” Í ” Í ” Í ” Í ”" Í ”/ Í )”0 Í *”= Í 7”> Í 8”ÌQ Í ÌK”ÌR Í ÌL”ÌS Í ÌMš” Í” Í” Í” Í” Í”$ Í”& Í ”* Í$”+ Í%”, Í&œ” Í” Í” Í”  Í”& Í ”2 Í,”3 Í-”8 Í2”9 Í3”ÌB Í<”ÌC Í=”ÌD Í>”” Í” Í” Í1” Í2‘”	 Í”” Í” Í” Í” Í–” Í” Í” Í” Í” Í ” Í!Ü ” Í” Í” Í” Í” Í” Í”  Í”# Í”% Í”9 Í3”; Í5”Ì@ Í:”ÌA Í;”ÌH ÍÌB”ÌI ÍÌC”ÌJ ÍÌD”” Í” Í” Í” Í‘”	 Í’” Í	” Í	˜” Í”	 Í”
- Í” Í”  Í”) Í/”+ Í1”2 ÍÌ@’” Í” Í›” Í” Í” Í”! Í”. Í(”/ Í)”3 Í-”4 Í.”= Í7”> Í8”? Í9œ” Í” Í” Í” Í”" Í”/ Í)”0 Í*”= Í7”> Í8”ÌQ ÍÌK”ÌR ÍÌL”ÌS ÍÌMÜ ” Í” Í” Í”* Í$”+ Í%”1 Í+”3 Í-”< Í6”= Í7”> Í8”ÌO ÍÌI”ÌP ÍÌJ”ÌV ÍÌP”ÌX ÍÌR”Ì_ ÍÌY”Ì` ÍÌZ”Ìa ÍÌ[œ” Í” Í” Í”  Í”& Í ”2 Í,”3 Í-”8 Í2”9 Í3”ÌB Í<”ÌC Í=”ÌD Í>”” Í” Í” Í1” Í2‘”	 Í”” Í” Í” Í” Í–” Í” Í” Í” Í” Í ” Í!Ü ” Í” Í” Í” Í” Í” Í”  Í”# Í”% Í”9 Í3”; Í5”Ì@ Í:”ÌA Í;”ÌH ÍÌB”ÌI ÍÌC”ÌJ ÍÌD”” Í” Í” Í” Í‘”	 Í’” Í” Í–” Í”	 Í”
- Í” Í” Í” Í$’” Í” Í›” Í” Í” Í”! Í”. Í(”/ Í)”3 Í-”4 Í.”= Í7”> Í8”? Í9œ” Í” Í” Í” Í”" Í”/ Í)”0 Í*”= Í7”> Í8”ÌQ ÍÌK”ÌR ÍÌL”ÌS ÍÌMš” Í” Í” Í” Í” Í”" Í”$ Í”* Í$”+ Í%”, Í&œ” Í” Í” Í”  Í”& Í ”2 Í,”3 Í-”8 Í2”9 Í3”ÌB Í<”ÌC Í=”ÌD Í>Ü ” Í” Í” Í” Í”% Í”( Í"”) Í#”* Í$”+ Í%”, Í&”7 Í1”8 Í2”9 Í3”: ÍÌK”; ÍÌL”< ÍÌM”= ÍÌN”ÌA ÍÌR”ÌB ÍÌS‘”	 Í ”” Í ” Í ” Í ” Í –” Í!” Í!” Í!” Í!” Í! ” Í!!Ü ” Í"” Í"” Í"” Í"” Í"” Í"”  Í"”# Í"”% Í"”9 Í"3”; Í"5”Ì@ Í":”ÌA Í";”ÌH Í"ÌB”ÌI Í"ÌC”ÌJ Í"ÌD”” Í#” Í#” Í#” Í#‘”	 Í$’” Í%” Í%’” Í'”5 Í'3‘” Í)‘” Í+’” Í,” Í,–” Í-” Í-” Í-”& Í-"”( Í-$”) Í-%’” Í.” Í.‘” Í0‘” Í2’” Í3” Í3–” Í4” Í4” Í4”& Í4"”( Í4$”) Í4%’” Í5” Í5‘” Í6ÔrH–§version¤file§sources®sourcesContent¥names¨mappingsÀ‘À‘ÀÜ!‘”    ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”  	 ‘”  
- ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”    ‘”  ! ‘”  " ‘”  # ‘”  $ ‘”  % ‘”  & ‘”  ' ‘”  ( ‘”  ) ‘”  * ‘”  + ‘”  , ‘”  - ‘”  . ‘”  / ‘”  0 ‘”  1 ‘”  2 ‘”  3 ‘”  4 ‘”  5 ‘”  6 ‘”  7 ‘”  8 ‘”  9 ‘”  : ‘”  ; ‘”  < ‘”  = ‘”  > ‘”  ? ‘”  Ì@ ‘”  ÌA ‘”  ÌB ‘”  ÌC ‘”  ÌD ‘”  ÌE ‘”  ÌF ‘”  ÌG ‘”  ÌH ‘”  ÌI ‘”  ÌJ ‘”  ÌK ‘”  ÌL ‘”  ÌM ‘”  ÌN ‘”  ÌO ‘”  ÌP ‘”  ÌQ ‘”  ÌR ‘”  ÌS ‘”  ÌT ‘”  ÌU ‘”  ÌV ‘”  ÌW ‘”  ÌX ‘”  ÌY ‘”  ÌZ ‘”  Ì[ ‘”  Ì\ ‘”  Ì] ‘”  Ì^ ‘”  Ì_ ‘”  Ì` ‘”  Ìa ‘”  Ìb ‘”  Ìc ‘”  Ìd ‘”  Ìe ‘”  Ìf ‘”  Ìg ‘”  Ìh ‘”  Ìi ‘”  Ìj ‘”  Ìk ‘”  Ìl ‘”  Ìm ‘”  Ìn ‘”  Ìo ‘”  Ìp ‘”  Ìq ‘”  Ìr ‘”  Ìs ‘”  Ìt ‘”  Ìu ‘”  Ìv ‘”  Ìw ‘”  Ìx ‘”  Ìy ‘”  Ìz ‘”  Ì{ ‘”  Ì| ‘”  Ì} ‘”  Ì~ ‘”  Ì ‘”  Ì€ ‘”  Ì ‘”  Ì‚ ‘”  Ìƒ ‘”  Ì„ ‘”  Ì… ‘”  Ì† ‘”  Ì‡ ‘”  Ìˆ ‘”  Ì‰ ‘”  ÌŠ ‘”  Ì‹ ‘”  ÌŒ ‘”  Ì ‘”  Ì ‘”  Ì ‘”  Ì ‘”  Ì‘ ‘”  Ì’ ‘”  Ì“ ‘”  Ì” ‘”  Ì• ‘”  Ì– ‘”  Ì— ‘”  Ì˜ ‘”  Ì™ ‘”  Ìš ‘”  Ì› ‘”  Ìœ ‘”  Ì ‘”  Ì ‘”  ÌŸ ‘”  Ì  ‘”  Ì¡ ‘”  Ì¢ ‘”  Ì£ ‘”  Ì¤ ‘”  Ì¥ ‘”  Ì¦ ‘”  Ì§ ‘”  Ì¨ ‘”  Ì© ‘”  Ìª ‘”  Ì« ‘”  Ì¬ ‘”  Ì­ ‘”  Ì® ‘”  Ì¯ ‘”  Ì° ‘”  Ì± ‘”  Ì² ‘”  Ì³ ‘”  Ì´ ‘”  Ìµ ‘”  Ì¶ ‘”  Ì· ‘”  Ì¸ ‘”  Ì¹ ‘”  Ìº ‘”  Ì» ‘”  Ì¼ ‘”  Ì½ ‘”  Ì¾ ‘”  Ì¿ ‘”  ÌÀ ‘”  ÌÁ ‘”  ÌÂ ‘”  ÌÃ ‘”  ÌÄ ‘”  ÌÅ ‘”  ÌÆ ‘”  ÌÇ ‘”  ÌÈ ‘”  ÌÉ ‘”  ÌÊ ‘”  ÌË ‘”  ÌÌ ‘”  ÌÍ ‘”  ÌÎ ‘”  ÌÏ ‘”  ÌĞ ‘”  ÌÑ ‘”  ÌÒ ‘”  ÌÓ ‘”  ÌÔ ‘”  ÌÕ ‘”  ÌÖ ‘”  Ì× ‘”  ÌØ ‘”  ÌÙ ‘”  ÌÚ ‘”  ÌÛ ‘”  ÌÜ ‘”  Ìİ ‘”  ÌŞ ‘”  Ìß ‘”  Ìà ‘”  Ìá ‘”  Ìâ ‘”  Ìã ‘”  Ìä ‘”  Ìå ‘”  Ìæ ‘”  Ìç ‘”  Ìè ‘”  Ìé ‘”  Ìê ‘”  Ìë ‘”  Ìì ‘”  Ìí ‘”  Ìî ‘”  Ìï ‘”  Ìğ ‘”  Ìñ ‘”  Ìò ‘”  Ìó ‘”  Ìô ‘”  Ìõ ‘”  Ìö ‘”  Ì÷ ‘”  Ìø ‘”  Ìù ‘”  Ìú ‘”  Ìû ‘”  Ìü ‘”  Ìı ‘”  Ìş ‘”  Ìÿ ‘”  Í  ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í	 ‘”  Í
- ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í  ÔrI’§missing¦pluginÃ¦genAbcÂÔ  ÔrJ”²dynamicImportCache¹exportAllDeclarationCache»exportNamedDeclarationCache«importCache’ÔrK–¤type¥start£end«declarationªspecifiers¦source¶ExportNamedDeclarationÍÍgÀ’ÔrL•¤type¥start£end¥local¨exported¯ExportSpecifierÍÍ@ÔrM”¤type¥start£end¤nameªIdentifierÍÍ1³TaskCloudDBInternalMªIdentifierÍ5Í@«TaskCloudDBL¯ExportSpecifierÍBÍdMªIdentifierÍBÍU³BillCloudDBInternalMªIdentifierÍYÍd«BillCloudDBÀK¶ExportNamedDeclarationÍiÍ&ÀÔrN–¤type¥start£end¢idªsuperClass¤body°ClassDeclarationÍpÍ&ÀMªIdentifierÍvÍ„®CloudDBServiceÀÔrO”¤type¥start£end¤body©ClassBodyÍ…Í&ÀÜ ÔrP˜¤type¥start£end¦static¨computed£key¤kind¥value°MethodDefinitionÍŒÍÇÂÂMªIdentifierÍŒÍ—«constructor«constructorÔrQ™¤type¥start£end¢idªexpression©generator¥async¦params¤body²FunctionExpressionÍ—ÍÇÀÂÂÂO®BlockStatementÍšÍÇ‘ÔrR”¤type¥start£endªexpression³ExpressionStatementÍ¥ÍÀÔrS–¤type¥start£end¨operator¤left¥right´AssignmentExpressionÍ¥Í¿¡=ÔrT—¤type¥start£end¦object¨property¨computed¨optional°MemberExpressionÍ¥Í·ÔrU“¤type¥start£end®ThisExpressionÍ¥Í©MªIdentifierÍªÍ·­isInitializedÂÂÔrV•¤type¥start£end¥value£raw§LiteralÍºÍ¿Â¥falseP°MethodDefinitionÍÍÍ„ÃÂMªIdentifierÍÔÍß«getInstance¦methodQ²FunctionExpressionÍßÍ„ÀÂÂÂO®BlockStatementÍâÍ„’ÔrW–¤type¥start£end¤testªconsequent©alternate«IfStatementÍíÍTÔrX–¤type¥start£end¨operator¦prefix¨argument¯UnaryExpressionÍñÍ	¡!ÃT°MemberExpressionÍòÍ	MªIdentifierÍòÍ ®CloudDBServiceMªIdentifierÍÍ	¨instanceÂÂO®BlockStatementÍÍT‘R³ExpressionStatementÍÍIS´AssignmentExpressionÍÍH¡=T°MemberExpressionÍÍ1MªIdentifierÍÍ(®CloudDBServiceMªIdentifierÍ)Í1¨instanceÂÂÔrY•¤type¥start£end¦callee©arguments­NewExpressionÍ4ÍHMªIdentifierÍ8ÍF®CloudDBServiceÀÔrZ”¤type¥start£end¨argument¯ReturnStatementÍ^Í}T°MemberExpressionÍeÍ|MªIdentifierÍeÍs®CloudDBServiceMªIdentifierÍtÍ|¨instanceÂÂP°MethodDefinitionÍŠÍ	PÂÂMªIdentifierÍÍ”¤init¦methodQ²FunctionExpressionÍ”Í	PÀÂÂÃO®BlockStatementÍ—Í	P’W«IfStatementÍ¢ÍT°MemberExpressionÍ¦Í¸U®ThisExpressionÍ¦ÍªMªIdentifierÍ«Í¸­isInitializedÂÂO®BlockStatementÍºÍ’R³ExpressionStatementÍÉÍòÔr[–¤type¥start£end¦callee©arguments¨optional®CallExpressionÍÉÍñT°MemberExpressionÍÉÍÓMªIdentifierÍÉÍÎ¥hilogMªIdentifierÍÏÍÓ¤infoÂÂ“MªIdentifierÍÔÍÚ¦DOMAINMªIdentifierÍÜÍß£TAGV§LiteralÍáÍğ·Cloud DBå·²ç»åˆå§‹åŒ–¹'Cloud DBå·²ç»åˆå§‹åŒ–'ÂZ¯ReturnStatementÍ ÍÀÀÔr\–¤type¥start£end¥block§handler©finalizer¬TryStatementÍÍ	IO®BlockStatementÍ Í´•R³ExpressionStatementÍ/Í\[®CallExpressionÍ/Í[T°MemberExpressionÍ/Í9MªIdentifierÍ/Í4¥hilogMªIdentifierÍ5Í9¤infoÂÂ“MªIdentifierÍ:Í@¦DOMAINMªIdentifierÍBÍE£TAGV§LiteralÍGÍZ»å¼€å§‹åˆå§‹åŒ– Cloud DB...½'å¼€å§‹åˆå§‹åŒ– Cloud DB...'ÂÔr]•¤type¥start£end¬declarations¤kind³VariableDeclarationÍjÍ•‘Ôr^•¤type¥start£end¢id¤init²VariableDeclaratorÍpÍ”MªIdentifierÍpÍt¤zone[®CallExpressionÍwÍ”T°MemberExpressionÍwÍ‰MªIdentifierÍwÍ„­cloudDatabaseMªIdentifierÍ…Í‰¤zoneÂÂ‘MªIdentifierÍŠÍ“©ZONE_NAMEÂ¥constW«IfStatementÍ£Í/X¯UnaryExpressionÍ§Í¬¡!ÃMªIdentifierÍ¨Í¬¤zoneO®BlockStatementÍ®Í/’R³ExpressionStatementÍÁÍ[®CallExpressionÍÁÍT°MemberExpressionÍÁÍÌMªIdentifierÍÁÍÆ¥hilogMªIdentifierÍÇÍÌ¥errorÂÂ”MªIdentifierÍÍÍÓ¦DOMAINMªIdentifierÍÕÍØ£TAGV§LiteralÍÚÍúÙ&Cloud DB zone è·å–å¤±è´¥: %{public}sÙ('Cloud DB zone è·å–å¤±è´¥: %{public}s'MªIdentifierÍüÍ©ZONE_NAMEÂZ¯ReturnStatementÍÍ ÀÀR³ExpressionStatementÍ=Í[®CallExpressionÍ=Í€T°MemberExpressionÍ=ÍGMªIdentifierÍ=ÍB¥hilogMªIdentifierÍCÍG¤infoÂÂ”MªIdentifierÍHÍN¦DOMAINMªIdentifierÍPÍS£TAGV§LiteralÍUÍtÙ%Cloud DB zoneè·å–æˆåŠŸ: %{public}sÙ''Cloud DB zoneè·å–æˆåŠŸ: %{public}s'MªIdentifierÍvÍ©ZONE_NAMEÂR³ExpressionStatementÍÍ©S´AssignmentExpressionÍÍ¨¡=T°MemberExpressionÍÍ¡U®ThisExpressionÍÍ“MªIdentifierÍ”Í¡­isInitializedÂÂV§LiteralÍ¤Í¨Ã¤trueÔr_•¤type¥start£end¥param¤body«CatchClauseÍ¾Í	IMªIdentifierÍÅÍÈ£errO®BlockStatementÍÊÍ	I’]³VariableDeclarationÍÙÍë‘^²VariableDeclaratorÍßÍêMªIdentifierÍßÍä¥errorMªIdentifierÍçÍê£err¥constR³ExpressionStatementÍùÍ	>[®CallExpressionÍùÍ	=T°MemberExpressionÍùÍ	MªIdentifierÍùÍş¥hilogMªIdentifierÍÿÍ	¥errorÂÂ”MªIdentifierÍ	Í	¦DOMAINMªIdentifierÍ	Í	£TAGV§LiteralÍ	Í	-Ù#Cloud DBåˆå§‹åŒ–å¤±è´¥: %{public}sÙ%'Cloud DBåˆå§‹åŒ–å¤±è´¥: %{public}s'T°MemberExpressionÍ	/Í	<MªIdentifierÍ	/Í	4¥errorMªIdentifierÍ	5Í	<§messageÂÂÂÀP°MethodDefinitionÍ	…Í
-®ÂÂMªIdentifierÍ	‹Í	¥close¦methodQ²FunctionExpressionÍ	Í
-®ÀÂÂÃO®BlockStatementÍ	“Í
-®‘\¬TryStatementÍ	Í
-§O®BlockStatementÍ	¢Í
-’R³ExpressionStatementÍ	±Í	Û[®CallExpressionÍ	±Í	ÚT°MemberExpressionÍ	±Í	»MªIdentifierÍ	±Í	¶¥hilogMªIdentifierÍ	·Í	»¤infoÂÂ“MªIdentifierÍ	¼Í	Â¦DOMAINMªIdentifierÍ	ÄÍ	Ç£TAGV§LiteralÍ	ÉÍ	Ù¶å…³é—­ Cloud DB æœåŠ¡¸'å…³é—­ Cloud DB æœåŠ¡'ÂR³ExpressionStatementÍ	éÍ
-S´AssignmentExpressionÍ	éÍ
-¡=T°MemberExpressionÍ	éÍ	ûU®ThisExpressionÍ	éÍ	íMªIdentifierÍ	îÍ	û­isInitializedÂÂV§LiteralÍ	şÍ
-Â¥false_«CatchClauseÍ
-Í
-§MªIdentifierÍ
- Í
-#£errO®BlockStatementÍ
-%Í
-§’]³VariableDeclarationÍ
-4Í
-F‘^²VariableDeclaratorÍ
-:Í
-EMªIdentifierÍ
-:Í
-?¥errorMªIdentifierÍ
-BÍ
-E£err¥constR³ExpressionStatementÍ
-TÍ
-œ[®CallExpressionÍ
-TÍ
-›T°MemberExpressionÍ
-TÍ
-_MªIdentifierÍ
-TÍ
-Y¥hilogMªIdentifierÍ
-ZÍ
-_¥errorÂÂ”MªIdentifierÍ
-`Í
-f¦DOMAINMªIdentifierÍ
-hÍ
-k£TAGV§LiteralÍ
-mÍ
-‹Ù(å…³é—­ Cloud DB æœåŠ¡å¤±è´¥: %{public}sÙ*'å…³é—­ Cloud DB æœåŠ¡å¤±è´¥: %{public}s'T°MemberExpressionÍ
-Í
-šMªIdentifierÍ
-Í
-’¥errorMªIdentifierÍ
-“Í
-š§messageÂÂÂÀP°MethodDefinitionÍ
-ëÍ–ÂÂMªIdentifierÍ
-ñÍ
-ûªupsertTask¦methodQ²FunctionExpressionÍ
-ûÍ–ÀÂÂÃ‘MªIdentifierÍ
-üÍ ¤taskO®BlockStatementÍÍ–‘\¬TryStatementÍÍO®BlockStatementÍÍç”]³VariableDeclarationÍ ÍS‘^²VariableDeclaratorÍ&ÍRMªIdentifierÍ&Í2¬databaseZone[®CallExpressionÍ5ÍRT°MemberExpressionÍ5ÍGMªIdentifierÍ5ÍB­cloudDatabaseMªIdentifierÍCÍG¤zoneÂÂ‘MªIdentifierÍHÍQ©ZONE_NAMEÂ¥const]³VariableDeclarationÍaÍ‘^²VariableDeclaratorÍgÍMªIdentifierÍgÍm¦recordZ¯AwaitExpressionÍpÍ[®CallExpressionÍvÍT°MemberExpressionÍvÍ‰MªIdentifierÍvÍ‚¬databaseZoneMªIdentifierÍƒÍ‰¦upsertÂÂ‘MªIdentifierÍŠÍ¤taskÂ¥constR³ExpressionStatementÍÍÀ[®CallExpressionÍÍ¿T°MemberExpressionÍÍ¨MªIdentifierÍÍ£¥hilogMªIdentifierÍ¤Í¨¤infoÂÂ“MªIdentifierÍ©Í¯¦DOMAINMªIdentifierÍ±Í´£TAGV§LiteralÍ¶Í¾²ä»»åŠ¡ä¿å­˜æˆåŠŸ´'ä»»åŠ¡ä¿å­˜æˆåŠŸ'ÂZ¯ReturnStatementÍÎÍÜMªIdentifierÍÕÍÛ¦record_«CatchClauseÍñÍMªIdentifierÍøÍû£errO®BlockStatementÍıÍ“]³VariableDeclarationÍÍ‘^²VariableDeclaratorÍÍMªIdentifierÍÍ¥errorMªIdentifierÍÍ£err¥constR³ExpressionStatementÍ,Íj[®CallExpressionÍ,ÍiT°MemberExpressionÍ,Í7MªIdentifierÍ,Í1¥hilogMªIdentifierÍ2Í7¥errorÂÂ”MªIdentifierÍ8Í>¦DOMAINMªIdentifierÍ@ÍC£TAGV§LiteralÍEÍY¾ä¿å­˜ä»»åŠ¡å¤±è´¥: %{public}sÙ 'ä¿å­˜ä»»åŠ¡å¤±è´¥: %{public}s'T°MemberExpressionÍ[ÍhMªIdentifierÍ[Í`¥errorMªIdentifierÍaÍh§messageÂÂÂZ®ThrowStatementÍxÍ„MªIdentifierÍ~Íƒ¥errorÀP°MethodDefinitionÍœÍ‹ÂÂMªIdentifierÍ¢Í¬ªdeleteTask¦methodQ²FunctionExpressionÍ¬Í‹ÀÂÂÃ‘MªIdentifierÍ­Í³¦taskIdO®BlockStatementÍµÍ‹‘\¬TryStatementÍÀÍ„O®BlockStatementÍÄÍÜ•]³VariableDeclarationÍÓÍ‘^²VariableDeclaratorÍÙÍMªIdentifierÍÙÍå¬databaseZone[®CallExpressionÍèÍT°MemberExpressionÍèÍúMªIdentifierÍèÍõ­cloudDatabaseMªIdentifierÍöÍú¤zoneÂÂ‘MªIdentifierÍûÍ©ZONE_NAMEÂ¥const]³VariableDeclarationÍÍC‘^²VariableDeclaratorÍÍBMªIdentifierÍÍ&¬taskToDeleteY­NewExpressionÍ)ÍBMªIdentifierÍ-Í@³TaskCloudDBInternal¥constR³ExpressionStatementÍQÍjS´AssignmentExpressionÍQÍi¡=T°MemberExpressionÍQÍ`MªIdentifierÍQÍ]¬taskToDeleteMªIdentifierÍ^Í`¢idÂÂMªIdentifierÍcÍi¦taskId]³VariableDeclarationÍxÍ²‘^²VariableDeclaratorÍ~Í±MªIdentifierÍ~Í‡©deleteNumZ¯AwaitExpressionÍŠÍ±[®CallExpressionÍÍ±T°MemberExpressionÍÍ£MªIdentifierÍÍœ¬databaseZoneMªIdentifierÍÍ£¦deleteÂÂ‘MªIdentifierÍ¤Í°¬taskToDeleteÂ¥constZ¯ReturnStatementÍÀÍÑMªIdentifierÍÇÍĞ©deleteNum_«CatchClauseÍæÍ„MªIdentifierÍíÍğ£errO®BlockStatementÍòÍ„“]³VariableDeclarationÍÍ‘^²VariableDeclaratorÍÍMªIdentifierÍÍ¥errorMªIdentifierÍÍ£err¥constR³ExpressionStatementÍ!Í_[®CallExpressionÍ!Í^T°MemberExpressionÍ!Í,MªIdentifierÍ!Í&¥hilogMªIdentifierÍ'Í,¥errorÂÂ”MªIdentifierÍ-Í3¦DOMAINMªIdentifierÍ5Í8£TAGV§LiteralÍ:ÍN¾åˆ é™¤ä»»åŠ¡å¤±è´¥: %{public}sÙ 'åˆ é™¤ä»»åŠ¡å¤±è´¥: %{public}s'T°MemberExpressionÍPÍ]MªIdentifierÍPÍU¥errorMªIdentifierÍVÍ]§messageÂÂÂZ®ThrowStatementÍmÍyMªIdentifierÍsÍx¥errorÀP°MethodDefinitionÍ‘Í‰ÂÂMªIdentifierÍ—Í¤­queryAllTasks¦methodQ²FunctionExpressionÍ¤Í‰ÀÂÂÃO®BlockStatementÍ§Í‰‘\¬TryStatementÍ²Í‚O®BlockStatementÍ¶ÍÜ—R³ExpressionStatementÍÅÍé[®CallExpressionÍÅÍèT°MemberExpressionÍÅÍÏMªIdentifierÍÅÍÊ¥hilogMªIdentifierÍËÍÏ¤infoÂÂ“MªIdentifierÍĞÍÖ¦DOMAINMªIdentifierÍØÍÛ£TAGV§LiteralÍİÍç¸å¼€å§‹æŸ¥è¯¢æ‰€æœ‰ä»»åŠ¡º'å¼€å§‹æŸ¥è¯¢æ‰€æœ‰ä»»åŠ¡'Â]³VariableDeclarationÍ÷Í*‘^²VariableDeclaratorÍıÍ)MªIdentifierÍıÍ	¬databaseZone[®CallExpressionÍÍ)T°MemberExpressionÍÍMªIdentifierÍÍ­cloudDatabaseMªIdentifierÍÍ¤zoneÂÂ‘MªIdentifierÍÍ(©ZONE_NAMEÂ¥constW«IfStatementÍ8ÍÂX¯UnaryExpressionÍ<ÍI¡!ÃMªIdentifierÍ=ÍI¬databaseZoneO®BlockStatementÍKÍÂ’R³ExpressionStatementÍ^Í—[®CallExpressionÍ^Í–T°MemberExpressionÍ^ÍiMªIdentifierÍ^Íc¥hilogMªIdentifierÍdÍi¥errorÂÂ“MªIdentifierÍjÍp¦DOMAINMªIdentifierÍrÍu£TAGV§LiteralÍwÍ•Ù:CloudDB zone è·å–å¤±è´¥ï¼Œå¯èƒ½æœªåˆå§‹åŒ–æˆ–æ— æƒé™Ù<'CloudDB zone è·å–å¤±è´¥ï¼Œå¯èƒ½æœªåˆå§‹åŒ–æˆ–æ— æƒé™'ÂZ¯ReturnStatementÍ©Í³Ôr`”¤type¥start£end¨elements¯ArrayExpressionÍ°Í²À]³VariableDeclarationÍĞÍ‘^²VariableDeclaratorÍÖÍMªIdentifierÍÖÍß©conditionY­NewExpressionÍâÍT°MemberExpressionÍæÍMªIdentifierÍæÍó­cloudDatabaseMªIdentifierÍôÍ­DatabaseQueryÂÂ‘MªIdentifierÍÍ³TaskCloudDBInternal¥const]³VariableDeclarationÍ%Í]‘^²VariableDeclaratorÍ+Í\MªIdentifierÍ+Í6«resultArrayZ¯AwaitExpressionÍ9Í\[®CallExpressionÍ?Í\T°MemberExpressionÍ?ÍQMªIdentifierÍ?ÍK¬databaseZoneMªIdentifierÍLÍQ¥queryÂÂ‘MªIdentifierÍRÍ[©conditionÂ¥constR³ExpressionStatementÍkÍ°[®CallExpressionÍkÍ¯T°MemberExpressionÍkÍuMªIdentifierÍkÍp¥hilogMªIdentifierÍqÍu¤infoÂÂ”MªIdentifierÍvÍ|¦DOMAINMªIdentifierÍ~Í£TAGV§LiteralÍƒÍšÙ'æŸ¥è¯¢ä»»åŠ¡æˆåŠŸï¼Œæ•°é‡: %{public}dÙ)'æŸ¥è¯¢ä»»åŠ¡æˆåŠŸï¼Œæ•°é‡: %{public}d'T°MemberExpressionÍœÍ®MªIdentifierÍœÍ§«resultArrayMªIdentifierÍ¨Í®¦lengthÂÂÂZ¯ReturnStatementÍ¾ÍÑMªIdentifierÍÅÍĞ«resultArray_«CatchClauseÍæÍ‚MªIdentifierÍíÍğ£errO®BlockStatementÍòÍ‚“]³VariableDeclarationÍÍ‘^²VariableDeclaratorÍÍMªIdentifierÍÍ¥errorMªIdentifierÍÍ£err¥constR³ExpressionStatementÍ!Í_[®CallExpressionÍ!Í^T°MemberExpressionÍ!Í,MªIdentifierÍ!Í&¥hilogMªIdentifierÍ'Í,¥errorÂÂ”MªIdentifierÍ-Í3¦DOMAINMªIdentifierÍ5Í8£TAGV§LiteralÍ:ÍN¾æŸ¥è¯¢ä»»åŠ¡å¤±è´¥: %{public}sÙ 'æŸ¥è¯¢ä»»åŠ¡å¤±è´¥: %{public}s'T°MemberExpressionÍPÍ]MªIdentifierÍPÍU¥errorMªIdentifierÍVÍ]§messageÂÂÂZ¯ReturnStatementÍmÍw`¯ArrayExpressionÍtÍvÀP°MethodDefinitionÍÍ§ÂÂMªIdentifierÍ•Í§²queryTasksByStatus¦methodQ²FunctionExpressionÍ§Í§ÀÂÂÃ‘MªIdentifierÍ¨Í®¦statusO®BlockStatementÍ°Í§‘\¬TryStatementÍ»Í O®BlockStatementÍ¿Íú•]³VariableDeclarationÍÎÍ‘^²VariableDeclaratorÍÔÍ MªIdentifierÍÔÍà¬databaseZone[®CallExpressionÍãÍ T°MemberExpressionÍãÍõMªIdentifierÍãÍğ­cloudDatabaseMªIdentifierÍñÍõ¤zoneÂÂ‘MªIdentifierÍöÍÿ©ZONE_NAMEÂ¥const]³VariableDeclarationÍÍV‘^²VariableDeclaratorÍÍUMªIdentifierÍÍ©conditionY­NewExpressionÍ!ÍUT°MemberExpressionÍ%Í@MªIdentifierÍ%Í2­cloudDatabaseMªIdentifierÍ3Í@­DatabaseQueryÂÂ‘MªIdentifierÍAÍT³TaskCloudDBInternal¥constR³ExpressionStatementÍdÍˆ[®CallExpressionÍdÍ‡T°MemberExpressionÍdÍuMªIdentifierÍdÍm©conditionMªIdentifierÍnÍu§equalToÂÂ’V§LiteralÍvÍ~¦status¨'status'MªIdentifierÍ€Í†¦statusÂ]³VariableDeclarationÍ–ÍÎ‘^²VariableDeclaratorÍœÍÍMªIdentifierÍœÍ§«resultArrayZ¯AwaitExpressionÍªÍÍ[®CallExpressionÍ°ÍÍT°MemberExpressionÍ°ÍÂMªIdentifierÍ°Í¼¬databaseZoneMªIdentifierÍ½ÍÂ¥queryÂÂ‘MªIdentifierÍÃÍÌ©conditionÂ¥constZ¯ReturnStatementÍÜÍïMªIdentifierÍãÍî«resultArray_«CatchClauseÍÍ MªIdentifierÍÍ£errO®BlockStatementÍÍ “]³VariableDeclarationÍÍ1‘^²VariableDeclaratorÍ%Í0MªIdentifierÍ%Í*¥errorMªIdentifierÍ-Í0£err¥constR³ExpressionStatementÍ?Í}[®CallExpressionÍ?Í|T°MemberExpressionÍ?ÍJMªIdentifierÍ?ÍD¥hilogMªIdentifierÍEÍJ¥errorÂÂ”MªIdentifierÍKÍQ¦DOMAINMªIdentifierÍSÍV£TAGV§LiteralÍXÍl¾æŸ¥è¯¢ä»»åŠ¡å¤±è´¥: %{public}sÙ 'æŸ¥è¯¢ä»»åŠ¡å¤±è´¥: %{public}s'T°MemberExpressionÍnÍ{MªIdentifierÍnÍs¥errorMªIdentifierÍtÍ{§messageÂÂÂZ¯ReturnStatementÍ‹Í•`¯ArrayExpressionÍ’Í”ÀP°MethodDefinitionÍ­ÍáÂÂMªIdentifierÍ³ÍÀ­queryTaskById¦methodQ²FunctionExpressionÍÀÍáÀÂÂÃ‘MªIdentifierÍÁÍÇ¦taskIdO®BlockStatementÍÉÍá‘\¬TryStatementÍÔÍÚO®BlockStatementÍØÍ2•]³VariableDeclarationÍçÍ‘^²VariableDeclaratorÍíÍMªIdentifierÍíÍù¬databaseZone[®CallExpressionÍüÍT°MemberExpressionÍüÍMªIdentifierÍüÍ	­cloudDatabaseMªIdentifierÍ
-Í¤zoneÂÂ‘MªIdentifierÍÍ©ZONE_NAMEÂ¥const]³VariableDeclarationÍ(Ío‘^²VariableDeclaratorÍ.ÍnMªIdentifierÍ.Í7©conditionY­NewExpressionÍ:ÍnT°MemberExpressionÍ>ÍYMªIdentifierÍ>ÍK­cloudDatabaseMªIdentifierÍLÍY­DatabaseQueryÂÂ‘MªIdentifierÍZÍm³TaskCloudDBInternal¥constR³ExpressionStatementÍ}Í[®CallExpressionÍ}ÍœT°MemberExpressionÍ}ÍMªIdentifierÍ}Í†©conditionMªIdentifierÍ‡Í§equalToÂÂ’V§LiteralÍÍ“¢id¤'id'MªIdentifierÍ•Í›¦taskIdÂ]³VariableDeclarationÍ«Íã‘^²VariableDeclaratorÍ±ÍâMªIdentifierÍ±Í¼«resultArrayZ¯AwaitExpressionÍ¿Íâ[®CallExpressionÍÅÍâT°MemberExpressionÍÅÍ×MªIdentifierÍÅÍÑ¬databaseZoneMªIdentifierÍÒÍ×¥queryÂÂ‘MªIdentifierÍØÍá©conditionÂ¥constZ¯ReturnStatementÍñÍ'WµConditionalExpressionÍøÍ&Ôra–¤type¥start£end¤left¨operator¥right°BinaryExpressionÍøÍT°MemberExpressionÍøÍ
-MªIdentifierÍøÍ«resultArrayMªIdentifierÍÍ
-¦lengthÂÂ¡>V§LiteralÍÍ ¡0T°MemberExpressionÍÍMªIdentifierÍÍ«resultArrayV§LiteralÍÍ ¡0ÃÂV§LiteralÍ"Í&À¤null_«CatchClauseÍ<ÍÚMªIdentifierÍCÍF£errO®BlockStatementÍHÍÚ“]³VariableDeclarationÍWÍi‘^²VariableDeclaratorÍ]ÍhMªIdentifierÍ]Íb¥errorMªIdentifierÍeÍh£err¥constR³ExpressionStatementÍwÍµ[®CallExpressionÍwÍ´T°MemberExpressionÍwÍ‚MªIdentifierÍwÍ|¥hilogMªIdentifierÍ}Í‚¥errorÂÂ”MªIdentifierÍƒÍ‰¦DOMAINMªIdentifierÍ‹Í£TAGV§LiteralÍÍ¤¾æŸ¥è¯¢ä»»åŠ¡å¤±è´¥: %{public}sÙ 'æŸ¥è¯¢ä»»åŠ¡å¤±è´¥: %{public}s'T°MemberExpressionÍ¦Í³MªIdentifierÍ¦Í«¥errorMªIdentifierÍ¬Í³§messageÂÂÂZ¯ReturnStatementÍÃÍÏV§LiteralÍÊÍÎÀ¤nullÀP°MethodDefinitionÍçÍEÂÂMªIdentifierÍíÍµqueryTasksByDateRange¦methodQ²FunctionExpressionÍÍEÀÂÂÃ’MªIdentifierÍÍ©startDateMªIdentifierÍÍ§endDateO®BlockStatementÍÍE‘\¬TryStatementÍ"Í>O®BlockStatementÍ&Í˜•]³VariableDeclarationÍ5Íh‘^²VariableDeclaratorÍ;ÍgMªIdentifierÍ;ÍG¬databaseZone[®CallExpressionÍJÍgT°MemberExpressionÍJÍ\MªIdentifierÍJÍW­cloudDatabaseMªIdentifierÍXÍ\¤zoneÂÂ‘MªIdentifierÍ]Íf©ZONE_NAMEÂ¥const]³VariableDeclarationÍvÍ½‘^²VariableDeclaratorÍ|Í¼MªIdentifierÍ|Í…©conditionY­NewExpressionÍˆÍ¼T°MemberExpressionÍŒÍ§MªIdentifierÍŒÍ™­cloudDatabaseMªIdentifierÍšÍ§­DatabaseQueryÂÂ‘MªIdentifierÍ¨Í»³TaskCloudDBInternal¥constR³ExpressionStatementÍËÍ&[®CallExpressionÍËÍ%T°MemberExpressionÍËÍ[®CallExpressionÍËÍÿT°MemberExpressionÍËÍéMªIdentifierÍËÍÔ©conditionMªIdentifierÍÕÍé´greaterThanOrEqualToÂÂ’V§LiteralÍêÍó§dueDate©'dueDate'MªIdentifierÍõÍş©startDateÂMªIdentifierÍ Í±lessThanOrEqualToÂÂ’V§LiteralÍÍ§dueDate©'dueDate'MªIdentifierÍÍ$§endDateÂ]³VariableDeclarationÍ4Íl‘^²VariableDeclaratorÍ:ÍkMªIdentifierÍ:ÍE«resultArrayZ¯AwaitExpressionÍHÍk[®CallExpressionÍNÍkT°MemberExpressionÍNÍ`MªIdentifierÍNÍZ¬databaseZoneMªIdentifierÍ[Í`¥queryÂÂ‘MªIdentifierÍaÍj©conditionÂ¥constZ¯ReturnStatementÍzÍMªIdentifierÍÍŒ«resultArray_«CatchClauseÍ¢Í>MªIdentifierÍ©Í¬£errO®BlockStatementÍ®Í>“]³VariableDeclarationÍ½ÍÏ‘^²VariableDeclaratorÍÃÍÎMªIdentifierÍÃÍÈ¥errorMªIdentifierÍËÍÎ£err¥constR³ExpressionStatementÍİÍ[®CallExpressionÍİÍT°MemberExpressionÍİÍèMªIdentifierÍİÍâ¥hilogMªIdentifierÍãÍè¥errorÂÂ”MªIdentifierÍéÍï¦DOMAINMªIdentifierÍñÍô£TAGV§LiteralÍöÍ
-¾æŸ¥è¯¢ä»»åŠ¡å¤±è´¥: %{public}sÙ 'æŸ¥è¯¢ä»»åŠ¡å¤±è´¥: %{public}s'T°MemberExpressionÍÍMªIdentifierÍÍ¥errorMªIdentifierÍÍ§messageÂÂÂZ¯ReturnStatementÍ)Í3`¯ArrayExpressionÍ0Í2ÀP°MethodDefinitionÍ‚ÍıÂÂMªIdentifierÍˆÍ’ªupsertBill¦methodQ²FunctionExpressionÍ’ÍıÀÂÂÃ‘MªIdentifierÍ“Í—¤billO®BlockStatementÍ™Íı‘\¬TryStatementÍ¤ÍöO®BlockStatementÍ¨ÍN“]³VariableDeclarationÍ·Íê‘^²VariableDeclaratorÍ½ÍéMªIdentifierÍ½ÍÉ¬databaseZone[®CallExpressionÍÌÍéT°MemberExpressionÍÌÍŞMªIdentifierÍÌÍÙ­cloudDatabaseMªIdentifierÍÚÍŞ¤zoneÂÂ‘MªIdentifierÍßÍè©ZONE_NAMEÂ¥const]³VariableDeclarationÍøÍ'‘^²VariableDeclaratorÍşÍ&MªIdentifierÍşÍ¦recordZ¯AwaitExpressionÍÍ&[®CallExpressionÍÍ&T°MemberExpressionÍÍ MªIdentifierÍÍ¬databaseZoneMªIdentifierÍÍ ¦upsertÂÂ‘MªIdentifierÍ!Í%¤billÂ¥constZ¯ReturnStatementÍ5ÍCMªIdentifierÍ<ÍB¦record_«CatchClauseÍXÍöMªIdentifierÍ_Íb£errO®BlockStatementÍdÍö“]³VariableDeclarationÍsÍ…‘^²VariableDeclaratorÍyÍ„MªIdentifierÍyÍ~¥errorMªIdentifierÍÍ„£err¥constR³ExpressionStatementÍ“ÍÑ[®CallExpressionÍ“ÍĞT°MemberExpressionÍ“ÍMªIdentifierÍ“Í˜¥hilogMªIdentifierÍ™Í¥errorÂÂ”MªIdentifierÍŸÍ¥¦DOMAINMªIdentifierÍ§Íª£TAGV§LiteralÍ¬ÍÀ¾ä¿å­˜è´¦å•å¤±è´¥: %{public}sÙ 'ä¿å­˜è´¦å•å¤±è´¥: %{public}s'T°MemberExpressionÍÂÍÏMªIdentifierÍÂÍÇ¥errorMªIdentifierÍÈÍÏ§messageÂÂÂZ®ThrowStatementÍßÍëMªIdentifierÍåÍê¥errorÀP°MethodDefinitionÍÍòÂÂMªIdentifierÍ	ÍªdeleteBill¦methodQ²FunctionExpressionÍÍòÀÂÂÃ‘MªIdentifierÍÍ¦billIdO®BlockStatementÍÍò‘\¬TryStatementÍ'ÍëO®BlockStatementÍ+ÍC•]³VariableDeclarationÍ:Ím‘^²VariableDeclaratorÍ@ÍlMªIdentifierÍ@ÍL¬databaseZone[®CallExpressionÍOÍlT°MemberExpressionÍOÍaMªIdentifierÍOÍ\­cloudDatabaseMªIdentifierÍ]Ía¤zoneÂÂ‘MªIdentifierÍbÍk©ZONE_NAMEÂ¥const]³VariableDeclarationÍ{Íª‘^²VariableDeclaratorÍÍ©MªIdentifierÍÍ¬billToDeleteY­NewExpressionÍÍ©MªIdentifierÍ”Í§³BillCloudDBInternal¥constR³ExpressionStatementÍ¸ÍÑS´AssignmentExpressionÍ¸ÍĞ¡=T°MemberExpressionÍ¸ÍÇMªIdentifierÍ¸ÍÄ¬billToDeleteMªIdentifierÍÅÍÇ¢idÂÂMªIdentifierÍÊÍĞ¦billId]³VariableDeclarationÍßÍ‘^²VariableDeclaratorÍåÍMªIdentifierÍåÍî©deleteNumZ¯AwaitExpressionÍñÍ[®CallExpressionÍ÷ÍT°MemberExpressionÍ÷Í
-MªIdentifierÍ÷Í¬databaseZoneMªIdentifierÍÍ
-¦deleteÂÂ‘MªIdentifierÍÍ¬billToDeleteÂ¥constZ¯ReturnStatementÍ'Í8MªIdentifierÍ.Í7©deleteNum_«CatchClauseÍMÍëMªIdentifierÍTÍW£errO®BlockStatementÍYÍë“]³VariableDeclarationÍhÍz‘^²VariableDeclaratorÍnÍyMªIdentifierÍnÍs¥errorMªIdentifierÍvÍy£err¥constR³ExpressionStatementÍˆÍÆ[®CallExpressionÍˆÍÅT°MemberExpressionÍˆÍ“MªIdentifierÍˆÍ¥hilogMªIdentifierÍÍ“¥errorÂÂ”MªIdentifierÍ”Íš¦DOMAINMªIdentifierÍœÍŸ£TAGV§LiteralÍ¡Íµ¾åˆ é™¤è´¦å•å¤±è´¥: %{public}sÙ 'åˆ é™¤è´¦å•å¤±è´¥: %{public}s'T°MemberExpressionÍ·ÍÄMªIdentifierÍ·Í¼¥errorMªIdentifierÍ½ÍÄ§messageÂÂÂZ®ThrowStatementÍÔÍàMªIdentifierÍÚÍß¥errorÀP°MethodDefinitionÍøÍğÂÂMªIdentifierÍşÍ­queryAllBills¦methodQ²FunctionExpressionÍÍğÀÂÂÃO®BlockStatementÍÍğ‘\¬TryStatementÍÍéO®BlockStatementÍÍC—R³ExpressionStatementÍ,ÍP[®CallExpressionÍ,ÍOT°MemberExpressionÍ,Í6MªIdentifierÍ,Í1¥hilogMªIdentifierÍ2Í6¤infoÂÂ“MªIdentifierÍ7Í=¦DOMAINMªIdentifierÍ?ÍB£TAGV§LiteralÍDÍN¸å¼€å§‹æŸ¥è¯¢æ‰€æœ‰è´¦å•º'å¼€å§‹æŸ¥è¯¢æ‰€æœ‰è´¦å•'Â]³VariableDeclarationÍ^Í‘‘^²VariableDeclaratorÍdÍMªIdentifierÍdÍp¬databaseZone[®CallExpressionÍsÍT°MemberExpressionÍsÍ…MªIdentifierÍsÍ€­cloudDatabaseMªIdentifierÍÍ…¤zoneÂÂ‘MªIdentifierÍ†Í©ZONE_NAMEÂ¥constW«IfStatementÍŸÍ)X¯UnaryExpressionÍ£Í°¡!ÃMªIdentifierÍ¤Í°¬databaseZoneO®BlockStatementÍ²Í)’R³ExpressionStatementÍÅÍş[®CallExpressionÍÅÍıT°MemberExpressionÍÅÍĞMªIdentifierÍÅÍÊ¥hilogMªIdentifierÍËÍĞ¥errorÂÂ“MªIdentifierÍÑÍ×¦DOMAINMªIdentifierÍÙÍÜ£TAGV§LiteralÍŞÍüÙ:CloudDB zone è·å–å¤±è´¥ï¼Œå¯èƒ½æœªåˆå§‹åŒ–æˆ–æ— æƒé™Ù<'CloudDB zone è·å–å¤±è´¥ï¼Œå¯èƒ½æœªåˆå§‹åŒ–æˆ–æ— æƒé™'ÂZ¯ReturnStatementÍÍ`¯ArrayExpressionÍÍÀ]³VariableDeclarationÍ7Í~‘^²VariableDeclaratorÍ=Í}MªIdentifierÍ=ÍF©conditionY­NewExpressionÍIÍ}T°MemberExpressionÍMÍhMªIdentifierÍMÍZ­cloudDatabaseMªIdentifierÍ[Íh­DatabaseQueryÂÂ‘MªIdentifierÍiÍ|³BillCloudDBInternal¥const]³VariableDeclarationÍŒÍÄ‘^²VariableDeclaratorÍ’ÍÃMªIdentifierÍ’Í«resultArrayZ¯AwaitExpressionÍ ÍÃ[®CallExpressionÍ¦ÍÃT°MemberExpressionÍ¦Í¸MªIdentifierÍ¦Í²¬databaseZoneMªIdentifierÍ³Í¸¥queryÂÂ‘MªIdentifierÍ¹ÍÂ©conditionÂ¥constR³ExpressionStatementÍÒÍ[®CallExpressionÍÒÍT°MemberExpressionÍÒÍÜMªIdentifierÍÒÍ×¥hilogMªIdentifierÍØÍÜ¤infoÂÂ”MªIdentifierÍİÍã¦DOMAINMªIdentifierÍåÍè£TAGV§LiteralÍêÍÙ'æŸ¥è¯¢è´¦å•æˆåŠŸï¼Œæ•°é‡: %{public}dÙ)'æŸ¥è¯¢è´¦å•æˆåŠŸï¼Œæ•°é‡: %{public}d'T°MemberExpressionÍÍMªIdentifierÍÍ«resultArrayMªIdentifierÍÍ¦lengthÂÂÂZ¯ReturnStatementÍ%Í8MªIdentifierÍ,Í7«resultArray_«CatchClauseÍMÍéMªIdentifierÍTÍW£errO®BlockStatementÍYÍé“]³VariableDeclarationÍhÍz‘^²VariableDeclaratorÍnÍyMªIdentifierÍnÍs¥errorMªIdentifierÍvÍy£err¥constR³ExpressionStatementÍˆÍÆ[®CallExpressionÍˆÍÅT°MemberExpressionÍˆÍ“MªIdentifierÍˆÍ¥hilogMªIdentifierÍÍ“¥errorÂÂ”MªIdentifierÍ”Íš¦DOMAINMªIdentifierÍœÍŸ£TAGV§LiteralÍ¡Íµ¾æŸ¥è¯¢è´¦å•å¤±è´¥: %{public}sÙ 'æŸ¥è¯¢è´¦å•å¤±è´¥: %{public}s'T°MemberExpressionÍ·ÍÄMªIdentifierÍ·Í¼¥errorMªIdentifierÍ½ÍÄ§messageÂÂÂZ¯ReturnStatementÍÔÍŞ`¯ArrayExpressionÍÛÍİÀP°MethodDefinitionÍöÍ!ÂÂMªIdentifierÍüÍ°queryBillsByType¦methodQ²FunctionExpressionÍÍ!ÀÂÂÃ‘MªIdentifierÍÍ¤typeO®BlockStatementÍÍ!‘\¬TryStatementÍÍ ÿO®BlockStatementÍ"Í Y•]³VariableDeclarationÍ1Íd‘^²VariableDeclaratorÍ7ÍcMªIdentifierÍ7ÍC¬databaseZone[®CallExpressionÍFÍcT°MemberExpressionÍFÍXMªIdentifierÍFÍS­cloudDatabaseMªIdentifierÍTÍX¤zoneÂÂ‘MªIdentifierÍYÍb©ZONE_NAMEÂ¥const]³VariableDeclarationÍrÍ¹‘^²VariableDeclaratorÍxÍ¸MªIdentifierÍxÍ©conditionY­NewExpressionÍ„Í¸T°MemberExpressionÍˆÍ£MªIdentifierÍˆÍ•­cloudDatabaseMªIdentifierÍ–Í£­DatabaseQueryÂÂ‘MªIdentifierÍ¤Í·³BillCloudDBInternal¥constR³ExpressionStatementÍÇÍç[®CallExpressionÍÇÍæT°MemberExpressionÍÇÍØMªIdentifierÍÇÍĞ©conditionMªIdentifierÍÑÍØ§equalToÂÂ’V§LiteralÍÙÍß¤type¦'type'MªIdentifierÍáÍå¤typeÂ]³VariableDeclarationÍõÍ -‘^²VariableDeclaratorÍûÍ ,MªIdentifierÍûÍ «resultArrayZ¯AwaitExpressionÍ 	Í ,[®CallExpressionÍ Í ,T°MemberExpressionÍ Í !MªIdentifierÍ Í ¬databaseZoneMªIdentifierÍ Í !¥queryÂÂ‘MªIdentifierÍ "Í +©conditionÂ¥constZ¯ReturnStatementÍ ;Í NMªIdentifierÍ BÍ M«resultArray_«CatchClauseÍ cÍ ÿMªIdentifierÍ jÍ m£errO®BlockStatementÍ oÍ ÿ“]³VariableDeclarationÍ ~Í ‘^²VariableDeclaratorÍ „Í MªIdentifierÍ „Í ‰¥errorMªIdentifierÍ ŒÍ £err¥constR³ExpressionStatementÍ Í Ü[®CallExpressionÍ Í ÛT°MemberExpressionÍ Í ©MªIdentifierÍ Í £¥hilogMªIdentifierÍ ¤Í ©¥errorÂÂ”MªIdentifierÍ ªÍ °¦DOMAINMªIdentifierÍ ²Í µ£TAGV§LiteralÍ ·Í Ë¾æŸ¥è¯¢è´¦å•å¤±è´¥: %{public}sÙ 'æŸ¥è¯¢è´¦å•å¤±è´¥: %{public}s'T°MemberExpressionÍ ÍÍ ÚMªIdentifierÍ ÍÍ Ò¥errorMªIdentifierÍ ÓÍ Ú§messageÂÂÂZ¯ReturnStatementÍ êÍ ô`¯ArrayExpressionÍ ñÍ óÀP°MethodDefinitionÍ!Í#dÂÂMªIdentifierÍ!Í!'µqueryBillsByDateRange¦methodQ²FunctionExpressionÍ!'Í#dÀÂÂÃ’MªIdentifierÍ!(Í!1©startDateMªIdentifierÍ!3Í!:§endDateO®BlockStatementÍ!<Í#d‘\¬TryStatementÍ!GÍ#]O®BlockStatementÍ!KÍ"·•]³VariableDeclarationÍ!ZÍ!‘^²VariableDeclaratorÍ!`Í!ŒMªIdentifierÍ!`Í!l¬databaseZone[®CallExpressionÍ!oÍ!ŒT°MemberExpressionÍ!oÍ!MªIdentifierÍ!oÍ!|­cloudDatabaseMªIdentifierÍ!}Í!¤zoneÂÂ‘MªIdentifierÍ!‚Í!‹©ZONE_NAMEÂ¥const]³VariableDeclarationÍ!›Í!â‘^²VariableDeclaratorÍ!¡Í!áMªIdentifierÍ!¡Í!ª©conditionY­NewExpressionÍ!­Í!áT°MemberExpressionÍ!±Í!ÌMªIdentifierÍ!±Í!¾­cloudDatabaseMªIdentifierÍ!¿Í!Ì­DatabaseQueryÂÂ‘MªIdentifierÍ!ÍÍ!à³BillCloudDBInternal¥constR³ExpressionStatementÍ!ğÍ"E[®CallExpressionÍ!ğÍ"DT°MemberExpressionÍ!ğÍ"3[®CallExpressionÍ!ğÍ"!T°MemberExpressionÍ!ğÍ"MªIdentifierÍ!ğÍ!ù©conditionMªIdentifierÍ!úÍ"´greaterThanOrEqualToÂÂ’V§LiteralÍ"Í"¤date¦'date'MªIdentifierÍ"Í" ©startDateÂMªIdentifierÍ""Í"3±lessThanOrEqualToÂÂ’V§LiteralÍ"4Í":¤date¦'date'MªIdentifierÍ"<Í"C§endDateÂ]³VariableDeclarationÍ"SÍ"‹‘^²VariableDeclaratorÍ"YÍ"ŠMªIdentifierÍ"YÍ"d«resultArrayZ¯AwaitExpressionÍ"gÍ"Š[®CallExpressionÍ"mÍ"ŠT°MemberExpressionÍ"mÍ"MªIdentifierÍ"mÍ"y¬databaseZoneMªIdentifierÍ"zÍ"¥queryÂÂ‘MªIdentifierÍ"€Í"‰©conditionÂ¥constZ¯ReturnStatementÍ"™Í"¬MªIdentifierÍ" Í"««resultArray_«CatchClauseÍ"ÁÍ#]MªIdentifierÍ"ÈÍ"Ë£errO®BlockStatementÍ"ÍÍ#]“]³VariableDeclarationÍ"ÜÍ"î‘^²VariableDeclaratorÍ"âÍ"íMªIdentifierÍ"âÍ"ç¥errorMªIdentifierÍ"êÍ"í£err¥constR³ExpressionStatementÍ"üÍ#:[®CallExpressionÍ"üÍ#9T°MemberExpressionÍ"üÍ#MªIdentifierÍ"üÍ#¥hilogMªIdentifierÍ#Í#¥errorÂÂ”MªIdentifierÍ#Í#¦DOMAINMªIdentifierÍ#Í#£TAGV§LiteralÍ#Í#)¾æŸ¥è¯¢è´¦å•å¤±è´¥: %{public}sÙ 'æŸ¥è¯¢è´¦å•å¤±è´¥: %{public}s'T°MemberExpressionÍ#+Í#8MªIdentifierÍ#+Í#0¥errorMªIdentifierÍ#1Í#8§messageÂÂÂZ¯ReturnStatementÍ#HÍ#R`¯ArrayExpressionÍ#OÍ#QÀP°MethodDefinitionÍ#jÍ%ÂÂMªIdentifierÍ#pÍ#}­queryBillById¦methodQ²FunctionExpressionÍ#}Í%ÀÂÂÃ‘MªIdentifierÍ#~Í#„¦billIdO®BlockStatementÍ#†Í%‘\¬TryStatementÍ#‘Í%—O®BlockStatementÍ#•Í$ï•]³VariableDeclarationÍ#¤Í#×‘^²VariableDeclaratorÍ#ªÍ#ÖMªIdentifierÍ#ªÍ#¶¬databaseZone[®CallExpressionÍ#¹Í#ÖT°MemberExpressionÍ#¹Í#ËMªIdentifierÍ#¹Í#Æ­cloudDatabaseMªIdentifierÍ#ÇÍ#Ë¤zoneÂÂ‘MªIdentifierÍ#ÌÍ#Õ©ZONE_NAMEÂ¥const]³VariableDeclarationÍ#åÍ$,‘^²VariableDeclaratorÍ#ëÍ$+MªIdentifierÍ#ëÍ#ô©conditionY­NewExpressionÍ#÷Í$+T°MemberExpressionÍ#ûÍ$MªIdentifierÍ#ûÍ$­cloudDatabaseMªIdentifierÍ$	Í$­DatabaseQueryÂÂ‘MªIdentifierÍ$Í$*³BillCloudDBInternal¥constR³ExpressionStatementÍ$:Í$Z[®CallExpressionÍ$:Í$YT°MemberExpressionÍ$:Í$KMªIdentifierÍ$:Í$C©conditionMªIdentifierÍ$DÍ$K§equalToÂÂ’V§LiteralÍ$LÍ$P¢id¤'id'MªIdentifierÍ$RÍ$X¦billIdÂ]³VariableDeclarationÍ$hÍ$ ‘^²VariableDeclaratorÍ$nÍ$ŸMªIdentifierÍ$nÍ$y«resultArrayZ¯AwaitExpressionÍ$|Í$Ÿ[®CallExpressionÍ$‚Í$ŸT°MemberExpressionÍ$‚Í$”MªIdentifierÍ$‚Í$¬databaseZoneMªIdentifierÍ$Í$”¥queryÂÂ‘MªIdentifierÍ$•Í$©conditionÂ¥constZ¯ReturnStatementÍ$®Í$äWµConditionalExpressionÍ$µÍ$ãa°BinaryExpressionÍ$µÍ$ËT°MemberExpressionÍ$µÍ$ÇMªIdentifierÍ$µÍ$À«resultArrayMªIdentifierÍ$ÁÍ$Ç¦lengthÂÂ¡>V§LiteralÍ$ÊÍ$Ë ¡0T°MemberExpressionÍ$ÎÍ$ÜMªIdentifierÍ$ÎÍ$Ù«resultArrayV§LiteralÍ$ÚÍ$Û ¡0ÃÂV§LiteralÍ$ßÍ$ãÀ¤null_«CatchClauseÍ$ùÍ%—MªIdentifierÍ% Í%£errO®BlockStatementÍ%Í%—“]³VariableDeclarationÍ%Í%&‘^²VariableDeclaratorÍ%Í%%MªIdentifierÍ%Í%¥errorMªIdentifierÍ%"Í%%£err¥constR³ExpressionStatementÍ%4Í%r[®CallExpressionÍ%4Í%qT°MemberExpressionÍ%4Í%?MªIdentifierÍ%4Í%9¥hilogMªIdentifierÍ%:Í%?¥errorÂÂ”MªIdentifierÍ%@Í%F¦DOMAINMªIdentifierÍ%HÍ%K£TAGV§LiteralÍ%MÍ%a¾æŸ¥è¯¢è´¦å•å¤±è´¥: %{public}sÙ 'æŸ¥è¯¢è´¦å•å¤±è´¥: %{public}s'T°MemberExpressionÍ%cÍ%pMªIdentifierÍ%cÍ%h¥errorMªIdentifierÍ%iÍ%p§messageÂÂÂZ¯ReturnStatementÍ%€Í%ŒV§LiteralÍ%‡Í%‹À¤nullÀP°MethodDefinitionÍ&	Í&IÂÂMªIdentifierÍ&	Í&ªcreateTask¦methodQ²FunctionExpressionÍ&Í&IÀÂÂÂO®BlockStatementÍ&Í&I‘Z¯ReturnStatementÍ&!Í&BY­NewExpressionÍ&(Í&AMªIdentifierÍ&,Í&?³TaskCloudDBInternalP°MethodDefinitionÍ&}Í&½ÂÂMªIdentifierÍ&}Í&‡ªcreateBill¦methodQ²FunctionExpressionÍ&‡Í&½ÀÂÂÂO®BlockStatementÍ&ŠÍ&½‘Z¯ReturnStatementÍ&•Í&¶Y­NewExpressionÍ&œÍ&µMªIdentifierÍ& Í&³³BillCloudDBInternalÀ’Ôrb•¤type¥start£endªspecifiers¦source±ImportDeclaration+Ìr‘Ôrc”¤type¥start£end¥local¶ImportDefaultSpecifier2?MªIdentifier2?­cloudDatabaseV§LiteralÌEÌqÙ*@hms.core.deviceCloudGateway.cloudDatabaseÙ,"@hms.core.deviceCloudGateway.cloudDatabase"b±ImportDeclarationÌtÌ”‘c¶ImportDefaultSpecifierÌ{Ì€MªIdentifierÌ{Ì€¥hilogV§LiteralÌ†Ì“«@ohos.hilog­"@ohos.hilog"

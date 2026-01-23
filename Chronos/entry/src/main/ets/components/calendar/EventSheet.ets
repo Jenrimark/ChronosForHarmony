@@ -45,6 +45,7 @@ export struct EventSheet {
   @State showRepeatPicker: boolean = false;
   @State showTimePicker: boolean = false;
   @State isEditingStart: boolean = true;
+  @State refreshKey: number = 0; // 用于强制刷新显示
 
   private smartParser: SmartParser = SmartParser.getInstance();
   private isEditMode: boolean = false;
@@ -342,28 +343,124 @@ export struct EventSheet {
             })
 
             // 开始时间
-            this.buildSelectRow('🕐', '开始', 
-              this.isAllDay ? this.formatDate(this.startTime) : `${this.formatDate(this.startTime)} ${this.formatTime(this.startTime)}`,
-              () => {
-                this.isEditingStart = true;
-                this.showTimePicker = true;
-              })
+            Row() {
+              Text('🕐')
+                .fontSize(18)
+                .width(30)
+              
+              Text('开始')
+                .fontSize(15)
+                .fontColor(Constants.COLOR_TEXT_PRIMARY)
+                .layoutWeight(1)
+              
+              Text(this.isAllDay ? this.formatDate(this.startTime) : `${this.formatDate(this.startTime)} ${this.formatTime(this.startTime)}`)
+                .fontSize(14)
+                .fontColor(Constants.COLOR_TEXT_SECONDARY)
+                .key(`start-${this.refreshKey}`) // 添加 key 强制刷新
+              
+              Text('›')
+                .fontSize(18)
+                .fontColor(Constants.COLOR_TEXT_TERTIARY)
+                .margin({ left: 8 })
+            }
+            .width('100%')
+            .padding({ left: 16, right: 16, top: 12, bottom: 12 })
+            .backgroundColor(Constants.COLOR_CARD_BACKGROUND)
+            .borderRadius(8)
+            .margin({ bottom: 8 })
+            .onClick(() => {
+              this.isEditingStart = true;
+              this.showTimePicker = true;
+            })
 
             // 结束时间
-            this.buildSelectRow('🕑', '结束',
-              this.isAllDay ? this.formatDate(this.endTime) : `${this.formatDate(this.endTime)} ${this.formatTime(this.endTime)}`,
-              () => {
-                this.isEditingStart = false;
-                this.showTimePicker = true;
-              })
+            Row() {
+              Text('🕑')
+                .fontSize(18)
+                .width(30)
+              
+              Text('结束')
+                .fontSize(15)
+                .fontColor(Constants.COLOR_TEXT_PRIMARY)
+                .layoutWeight(1)
+              
+              Text(this.isAllDay ? this.formatDate(this.endTime) : `${this.formatDate(this.endTime)} ${this.formatTime(this.endTime)}`)
+                .fontSize(14)
+                .fontColor(Constants.COLOR_TEXT_SECONDARY)
+                .key(`end-${this.refreshKey}`) // 添加 key 强制刷新
+              
+              Text('›')
+                .fontSize(18)
+                .fontColor(Constants.COLOR_TEXT_TERTIARY)
+                .margin({ left: 8 })
+            }
+            .width('100%')
+            .padding({ left: 16, right: 16, top: 12, bottom: 12 })
+            .backgroundColor(Constants.COLOR_CARD_BACKGROUND)
+            .borderRadius(8)
+            .margin({ bottom: 8 })
+            .onClick(() => {
+              this.isEditingStart = false;
+              this.showTimePicker = true;
+            })
 
             // 提醒
-            this.buildSelectRow('🔔', '提醒', getReminderTypeText(this.reminderType), () => {
+            Row() {
+              Text('🔔')
+                .fontSize(18)
+                .width(30)
+              
+              Text('提醒')
+                .fontSize(15)
+                .fontColor(Constants.COLOR_TEXT_PRIMARY)
+                .layoutWeight(1)
+              
+              Text(getReminderTypeText(this.reminderType))
+                .fontSize(14)
+                .fontColor(Constants.COLOR_TEXT_SECONDARY)
+                .key(`reminder-${this.refreshKey}`) // 添加 key 强制刷新
+              
+              Text('›')
+                .fontSize(18)
+                .fontColor(Constants.COLOR_TEXT_TERTIARY)
+                .margin({ left: 8 })
+            }
+            .width('100%')
+            .padding({ left: 16, right: 16, top: 12, bottom: 12 })
+            .backgroundColor(Constants.COLOR_CARD_BACKGROUND)
+            .borderRadius(8)
+            .margin({ bottom: 8 })
+            .onClick(() => {
               this.showReminderPicker = true;
             })
 
             // 重复
-            this.buildSelectRow('🔄', '重复', getRepeatRuleText(this.repeatRule), () => {
+            Row() {
+              Text('🔄')
+                .fontSize(18)
+                .width(30)
+              
+              Text('重复')
+                .fontSize(15)
+                .fontColor(Constants.COLOR_TEXT_PRIMARY)
+                .layoutWeight(1)
+              
+              Text(getRepeatRuleText(this.repeatRule))
+                .fontSize(14)
+                .fontColor(Constants.COLOR_TEXT_SECONDARY)
+                .key(`repeat-${this.refreshKey}`) // 添加 key 强制刷新
+              
+              Text('›')
+                .fontSize(18)
+                .fontColor(Constants.COLOR_TEXT_TERTIARY)
+                .margin({ left: 8 })
+            }
+            .width('100%')
+            .padding({ left: 16, right: 16, top: 12, bottom: 12 })
+            .backgroundColor(Constants.COLOR_CARD_BACKGROUND)
+            .borderRadius(8)
+            .margin({ bottom: 8 })
+            .onClick(() => {
               this.showRepeatPicker = true;
             })
 
@@ -430,6 +527,7 @@ export struct EventSheet {
               .fontColor(Constants.COLOR_PRIMARY)
               .onClick(() => {
                 this.showReminderPicker = false;
+                this.refreshKey++; // 强制刷新
               })
           }
           .width('100%')
@@ -464,6 +562,7 @@ export struct EventSheet {
                 .onClick(() => {
                   this.reminderType = type;
                   this.showReminderPicker = false;
+                  this.refreshKey++; // 强制刷新
                 })
               }
             })
@@ -514,6 +613,7 @@ export struct EventSheet {
               .fontColor(Constants.COLOR_PRIMARY)
               .onClick(() => {
                 this.showRepeatPicker = false;
+                this.refreshKey++; // 强制刷新
               })
           }
           .width('100%')
@@ -546,6 +646,7 @@ export struct EventSheet {
                 .onClick(() => {
                   this.repeatRule = rule;
                   this.showRepeatPicker = false;
+                  this.refreshKey++; // 强制刷新
                 })
               }
             })
@@ -596,6 +697,7 @@ export struct EventSheet {
               .fontColor(Constants.COLOR_PRIMARY)
               .onClick(() => {
                 this.showTimePicker = false;
+                this.refreshKey++; // 强制刷新
               })
           }
           .width('100%')
@@ -610,12 +712,11 @@ export struct EventSheet {
               const year = value.year;
               const month = value.month - 1;
               const day = value.day;
-              const selectedDate = new Date(year, month, day);
               if (this.isEditingStart) {
-                this.startTime = selectedDate;
-                this.endTime = new Date(selectedDate);
+                this.startTime = new Date(year, month, day);
+                this.endTime = new Date(year, month, day);
               } else {
-                this.endTime = selectedDate;
+                this.endTime = new Date(year, month, day);
               }
             })
           } else {
@@ -633,18 +734,17 @@ export struct EventSheet {
                 const currentTime = this.isEditingStart ? this.startTime : this.endTime;
                 const hour = currentTime.getHours();
                 const minute = currentTime.getMinutes();
-                const selectedDateTime = new Date(year, month, day, hour, minute);
                 if (this.isEditingStart) {
-                  this.startTime = selectedDateTime;
+                  this.startTime = new Date(year, month, day, hour, minute);
                   if (this.endTime <= this.startTime) {
-                    this.endTime = new Date(this.startTime);
-                    this.endTime.setHours(this.startTime.getHours() + 1);
+                    const newEnd = new Date(year, month, day, hour + 1, minute);
+                    this.endTime = newEnd;
                   }
                 } else {
-                  this.endTime = selectedDateTime;
+                  this.endTime = new Date(year, month, day, hour, minute);
                   if (this.endTime <= this.startTime) {
-                    this.endTime = new Date(this.startTime);
-                    this.endTime.setHours(this.startTime.getHours() + 1);
+                    const newEnd = new Date(year, month, day, hour + 1, minute);
+                    this.endTime = newEnd;
                   }
                 }
               })
@@ -659,18 +759,17 @@ export struct EventSheet {
                 const year = currentDate.getFullYear();
                 const month = currentDate.getMonth();
                 const day = currentDate.getDate();
-                const selectedDateTime = new Date(year, month, day, value.hour, value.minute);
                 if (this.isEditingStart) {
-                  this.startTime = selectedDateTime;
+                  this.startTime = new Date(year, month, day, value.hour, value.minute);
                   if (this.endTime <= this.startTime) {
-                    this.endTime = new Date(this.startTime);
-                    this.endTime.setHours(this.startTime.getHours() + 1);
+                    const newEnd = new Date(year, month, day, value.hour + 1, value.minute);
+                    this.endTime = newEnd;
                   }
                 } else {
-                  this.endTime = selectedDateTime;
+                  this.endTime = new Date(year, month, day, value.hour, value.minute);
                   if (this.endTime <= this.startTime) {
-                    this.endTime = new Date(this.startTime);
-                    this.endTime.setHours(this.startTime.getHours() + 1);
+                    const newEnd = new Date(year, month, day, value.hour + 1, value.minute);
+                    this.endTime = newEnd;
                   }
                 }
               })

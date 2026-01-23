@@ -108,7 +108,8 @@ export class FileUtils {
    */
   private static stringToArrayBuffer(text: string): ArrayBuffer {
     const encoder = new util.TextEncoder();
-    return encoder.encodeInto(text);
+    const uint8Array = encoder.encodeInto(text);
+    return uint8Array.buffer;
   }
 
   /**

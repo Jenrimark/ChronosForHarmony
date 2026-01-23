@@ -12,13 +12,24 @@ Thumbs.db
 *.swo
 *~
 .idea/
+.kiro/
 .vscode/
+.shared/
+.homework/  
 .kiro/
 text/
+photo/
 *.iml
 *.log
 *.tmp
 *.temp
+*.key
+*.pem
+*.p12
+*.jks
+*.cer
+*.p7b
+secrets/
 
 # ============================================
 # 后端 (Spring Boot / Maven)
@@ -108,6 +119,8 @@ photo/
 *.pem
 *.p12
 *.jks
+*.cer
+*.p7b
 secrets/
 
 # 数据库文件
@@ -122,3 +135,21 @@ secrets/
 *.rar
 *.7z
 
+# ============================================
+# Markdown 文档（只保留根目录 README）
+# ============================================
+*.md
+!README.md
+
+# 作业/说明等本地文档目录（不参与版本控制）
+homework/
+
+# 常见音视频、大文件（演示录屏等）
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.mp3
+
+# IDE / 辅助工具数据目录
+.shared/

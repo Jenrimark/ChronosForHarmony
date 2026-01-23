@@ -1,10 +1,12 @@
 import { Constants } from '../common/Constants';
 import { AuthService, UserInfo } from '../service/AuthService';
 import { HolidayService } from '../service/HolidayService';
+import { EventImportExportService } from '../service/EventImportExportService';
 import { promptAction, UIContext } from '@kit.ArkUI';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { common } from '@kit.AbilityKit';
+import { picker } from '@kit.CoreFileKit';
 import auth from '@hw-agconnect/auth';
 
 /**
@@ -23,6 +25,7 @@ export struct Settings {
 
   private authService: AuthService = AuthService.getInstance();
   private holidayService: HolidayService = HolidayService.getInstance();
+  private eventImportExportService: EventImportExportService = EventImportExportService.getInstance();
 
   aboutToAppear() {
     // 异步加载用户信息，确保 AuthService 已初始化
@@ -235,6 +238,151 @@ export struct Settings {
   }
 
   /**
+   * 导出所有日历事件为 .ics 文本（写入日志，便于复制）
+   */
+  async exportCalendarToICS(): Promise<void> {
+    try {
+      const ics: string = await this.eventImportExportService.exportAllEventsToICS();
+      // 主要用于调试和演示：控制台中可以复制 .ics 内容
+      console.info('Settings: 导出日历为 .ics:\n' + ics);
+      promptAction.showToast({ message: '已导出日历为 .ics 文本，请在日志中复制', duration: 2000 });
+    } catch (error) {
+      console.error('导出日历失败:', error);
+      promptAction.showToast({ message: '导出失败，请重试' });
+    }
+  }
+
+  /**
+   * 导入 .ics 的提示（当前版本不含文件选择器，只实现解析逻辑）
+   */
+  showICSImportHint(): void {
+    AlertDialog.show({
+      title: '导入日历（.ics）',
+      message: '当前版本已经实现从 .ics 文本解析日程的核心逻辑，\n' +
+        '但尚未集成文件选择/粘贴界面。\n\n' +
+        '如需演示导入功能，可在代码中调用 EventImportExportService.importFromICS(icsText)。',
+      confirm: {
+        value: '知道了',
+        action: () => {}
+      }
+    });
+  }
+
+  /**
+   * 导入 .ics 文件
+   */
+  async importCalendarFromICS(): Promise<void> {
+    try {
+      // 获取 UIAbilityContext
+      const context = getContext(this) as common.UIAbilityContext;
+      
+      // 创建 DocumentViewPicker
+      const documentPicker = new picker.DocumentViewPicker(context);
+      
+      // 配置选择选项
+      const selectOptions = new picker.DocumentSelectOptions();
+      selectOptions.maxSelectNumber = 1; // 只选择一个文件
+      selectOptions.fileSuffixFilters = ['.ics']; // 只显示 .ics 文件
+      
+      hilog.info(0x0000, 'Settings', '打开文件选择器...');
+      
+      // 拉起文件选择器
+      const result = await documentPicker.select(selectOptions);
+      
+      if (!result || result.length === 0) {
+        hilog.info(0x0000, 'Settings', '用户取消选择');
+        return;
+      }
+      
+      const uri = result[0];
+      hilog.info(0x0000, 'Settings', `选择的文件 URI: ${uri}`);
+      
+      // 显示加载提示
+      promptAction.showToast({ message: '正在导入...', duration: 1000 });
+      
+      // 导入文件
+      const count = await this.eventImportExportService.importFromICSFile(uri);
+      
+      // 显示成功提示
+      promptAction.showToast({ 
+        message: `成功导入 ${count} 条日程！`, 
+        duration: 2000 
+      });
+      
+      hilog.info(0x0000, 'Settings', `导入成功: ${count} 条日程`);
+      
+    } catch (error) {
+      const err = error as BusinessError;
+      hilog.error(0x0000, 'Settings', 
+        `导入失败: Code: ${err.code}, Message: ${err.message}`);
+      
+      let errorMsg = '导入失败';
+      if (err.message) {
+        errorMsg = `导入失败: ${err.message}`;
+      }
+      
+      promptAction.showToast({ message: errorMsg, duration: 2000 });
+    }
+  }
+
+  /**
+   * 导出日历到 .ics 文件
+   */
+  async exportCalendarToICSFile(): Promise<void> {
+    try {
+      // 获取 UIAbilityContext
+      const context = getContext(this) as common.UIAbilityContext;
+      
+      // 创建 DocumentViewPicker
+      const documentPicker = new picker.DocumentViewPicker(context);
+      
+      // 配置保存选项
+      const saveOptions = new picker.DocumentSaveOptions();
+      const timestamp = new Date().getTime();
+      saveOptions.newFileNames = [`chronos_calendar_${timestamp}.ics`];
+      
+      hilog.info(0x0000, 'Settings', '打开文件保存对话框...');
+      
+      // 拉起文件保存对话框
+      const result = await documentPicker.save(saveOptions);
+      
+      if (!result || result.length === 0) {
+        hilog.info(0x0000, 'Settings', '用户取消保存');
+        return;
+      }
+      
+      const uri = result[0];
+      hilog.info(0x0000, 'Settings', `保存文件 URI: ${uri}`);
+      
+      // 显示加载提示
+      promptAction.showToast({ message: '正在导出...', duration: 1000 });
+      
+      // 导出到文件
+      await this.eventImportExportService.exportToICSFile(uri);
+      
+      // 显示成功提示
+      promptAction.showToast({ 
+        message: '日程已导出到文件！', 
+        duration: 2000 
+      });
+      
+      hilog.info(0x0000, 'Settings', '导出成功');
+      
+    } catch (error) {
+      const err = error as BusinessError;
+      hilog.error(0x0000, 'Settings', 
+        `导出失败: Code: ${err.code}, Message: ${err.message}`);
+      
+      let errorMsg = '导出失败';
+      if (err.message) {
+        errorMsg = `导出失败: ${err.message}`;
+      }
+      
+      promptAction.showToast({ message: errorMsg, duration: 2000 });
+    }
+  }
+
+  /**
    * 显示关于对话框
    */
   showAbout(): void {
@@ -403,6 +551,18 @@ export struct Settings {
           })
 
           Divider().color('#E5E5EA').margin({ left: 16, right: 16 })
+
+          // 导出日历（.ics）
+          this.buildSettingItem('导出日历（.ics）', '导出所有日程到 .ics 文件', () => {
+            this.exportCalendarToICSFile();
+          })
+
+          Divider().color('#E5E5EA').margin({ left: 16, right: 16 })
+
+          // 导入日历（.ics）
+          this.buildSettingItem('导入日历（.ics）', '从 .ics 文件导入日程', () => {
+            this.importCalendarFromICS();
+          })
 
           // 清除缓存
           this.buildSettingItem('清除缓存', `当前缓存：${this.cacheSize}`, () => {

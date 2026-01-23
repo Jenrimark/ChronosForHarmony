@@ -90,36 +90,32 @@ struct Main {
       // 底部导航栏 - 优化版
       Row() {
         ForEach(this.tabs, (tab: TabContent, index: number) => {
-          Column() {
-            // 使用图标组件替代 emoji
-            IconComponent({
-              iconType: tab.iconType,
-              iconSize: 24,
-              iconColor: this.currentIndex === index
-                ? Constants.COLOR_PRIMARY
-                : Constants.COLOR_TEXT_TERTIARY
-            })
-            .margin({ bottom: Constants.SPACING_XS })
-            .animation({
-              duration: Constants.ANIMATION_DURATION_FAST,
-              curve: Curve.EaseInOut
-            })
-
-            Text(tab.title)
-              .fontSize(Constants.FONT_SIZE_XS)
-              .fontWeight(this.currentIndex === index ? FontWeight.Medium : FontWeight.Normal)
-              .fontColor(
-                this.currentIndex === index
+          // 使用 Button 替代 Column，更好地控制点击效果
+          Button({ type: ButtonType.Normal }) {
+            Column() {
+              // 使用图标组件替代 emoji
+              IconComponent({
+                iconType: tab.iconType,
+                iconSize: 24,
+                iconColor: this.currentIndex === index
                   ? Constants.COLOR_PRIMARY
                   : Constants.COLOR_TEXT_TERTIARY
-              )
-              .animation({
-                duration: Constants.ANIMATION_DURATION_FAST,
-                curve: Curve.EaseInOut
               })
+              .margin({ bottom: Constants.SPACING_XS })
+
+              Text(tab.title)
+                .fontSize(Constants.FONT_SIZE_XS)
+                .fontWeight(this.currentIndex === index ? FontWeight.Medium : FontWeight.Normal)
+                .fontColor(
+                  this.currentIndex === index
+                    ? Constants.COLOR_PRIMARY
+                    : Constants.COLOR_TEXT_TERTIARY
+                )
+            }
+            .justifyContent(FlexAlign.Center)
           }
           .layoutWeight(1)
-          .justifyContent(FlexAlign.Center)
+          .height(56)
           .padding({
             top: Constants.SPACING_SM,
             bottom: Constants.SPACING_SM
@@ -130,12 +126,9 @@ struct Main {
               : 'transparent'
           )
           .borderRadius(Constants.BORDER_RADIUS_SM)
+          .stateEffect(false)  // 禁用默认的黑色点击效果
           .onClick(() => {
             this.onTabChange(index);
-          })
-          .animation({
-            duration: Constants.ANIMATION_DURATION_FAST,
-            curve: Curve.EaseInOut
           })
         })
       }

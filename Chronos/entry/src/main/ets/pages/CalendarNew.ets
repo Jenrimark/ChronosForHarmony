@@ -1,4 +1,4 @@
-import { CalendarViewType, CalendarEvent } from '../model/CalendarEvent';
+import { CalendarViewType, CalendarEvent, ReminderType } from '../model/CalendarEvent';
 import { Holiday, MxnzpHolidayData } from '../model/Holiday';
 import { Task } from '../model/Task';
 import { TaskService } from '../service/TaskService';
@@ -7,6 +7,7 @@ import { EventService } from '../service/EventService';
 import { Utils } from '../common/Utils';
 import { Constants } from '../common/Constants';
 import { TaskItem } from '../components/TaskItem';
+import { AnimationUtils } from '../utils/AnimationUtils';
 
 // 组件导入
 import { ViewTabs } from '../components/calendar/ViewTabs';
@@ -42,9 +43,12 @@ export struct CalendarNewPage {
   @State showJumpDate: boolean = false;
   @State showSearch: boolean = false;
   @State editingEvent: CalendarEvent | null = null;
+  @State dueReminderEvents: CalendarEvent[] = [];
   
   // 滑动相关
   private swipeStartX: number = 0;
+  private reminderTimer: number = 0;
+  private firedReminderKeys: Set<string> = new Set();
 
   private taskService: TaskService = TaskService.getInstance();
   private holidayService: HolidayService = HolidayService.getInstance();
@@ -61,6 +65,11 @@ export struct CalendarNewPage {
 
   aboutToAppear() {
     this.loadData();
+    this.startReminderTimer();
+  }
+
+  aboutToDisappear() {
+    this.stopReminderTimer();
   }
 
   /**
@@ -70,6 +79,131 @@ export struct CalendarNewPage {
     await this.loadTasks();
     await this.loadEvents();
     await this.loadCalendarData();
+  }
+
+  /**
+   * 启动提醒定时器
+   */
+  startReminderTimer(): void {
+    if (this.reminderTimer !== 0) {
+      clearInterval(this.reminderTimer);
+    }
+    // 为了演示效果，更频繁地检查提醒（每15秒）
+    this.reminderTimer = setInterval((): void => {
+      this.checkReminders();
+    }, 15 * 1000);
+  }
+
+  /**
+   * 停止提醒定时器
+   */
+  stopReminderTimer(): void {
+    if (this.reminderTimer !== 0) {
+      clearInterval(this.reminderTimer);
+      this.reminderTimer = 0;
+    }
+  }
+
+  /**
+   * 检查并触发到点的提醒
+   */
+  checkReminders(): void {
+    if (!this.events || this.events.length === 0) {
+      return;
+    }
+    const now = new Date().getTime();
+    // 1分钟窗口，防止错过；配合15秒轮询可以更容易触发
+    const windowMs = 60 * 1000;
+    const newDue: CalendarEvent[] = [];
+
+    this.events.forEach((event: CalendarEvent) => {
+      if (!event.reminder || event.reminder === ReminderType.NONE) {
+        return;
+      }
+      const reminderTime = event.getReminderTime();
+      if (!reminderTime) {
+        return;
+      }
+      const t = reminderTime.getTime();
+      if (t <= now && t >= now - windowMs) {
+        const key = `${event.id}_${t}`;
+        if (!this.firedReminderKeys.has(key)) {
+          this.firedReminderKeys.add(key);
+          newDue.push(event);
+        }
+      }
+    });
+
+    if (newDue.length > 0) {
+      console.info(`CalendarNew: 触发到点提醒 ${newDue.length} 条`);
+      this.dueReminderEvents = [...this.dueReminderEvents, ...newDue];
+    }
+  }
+
+  /**
+   * 关闭当前弹出的提醒
+   */
+  dismissCurrentReminder(): void {
+    if (this.dueReminderEvents.length === 0) {
+      return;
+    }
+    const list = [...this.dueReminderEvents];
+    list.shift();
+    this.dueReminderEvents = list;
+  }
+
+  /**
+   * 构建单个提醒弹窗内容
+   */
+  @Builder
+  buildReminderPopup(event: CalendarEvent) {
+    Column() {
+      Text('日程提醒')
+        .fontSize(18)
+        .fontWeight(FontWeight.Bold)
+        .fontColor(Constants.COLOR_TEXT_PRIMARY)
+        .margin({ bottom: 8 })
+
+      Text(event.title)
+        .fontSize(16)
+        .fontWeight(FontWeight.Medium)
+        .fontColor(Constants.COLOR_TEXT_PRIMARY)
+        .maxLines(2)
+        .textOverflow({ overflow: TextOverflow.Ellipsis })
+        .margin({ bottom: 6 })
+
+      if (event.location && event.location.length > 0) {
+        Text(`📍 ${event.location}`)
+          .fontSize(13)
+          .fontColor(Constants.COLOR_TEXT_SECONDARY)
+          .maxLines(1)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+          .margin({ bottom: 6 })
+      }
+
+      Text(event.getTimeRangeString())
+        .fontSize(13)
+        .fontColor(Constants.COLOR_TEXT_SECONDARY)
+        .margin({ bottom: 16 })
+
+      Row() {
+        Blank()
+
+        Button('知道了')
+          .type(ButtonType.Normal)
+          .backgroundColor(Constants.COLOR_PRIMARY)
+          .fontColor('#FFFFFF')
+          .height(36)
+          .padding({ left: 16, right: 16 })
+          .borderRadius(18)
+          .onClick(() => {
+            this.dismissCurrentReminder();
+          })
+      }
+      .width('100%')
+    }
+    .width('100%')
+    .padding({ left: 16, right: 16, top: 16, bottom: 16 })
   }
 
   /**
@@ -304,10 +438,13 @@ export struct CalendarNewPage {
     if (this.currentView === CalendarViewType.YEAR) {
       this.currentYear--;
     } else {
-      const newMonth = new Date(this.currentMonth);
-      newMonth.setMonth(newMonth.getMonth() - 1);
-      this.currentMonth = newMonth;
-      await this.loadCalendarData();
+      animateTo(AnimationUtils.smooth(), () => {
+        const newMonth = new Date(this.currentMonth);
+        newMonth.setMonth(newMonth.getMonth() - 1);
+        this.currentMonth = newMonth;
+        // 异步加载数据，不阻塞动画
+        this.loadCalendarData();
+      });
     }
   }
 
@@ -318,10 +455,13 @@ export struct CalendarNewPage {
     if (this.currentView === CalendarViewType.YEAR) {
       this.currentYear++;
     } else {
-      const newMonth = new Date(this.currentMonth);
-      newMonth.setMonth(newMonth.getMonth() + 1);
-      this.currentMonth = newMonth;
-      await this.loadCalendarData();
+      animateTo(AnimationUtils.smooth(), () => {
+        const newMonth = new Date(this.currentMonth);
+        newMonth.setMonth(newMonth.getMonth() + 1);
+        this.currentMonth = newMonth;
+        // 异步加载数据，不阻塞动画
+        this.loadCalendarData();
+      });
     }
   }
 
@@ -352,6 +492,8 @@ export struct CalendarNewPage {
     }
     await this.loadEvents();
     this.updateCalendarDays();
+    // 立即检查一次提醒，方便新建/编辑后立刻触发
+    this.checkReminders();
   }
 
   /**
@@ -938,6 +1080,33 @@ export struct CalendarNewPage {
         .borderRadius({ topLeft: 20, topRight: 20 })
         .position({ x: 0, y: '10%' })
         .zIndex(101)
+      }
+
+      // 到点提醒弹窗（页面内提醒）
+      if (this.dueReminderEvents.length > 0) {
+        Column()
+          .width('100%')
+          .height('100%')
+          .backgroundColor('rgba(0,0,0,0.3)')
+          .onClick(() => {
+            this.dismissCurrentReminder();
+          })
+
+        Column() {
+          this.buildReminderPopup(this.dueReminderEvents[0])
+        }
+        .width('80%')
+        .backgroundColor(Constants.COLOR_CARD_BACKGROUND)
+        .borderRadius(16)
+        .shadow({
+          radius: 20,
+          color: 'rgba(0,0,0,0.25)',
+          offsetX: 0,
+          offsetY: 8
+        })
+        .position({ x: '50%', y: '50%' })
+        .translate({ x: '-40%', y: '-50%' })
+        .zIndex(120)
       }
     }
     .width('100%')
